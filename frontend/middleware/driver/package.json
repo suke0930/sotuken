@@ -1,0 +1,18 @@
+{
+  "name": "front_driver",
+  "version": "0.0.1",
+  "description": "middle ware driver",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "devlop"
+  ],
+  "author": "suke",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "typescript": "^5.9.2"
+  }
+}
