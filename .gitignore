@@ -140,6 +140,3 @@ vite.config.ts.timestamp-*
 
 #history削除
 .history/
-
-#11 シークレットディレクトリの設定
-devsecret/
