@@ -23,7 +23,7 @@
     "exactOptionalPropertyTypes": true,
     // Style Options
     "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedParameters": false,
     // Recommended Options
     "strict": true,
     "verbatimModuleSyntax": false,
