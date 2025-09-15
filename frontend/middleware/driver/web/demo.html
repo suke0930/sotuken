@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            padding: 2em;
+            max-width: 800px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        a {
+            color: #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="content">
+        <h1>Loading...</h1>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const content = document.getElementById('content');
+            const sessionId = localStorage.getItem('sessionId');
+
+            if (!sessionId) {
+                content.innerHTML = `
+                    <h1>Unauthorized</h1>
+                    <p>You are not logged in.</p>
+                    <a href="/">Go to Login Page</a>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch('/user/auth', {
+                    headers: { 'X-Session-ID': sessionId }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    content.innerHTML = `
+                        <h1>Welcome to the Demo Page!</h1>
+                        <p>You are successfully authenticated.</p>
+                        <p>Your devid is: <strong>${data.devid}</strong></p>
+                        <a href="/">Back to Home</a>
+                    `;
+                } else {
+                    throw new Error('Authentication failed');
+                }
+            } catch (error) {
+                localStorage.removeItem('sessionId');
+                window.location.href = '/';
+            }
+        });
+    </script>
+</body>
+
+</html>

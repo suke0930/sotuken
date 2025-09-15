@@ -39,6 +39,13 @@
             line-height: 1.6;
         }
 
+        #loginSection {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
         .cta-button {
             display: inline-block;
             background-color: #007bff;
@@ -69,4 +76,106 @@
     <div class="container">
         <h2>Discover Amazing Things!</h2>
         <p>
-            This is a simple landing page to demonstrate a basic HTML
+            This is a simple landing page to demonstrate a basic HTML structure and authentication flow.
+        </p>
+
+        <div id="loginSection">
+            <p id="statusMessage">Checking authentication status...</p>
+            <button id="loginBtn" style="display: none;">Login</button>
+            <p id="errorMessage" style="color: red;"></p>
+        </div>
+    </div>
+    <footer>
+        <p>&copy; 2024 Your Company</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const statusMessage = document.getElementById('statusMessage');
+            const loginBtn = document.getElementById('loginBtn');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // 1. devidの確認と生成
+            let devid = localStorage.getItem('devid');
+            if (!devid) {
+                devid = 'dev-' + crypto.randomUUID();
+                localStorage.setItem('devid', devid);
+                console.log('New devid generated and stored:', devid);
+            } else {
+                console.log('Existing devid found:', devid);
+            }
+
+            // 2. sessionIdの確認と認証
+            const sessionId = localStorage.getItem('sessionId');
+            if (sessionId) {
+                try {
+                    const response = await fetch('/user/auth', {
+                        headers: {
+                            'X-Session-ID': sessionId
+                        }
+                    });
+
+                    if (response.ok) {
+                        // 認証成功
+                        statusMessage.textContent = 'You are logged in. Redirecting to demo...';
+                        window.location.href = '/demo';
+                    } else {
+                        // 認証失敗
+                        localStorage.removeItem('sessionId');
+                        statusMessage.textContent = 'Your session has expired. Please log in again.';
+                        loginBtn.style.display = 'inline-block';
+                    }
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                    statusMessage.textContent = 'Failed to connect to the server.';
+                }
+            } else {
+                // sessionIdなし
+                statusMessage.textContent = 'Please log in to continue.';
+                loginBtn.style.display = 'inline-block';
+            }
+
+            // 3. ログインボタンのイベントリスナー
+            loginBtn.addEventListener('click', async () => {
+                errorMessage.textContent = '';
+                loginBtn.disabled = true;
+                statusMessage.textContent = 'Logging in...';
+
+                try {
+                    const response = await fetch('/user/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ devid: localStorage.getItem('devid') })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        // ログイン成功
+                        localStorage.setItem('sessionId', data.sessionId);
+                        statusMessage.textContent = 'Login successful! Redirecting...';
+                        window.location.href = '/demo';
+                    } else {
+                        // ログイン失敗
+                        if (data.reason === 'forbidden_devid') {
+                            errorMessage.textContent = 'Login failed: Your device ID is not on the whitelist.';
+                        } else {
+                            errorMessage.textContent = `Login failed: ${data.reason || 'Unknown error'}`;
+                        }
+                        statusMessage.textContent = 'Please log in to continue.';
+                        loginBtn.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Login request failed:', error);
+                    errorMessage.textContent = 'Failed to connect to the server.';
+                    statusMessage.textContent = 'Please log in to continue.';
+                    loginBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
