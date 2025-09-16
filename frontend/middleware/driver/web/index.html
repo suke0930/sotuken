@@ -19,6 +19,7 @@
 
         .header {
             background-color: rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             color: white;
             padding: 1em 0;
@@ -161,6 +162,7 @@
 
         .footer {
             background-color: rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             color: white;
             text-align: center;
@@ -180,8 +182,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
@@ -191,11 +198,11 @@
         <h1>Front Driver System</h1>
         <p>セキュアなセッション管理システム</p>
     </div>
-    
+
     <div class="container">
         <div class="login-card">
             <h2>開発者ログイン</h2>
-            
+
             <div class="status-section">
                 <div id="statusMessage" class="status-message status-loading">
                     <div class="loading-spinner"></div>
@@ -313,7 +320,7 @@
          */
         async function login() {
             const devid = getOrCreateDevId();
-            
+
             loginBtn.disabled = true;
             statusMessage.innerHTML = '<div class="loading-spinner"></div>ログイン中...';
             statusMessage.className = 'status-message status-loading';
@@ -333,7 +340,7 @@
 
                 if (response.ok) {
                     showSuccess(data.message || 'ログインに成功しました');
-                    
+
                     // 認証成功後の状態更新
                     setTimeout(() => {
                         updateUIForLoggedInUser({
@@ -389,16 +396,16 @@
          */
         function updateUIForLoggedInUser(userdata) {
             const loginTime = new Date(userdata.loginAt).toLocaleString('ja-JP');
-            
+
             statusMessage.textContent = '認証済み';
             statusMessage.className = 'status-message status-success';
-            
+
             userInfo.innerHTML = `
                 <p><strong>Device ID:</strong> ${userdata.devid}</p>
                 <p><strong>ログイン日時:</strong> ${loginTime}</p>
             `;
             userInfo.style.display = 'block';
-            
+
             loginSection.style.display = 'none';
             loggedInSection.style.display = 'block';
         }
@@ -409,7 +416,7 @@
         function updateUIForLoggedOutUser() {
             statusMessage.textContent = 'ログインしてください';
             statusMessage.className = 'status-message';
-            
+
             userInfo.style.display = 'none';
             loginSection.style.display = 'block';
             loggedInSection.style.display = 'none';
@@ -424,7 +431,7 @@
 
             // 認証状態の確認
             const authStatus = await checkAuthStatus();
-            
+
             if (authStatus.authenticated) {
                 updateUIForLoggedInUser(authStatus);
             } else {
