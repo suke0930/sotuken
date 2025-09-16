@@ -84,7 +84,7 @@ class MiddlewareManager {
     }
 
     /**
-     * エラーハンドリングミドルウェアをセットアップする
+     * エラーハンドリングミドルウェアをセットアップする2
      */
     public setupErrorHandlers() {
         this.app.use(this.errorHandler);
