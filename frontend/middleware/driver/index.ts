@@ -68,273 +68,257 @@ class DevUserManager {
 }
 
 /**
- * Expressサーバーのセットアップと管理を行うクラス
+ * ミドルウェアのセットアップと管理を行うクラス
  */
-class AppServer {
-    private app: express.Express;
-
-    constructor(private port: number) {
-        //this.appはexrepsssのインスタンス!!!!!!忘れるでない!!!!!!!!!
-        this.app = express();
-    }
+class MiddlewareManager {
+    constructor(private app: express.Express) { }
 
     /**
-     * サーバーをセットアップして起動する
+     * すべてのミドルウェアをセットアップする
      */
-    public async start() {
-        await DevUserManager.initialize();
-        this.setupMiddleware();
-        this.setupRoutes();
-        this.setupErrorHandlers();
-        this.listen();
-    }
-
-    /**
-     * ミドルウェアをセットアップする
-     */
-    private setupMiddleware() {
-        // JSONボディパーサーを有効化
+    public configure() {
         this.app.use(express.json());
+        this.setupSession();
+        this.setupStaticFiles();
+        this.setupSecurityHeaders();
+    }
 
-        // express-sessionの設定
+    /**
+     * エラーハンドリングミドルウェアをセットアップする
+     */
+    public setupErrorHandlers() {
+        this.app.use(this.errorHandler);
+    }
+
+    /**
+     * express-sessionミドルウェアをセットアップする
+     */
+    private setupSession() {
         this.app.use(session({
             name: SESSION_NAME,
             secret: SESSION_SECRET,
-            resave: false, // セッションが変更されていない場合は保存しない
-            saveUninitialized: false, // 初期化されていないセッションは保存しない
+            resave: false,
+            saveUninitialized: false,
             cookie: {
-                secure: false, // 開発環境ではfalse（本番環境ではtrueにする）
-                httpOnly: true, // XSS攻撃を防ぐためCookieにJavaScriptからアクセスできないようにする
-                maxAge: 24 * 60 * 60 * 1000, // 24時間（ミリ秒）
-                sameSite: 'lax' // CSRF攻撃を防ぐ
-            },
-
-            // 本番環境用の設定（現在はコメントアウト）
-            // 本番環境では以下の設定を有効にしてください：
-            /*
-            store: new MongoStore({
-                mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/sessions',
-                touchAfter: 24 * 3600 // セッションの更新頻度を制限（秒）
-            }),
-            cookie: {
-                secure: true, // HTTPS必須
+                secure: false,
                 httpOnly: true,
                 maxAge: 24 * 60 * 60 * 1000,
-                sameSite: 'strict' // より厳格なCSRF保護
+                sameSite: 'lax'
+            },
+            /*
+            // 本番環境用の設定例
+            store: new MongoStore({
+                mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/sessions',
+                touchAfter: 24 * 3600
+            }),
+            cookie: {
+                secure: true,
+                httpOnly: true,
+                maxAge: 24 * 60 * 60 * 1000,
+                sameSite: 'strict'
             }
             */
         }));
+    }
 
-        // 静的ファイル配信を有効化
+    /**
+     * 静的ファイル配信をセットアップする
+     */
+    private setupStaticFiles() {
         this.app.use(express.static(path.join(__dirname, 'web')));
+    }
 
-        /**
-         * セキュリティヘッダーの追加（本番環境では重要）
-         * 現在は基本的なものを設定
-         */
+    /**
+     * セキュリティ関連のHTTPヘッダーを設定
+     */
+    private setupSecurityHeaders() {
         this.app.use((req, res, next) => {
-            // XSS攻撃を防ぐ
             res.setHeader('X-Content-Type-Options', 'nosniff');
             res.setHeader('X-Frame-Options', 'DENY');
             res.setHeader('X-XSS-Protection', '1; mode=block');
-
-            // 本番環境では以下のヘッダーも設定してください：
+            // 本番環境ではCSPやHSTSヘッダーの追加を推奨
             // res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
             // res.setHeader('Content-Security-Policy', "default-src 'self'");
-
             next();
         });
     }
 
     /**
-     * ルーティングをセットアップする
+     * 認証ミドルウェア
+     * セッションをチェックし、未認証の場合は401エラーを返す
      */
-    private setupRoutes() {
-        // ルートパスにアクセスされたらindex.htmlを返す
+    public authMiddleware: express.RequestHandler = (req, res, next) => {
+        if (req.session?.devid) {
+            req.devid = req.session.devid; // 後続の処理で使えるようにリクエストオブジェクトに格納
+            return next();
+        }
+        return res.status(401).json({
+            ok: false,
+            reason: "unauthorized",
+            message: "ログインが必要です"
+        });
+    };
+
+    /**
+     * グローバルなエラーハンドリングミドルウェア
+     */
+    private errorHandler: express.ErrorRequestHandler = (error, req, res, next) => {
+        console.error('Unhandled error:', error);
+        res.status(500).json({
+            ok: false,
+            reason: "internal_server_error",
+            message: "予期しないエラーが発生しました"
+        });
+    };
+}
+
+/**
+ * APIエンドポイントのルーティングを管理するクラス
+ */
+class ApiRouter {
+    constructor(
+        private app: express.Express,
+        private authMiddleware: express.RequestHandler
+    ) { }
+
+    /**
+     * すべてのAPIエンドポイントをセットアップする
+     */
+    public configureRoutes() {
         this.app.get('/', (req, res) => {
             res.sendFile(path.join(__dirname, 'web', 'index.html'));
         });
 
-        /**
-         * POST /user/login: ユーザーログイン処理
-         * express-session使用版
-         */
-        this.app.post('/user/login', async (req, res) => {
-            const { devid } = req.body;
-
-            // バリデーション
-            if (!devid || typeof devid !== 'string') {
-                return res.status(400).json({
-                    ok: false,
-                    reason: "devid_required",
-                    message: "devidが必要です"
-                });
-            }
-
-            try {
-                // ユーザー認証
-                const isAuthenticated = await DevUserManager.authenticate(devid);
-
-                if (!isAuthenticated) {
-                    return res.status(401).json({
-                        ok: false,
-                        reason: "forbidden_devid",
-                        message: "許可されていないデバイスIDです"
-                    });
-                }
-
-                // セッションにユーザー情報を保存
-                req.session.devid = devid;
-                req.session.loginAt = new Date().toISOString();
-
-                console.log(`User logged in: ${devid} at ${req.session.loginAt}`);
-
-                return res.status(200).json({
-                    ok: true,
-                    message: "ログインに成功しました",
-                    devid: devid
-                });
-
-            } catch (error) {
-                console.error("Login error:", error);
-                return res.status(500).json({
-                    ok: false,
-                    reason: "internal_server_error",
-                    message: "サーバー内部エラーが発生しました"
-                });
-            }
-        });
-
-        /**
-         * GET /user/auth: セッション検証
-         * 現在のセッション状態を確認し、認証済みユーザーの情報を返す
-         */
-        this.app.get('/user/auth', (req, res) => {
-            if (req.session?.devid) {
-                return res.status(200).json({
-                    ok: true,
-                    devid: req.session.devid,
-                    loginAt: req.session.loginAt,
-                    message: "認証済みです"
-                });
-            } else {
-                return res.status(401).json({
-                    ok: false,
-                    reason: "invalid_session",
-                    message: "セッションが無効です"
-                });
-            }
-        });
-
-        /**
-         * POST /user/logout: ログアウト処理
-         * セッションを破棄し、Cookieをクリアする
-         */
+        this.app.post('/user/login', this.loginHandler);
+        this.app.get('/user/auth', this.authHandler);
         this.app.post('/user/logout', this.logoutHandler);
 
-        /**
-         * GET /demo: 認証必須のデモページ
-         * authMiddlewareで認証チェックを行う
-         */
         this.app.get('/demo', this.authMiddleware, (req, res) => {
             res.sendFile(path.join(__dirname, 'web', 'demo.html'));
         });
 
-        /**
-         * GET /api/protected: 認証必須のAPI例
-         * 保護されたAPIエンドポイントの実装例
-         */
         this.app.get('/api/protected', this.authMiddleware, (req, res) => {
             res.json({
                 ok: true,
                 message: "保護されたAPIにアクセスしました",
                 user: {
-                    devid: req.devid,
+                    devid: req.devid, // authMiddlewareでセットされたdevidを使用
                     accessTime: new Date().toISOString()
                 }
             });
         });
     }
 
-    /**
-     * エラーハンドリングミドルウェアをセットアップする
-     */
-    private setupErrorHandlers() {
-        this.app.use((error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-            console.error('Unhandled error:', error);
-            res.status(500).json({
-                ok: false,
-                reason: "internal_server_error",
-                message: "予期しないエラーが発生しました"
-            });
-        });
-    }
+    private loginHandler: express.RequestHandler = async (req, res) => {
+        const { devid } = req.body;
+        if (!devid || typeof devid !== 'string') {
+            return res.status(400).json({ ok: false, reason: "devid_required", message: "devidが必要です" });
+        }
 
-    /**
-     * サーバーを指定されたポートで起動する
-     */
-    private listen() {
-        this.app.listen(this.port, '0.0.0.0', () => {
-            console.log(`=== Front Driver Server Started ===`);
-            console.log(`Port: ${this.port}`);
-            console.log(`URL: http://127.0.0.1:${this.port}/`);
-            console.log(`Session Secret: ${SESSION_SECRET.substring(0, 10)}...`);
-            console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`=====================================`);
-        });
-    }
+        try {
+            const isAuthenticated = await DevUserManager.authenticate(devid);
+            if (!isAuthenticated) {
+                return res.status(401).json({ ok: false, reason: "forbidden_devid", message: "許可されていないデバイスIDです" });
+            }
 
-    /**
-     * 認証ミドルウェア（express-session使用版）
-     * セッションからユーザー情報を取得し、認証状態を確認する
-     */
-    private authMiddleware: express.RequestHandler = (req, res, next) => {
-        // セッションに認証情報があるかチェック
-        if (req.session?.devid) {
-            // デバッグ用にリクエストオブジェクトにdevid情報を付与
-            req.devid = req.session.devid;
-            return next();
-        } else {
-            return res.status(401).json({
-                ok: false,
-                reason: "unauthorized",
-                message: "ログインが必要です"
-            });
+            req.session.devid = devid;
+            req.session.loginAt = new Date().toISOString();
+            console.log(`User logged in: ${devid} at ${req.session.loginAt}`);
+
+            return res.status(200).json({ ok: true, message: "ログインに成功しました", devid: devid });
+        } catch (error) {
+            console.error("Login error:", error);
+            return res.status(500).json({ ok: false, reason: "internal_server_error", message: "サーバー内部エラーが発生しました" });
         }
     };
 
-    /**
-     * ログアウト用のミドルウェア
-     * セッションを破棄する
-     */
+    private authHandler: express.RequestHandler = (req, res) => {
+        if (req.session?.devid) {
+            return res.status(200).json({
+                ok: true,
+                devid: req.session.devid,
+                loginAt: req.session.loginAt,
+                message: "認証済みです"
+            });
+        }
+        return res.status(401).json({ ok: false, reason: "invalid_session", message: "セッションが無効です" });
+    };
+
     private logoutHandler: express.RequestHandler = (req, res) => {
         req.session.destroy((err) => {
             if (err) {
-                //エラーハンドリング
                 console.error("Session destruction failed:", err);
-                return res.status(500).json({
-                    ok: false,
-                    reason: "logout_failed",
-                    message: "ログアウト処理中にエラーが発生しました"
-                });
+                return res.status(500).json({ ok: false, reason: "logout_failed", message: "ログアウト処理中にエラーが発生しました" });
             }
-
-            // Cookieもクリア
             res.clearCookie(SESSION_NAME);
-            return res.status(200).json({
-                ok: true,
-                message: "ログアウトしました"
-            });
+            return res.status(200).json({ ok: true, message: "ログアウトしました" });
         });
     };
+}
+
+/**
+ * 【雛形】他のAPIエンドポイントを追加する際のサンプルクラス
+ * express.Routerを使用して、よりモジュール化されたルーティングを実現
+ */
+class SampleApiRouter {
+    public readonly router: express.Router;
+
+    constructor(private authMiddleware: express.RequestHandler) {
+        this.router = express.Router();
+        this.configureRoutes();
+    }
+
+    private configureRoutes() {
+        // 認証が不要なエンドポイント
+        this.router.get('/public-info', (req, res) => {
+            res.json({ message: 'これは公開情報です。' });
+        });
+
+        // 認証が必要なエンドポイント
+        this.router.get('/private-data', this.authMiddleware, (req, res) => {
+            res.json({
+                message: `ようこそ、 ${req.devid} さん。これは保護されたデータです。`,
+                timestamp: new Date().toISOString()
+            });
+        });
+    }
 }
 
 /**
  * アプリケーションのエントリーポイント
  */
 async function main(port: number): Promise<void> {
-    const server = new AppServer(port);
-    await server.start();
+    // 1. 開発用ユーザーデータの初期化
+    await DevUserManager.initialize();
+
+    // 2. Expressアプリケーションのインスタンス化
+    const app = express();
+
+    // 3. ミドルウェアのセットアップ
+    const middlewareManager = new MiddlewareManager(app);
+    middlewareManager.configure();
+
+    // 4. ルーティングのセットアップ
+    const apiRouter = new ApiRouter(app, middlewareManager.authMiddleware);
+    apiRouter.configureRoutes();
+
+    // 4.1. 【雛形】サンプルAPIルーターのセットアップ
+    const sampleApiRouter = new SampleApiRouter(middlewareManager.authMiddleware);
+    app.use('/api/sample', sampleApiRouter.router); // `/api/sample` プレフィックスでマウント
+
+    // 5. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
+    middlewareManager.setupErrorHandlers();
+
+    // 6. サーバーの起動
+    app.listen(port, '0.0.0.0', () => {
+        console.log(`=== Front Driver Server Started ===`);
+        console.log(`Port: ${port}`);
+        console.log(`URL: http://127.0.0.1:${port}/`);
+        console.log(`Sample API: http://127.0.0.1:${port}/api/sample/public-info`);
+        console.log(`Session Secret: ${SESSION_SECRET.substring(0, 10)}...`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`=====================================`);
+    });
 }
 
 // サーバー起動（ポート12800で開始）
