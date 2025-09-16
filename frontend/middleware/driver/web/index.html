@@ -156,7 +156,7 @@
                         // ログイン成功
                         localStorage.setItem('sessionId', data.sessionId);
                         statusMessage.textContent = 'Login successful! Redirecting...';
-                        window.location.href = '/demo';
+                        window.location.href = '/demo.html';
                     } else {
                         // ログイン失敗
                         if (data.reason === 'forbidden_devid') {
