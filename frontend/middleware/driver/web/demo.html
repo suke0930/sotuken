@@ -1,73 +1,376 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demo Page</title>
+    <title>Front Driver - デモページ</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            min-height: 100vh;
             color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1em 0;
             text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .container {
-            padding: 2em;
-            max-width: 800px;
-            margin: 20px auto;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            max-width: 1000px;
+            margin: 2em auto;
+            padding: 0 2em;
         }
 
-        a {
-            color: #007bff;
+        .demo-card {
+            background-color: white;
+            padding: 2.5em;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 2em;
+        }
+
+        .user-info {
+            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+            padding: 1.5em;
+            border-radius: 10px;
+            margin-bottom: 2em;
+        }
+
+        .user-info h3 {
+            margin: 0 0 1em 0;
+            color: #2d3748;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1em;
+        }
+
+        .info-item {
+            background-color: white;
+            padding: 1em;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #2d3748;
+            margin-top: 0.5em;
+            word-break: break-all;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1em;
+            flex-wrap: wrap;
+            margin: 2em 0;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .api-demo {
+            background-color: #f7fafc;
+            padding: 2em;
+            border-radius: 10px;
+            margin: 2em 0;
+        }
+
+        .api-result {
+            background-color: #1a202c;
+            color: #e2e8f0;
+            padding: 1.5em;
+            border-radius: 8px;
+            margin: 1em 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-success {
+            color: #38a169;
+        }
+
+        .status-error {
+            color: #e53e3e;
+        }
+
+        .footer {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            text-align: center;
+            padding: 1em 0;
+            margin-top: auto;
+        }
+
+        .security-info {
+            background: linear-gradient(135deg, #fef5e7 0%, #fbd38d 100%);
+            padding: 1.5em;
+            border-radius: 10px;
+            margin: 2em 0;
+            border-left: 4px solid #ed8936;
         }
     </style>
 </head>
 
 <body>
-    <div class="container" id="content">
-        <h1>Loading...</h1>
+    <div class="header">
+        <h1>🎯 Demo Page</h1>
+        <p>認証済みユーザー専用ページ</p>
+    </div>
+
+    <div class="container">
+        <div class="demo-card">
+            <div id="content">
+                <div class="loading"></div>
+                認証情報を読み込み中...
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 Front Driver Project - セキュアなデモページ</p>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const content = document.getElementById('content');
-            const sessionId = localStorage.getItem('sessionId');
+        // DOM要素
+        const content = document.getElementById('content');
 
-            if (!sessionId) {
-                content.innerHTML = `
-                    <h1>Unauthorized</h1>
-                    <p>You are not logged in.</p>
-                    <a href="/">Go to Login Page</a>
-                `;
-                return;
-            }
-
+        /**
+         * 認証情報の取得と表示
+         */
+        async function loadUserInfo() {
             try {
                 const response = await fetch('/user/auth', {
-                    headers: { 'X-Session-ID': sessionId }
+                    method: 'GET',
+                    credentials: 'include' // Cookieを含める
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    content.innerHTML = `
-                        <h1>Welcome to the Demo Page!</h1>
-                        <p>You are successfully authenticated.</p>
-                        <p>Your devid is: <strong>${data.devid}</strong></p>
-                        <a href="/">Back to Home</a>
-                    `;
+                    displayUserInfo(data);
                 } else {
-                    throw new Error('Authentication failed');
+                    throw new Error('認証に失敗しました');
                 }
             } catch (error) {
-                localStorage.removeItem('sessionId');
+                console.error('認証エラー:', error);
+                displayAuthError();
+            }
+        }
+
+        /**
+         * 保護されたAPIのテスト
+         */
+        async function testProtectedAPI() {
+            const resultElement = document.getElementById('apiResult');
+            resultElement.innerHTML = '<div class="loading"></div>APIをテスト中...';
+            
+            try {
+                const response = await fetch('/api/protected', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultElement.innerHTML = JSON.stringify(data, null, 2);
+                    resultElement.className = 'api-result status-success';
+                } else {
+                    throw new Error(data.message || 'API呼び出しに失敗しました');
+                }
+            } catch (error) {
+                resultElement.innerHTML = `エラー: ${error.message}`;
+                resultElement.className = 'api-result status-error';
+            }
+        }
+
+        /**
+         * ログアウト処理
+         */
+        async function logout() {
+            try {
+                const response = await fetch('/user/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    alert('ログアウトに失敗しました');
+                }
+            } catch (error) {
+                console.error('ログアウトエラー:', error);
+                alert('ログアウト処理中にエラーが発生しました');
+            }
+        }
+
+        /**
+         * ユーザー情報の表示
+         */
+        function displayUserInfo(data) {
+            const loginTime = new Date(data.loginAt).toLocaleString('ja-JP');
+            const currentTime = new Date().toLocaleString('ja-JP');
+            
+            content.innerHTML = `
+                <h2>✅ 認証成功</h2>
+                
+                <div class="user-info">
+                    <h3>👤 ユーザー情報</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Device ID</div>
+                            <div class="info-value">${data.devid}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">ログイン日時</div>
+                            <div class="info-value">${loginTime}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">現在日時</div>
+                            <div class="info-value">${currentTime}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">認証状態</div>
+                            <div class="info-value">✅ 認証済み</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="security-info">
+                    <h4>🔒 セキュリティ機能</h4>
+                    <p>このページは認証ミドルウェアによって保護されています。</p>
+                    <ul>
+                        <li><strong>セッションベース認証:</strong> express-sessionを使用</li>
+                        <li><strong>HTTPOnly Cookie:</strong> XSS攻撃を防止</li>
+                        <li><strong>CSRF保護:</strong> SameSite Cookie設定</li>
+                        <li><strong>自動セッション管理:</strong> サーバーサイドでセッション制御</li>
+                    </ul>
+                </div>
+
+                <div class="button-group">
+                    <a href="/" class="btn btn-primary">🏠 ホームに戻る</a>
+                    <button onclick="logout()" class="btn btn-secondary">🚪 ログアウト</button>
+                    <button onclick="testProtectedAPI()" class="btn btn-success">🔧 API テスト</button>
+                </div>
+
+                <div class="api-demo">
+                    <h3>🚀 保護されたAPI テスト</h3>
+                    <p>認証が必要なAPIエンドポイント <code>/api/protected</code> をテストできます。</p>
+                    <div id="apiResult" class="api-result">
+                        APIテストボタンをクリックしてください
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 認証エラーの表示
+         */
+        function displayAuthError() {
+            content.innerHTML = `
+                <h2>❌ 認証エラー</h2>
+                <p>セッションが無効です。ログインページに戻ります。</p>
+                <div class="button-group">
+                    <a href="/" class="btn btn-primary">🏠 ログインページへ</a>
+                </div>
+            `;
+            
+            // 3秒後に自動でリダイレクト
+            setTimeout(() => {
                 window.location.href = '/';
+            }, 3000);
+        }
+
+        /**
+         * ページ読み込み時の初期化
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUserInfo();
+        });
+
+        /**
+         * ページ表示時の認証チェック（フォーカス時）
+         */
+        window.addEventListener('focus', async () => {
+            // セッションの有効性を再確認
+            try {
+                const response = await fetch('/user/auth', {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    displayAuthError();
+                }
+            } catch (error) {
+                console.error('認証チェックエラー:', error);
             }
         });
     </script>

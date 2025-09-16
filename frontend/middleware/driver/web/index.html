@@ -1,179 +1,454 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sample Landing Page</title>
+    <title>Front Driver - ログイン</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             color: #333;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
         }
 
-        header {
-            background-color: #333;
-            color: #fff;
+        .header {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
             padding: 1em 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 2em;
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #fff;
-            margin-top: 20px;
+        }
+
+        .login-card {
+            background-color: white;
+            padding: 2.5em;
+            max-width: 400px;
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .login-card h2 {
+            color: #4a5568;
+            margin-bottom: 1.5em;
+            font-weight: 300;
+        }
+
+        .status-section {
+            margin: 1.5em 0;
+            padding: 1em;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            background-color: #f7fafc;
         }
 
-        h1 {
-            color: #333;
+        .status-message {
+            margin: 0.5em 0;
+            font-weight: 500;
         }
 
-        p {
+        .status-loading {
+            color: #3182ce;
+        }
+
+        .status-success {
+            color: #38a169;
+        }
+
+        .status-error {
+            color: #e53e3e;
+        }
+
+        .login-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1em;
+            width: 100%;
+        }
+
+        .login-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .logout-button {
+            background: linear-gradient(135deg, #fc8181 0%, #f56565 100%);
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 1em;
+        }
+
+        .logout-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(245, 101, 101, 0.4);
+        }
+
+        .demo-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            margin-top: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .demo-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(72, 187, 120, 0.4);
+        }
+
+        .error-message {
+            color: #e53e3e;
+            background-color: #fed7d7;
+            padding: 0.8em;
+            border-radius: 8px;
+            margin: 1em 0;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .success-message {
+            color: #38a169;
+            background-color: #c6f6d5;
+            padding: 0.8em;
+            border-radius: 8px;
+            margin: 1em 0;
+            border-left: 4px solid #38a169;
+        }
+
+        .info-section {
+            margin-top: 2em;
+            padding: 1.5em;
+            background-color: #edf2f7;
+            border-radius: 10px;
+            font-size: 0.9em;
             line-height: 1.6;
         }
 
-        #loginSection {
-            margin-top: 20px;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-
-        .cta-button {
-            display: inline-block;
-            background-color: #007bff;
-            color: #fff;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-
-        .cta-button:hover {
-            background-color: #0056b3;
-        }
-
-        footer {
-            margin-top: 20px;
+        .footer {
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            text-align: center;
             padding: 1em 0;
-            background-color: #333;
-            color: #fff;
+            margin-top: auto;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 
 <body>
-    <header>
-        <h1>Welcome to Our Sample Page</h1>
-    </header>
+    <div class="header">
+        <h1>Front Driver System</h1>
+        <p>セキュアなセッション管理システム</p>
+    </div>
+    
     <div class="container">
-        <h2>Discover Amazing Things!</h2>
-        <p>
-            This is a simple landing page to demonstrate a basic HTML structure and authentication flow.
-        </p>
+        <div class="login-card">
+            <h2>開発者ログイン</h2>
+            
+            <div class="status-section">
+                <div id="statusMessage" class="status-message status-loading">
+                    <div class="loading-spinner"></div>
+                    認証状態を確認しています...
+                </div>
+                <div id="userInfo" style="display: none;"></div>
+            </div>
 
-        <div id="loginSection">
-            <p id="statusMessage">Checking authentication status...</p>
-            <button id="loginBtn" style="display: none;">Login</button>
-            <p id="errorMessage" style="color: red;"></p>
+            <div id="loginSection" style="display: none;">
+                <button id="loginBtn" class="login-button">ログイン</button>
+            </div>
+
+            <div id="loggedInSection" style="display: none;">
+                <a href="/demo" class="demo-link">デモページへ</a>
+                <br>
+                <button id="logoutBtn" class="logout-button">ログアウト</button>
+            </div>
+
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            <div id="successMessage" class="success-message" style="display: none;"></div>
+
+            <div class="info-section">
+                <h4>🔒 セキュリティ機能</h4>
+                <p>• <strong>express-session</strong>によるセッション管理</p>
+                <p>• <strong>HTTPOnly Cookie</strong>でXSS攻撃を防止</p>
+                <p>• <strong>CSRF保護</strong>（SameSite設定）</p>
+                <p>• <strong>セッション有効期限</strong>（24時間）</p>
+                <br>
+                <p><small>※ 開発環境用の設定です。本番環境では追加のセキュリティ設定が必要です。</small></p>
+            </div>
         </div>
     </div>
-    <footer>
-        <p>&copy; 2024 Your Company</p>
-    </footer>
+
+    <div class="footer">
+        <p>&copy; 2024 Front Driver Project - Express Session版</p>
+    </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const statusMessage = document.getElementById('statusMessage');
-            const loginBtn = document.getElementById('loginBtn');
-            const errorMessage = document.getElementById('errorMessage');
+        // DOM要素の取得
+        const statusMessage = document.getElementById('statusMessage');
+        const userInfo = document.getElementById('userInfo');
+        const loginSection = document.getElementById('loginSection');
+        const loggedInSection = document.getElementById('loggedInSection');
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
 
-            // 1. devidの確認と生成
+        /**
+         * メッセージ表示用のヘルパー関数
+         */
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+        }
+
+        function hideMessages() {
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        /**
+         * devidの生成と管理
+         * ローカルストレージから取得、なければ新しく生成
+         */
+        function getOrCreateDevId() {
             let devid = localStorage.getItem('devid');
             if (!devid) {
+                // UUIDベースの一意なIDを生成
                 devid = 'dev-' + crypto.randomUUID();
                 localStorage.setItem('devid', devid);
-                console.log('New devid generated and stored:', devid);
+                console.log('新しいDevice IDを生成しました:', devid);
             } else {
-                console.log('Existing devid found:', devid);
+                console.log('既存のDevice IDを使用します:', devid);
             }
+            return devid;
+        }
 
-            // 2. sessionIdの確認と認証
-            const sessionId = localStorage.getItem('sessionId');
-            if (sessionId) {
-                try {
-                    const response = await fetch('/user/auth', {
-                        headers: {
-                            'X-Session-ID': sessionId
-                        }
-                    });
+        /**
+         * 認証状態の確認
+         * Cookieベースのセッション管理なので、sessionIdの管理は不要
+         */
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/user/auth', {
+                    method: 'GET',
+                    credentials: 'include' // Cookieを含めてリクエスト
+                });
 
-                    if (response.ok) {
-                        // 認証成功
-                        statusMessage.textContent = 'You are logged in. Redirecting to demo...';
-                        window.location.href = '/demo';
-                    } else {
-                        // 認証失敗
-                        localStorage.removeItem('sessionId');
-                        statusMessage.textContent = 'Your session has expired. Please log in again.';
-                        loginBtn.style.display = 'inline-block';
-                    }
-                } catch (error) {
-                    console.error('Auth check failed:', error);
-                    statusMessage.textContent = 'Failed to connect to the server.';
-                }
-            } else {
-                // sessionIdなし
-                statusMessage.textContent = 'Please log in to continue.';
-                loginBtn.style.display = 'inline-block';
-            }
-
-            // 3. ログインボタンのイベントリスナー
-            loginBtn.addEventListener('click', async () => {
-                errorMessage.textContent = '';
-                loginBtn.disabled = true;
-                statusMessage.textContent = 'Logging in...';
-
-                try {
-                    const response = await fetch('/user/login', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ devid: localStorage.getItem('devid') })
-                    });
-
+                if (response.ok) {
                     const data = await response.json();
-
-                    if (response.ok) {
-                        // ログイン成功
-                        localStorage.setItem('sessionId', data.sessionId);
-                        statusMessage.textContent = 'Login successful! Redirecting...';
-                        window.location.href = '/demo.html';
-                    } else {
-                        // ログイン失敗
-                        if (data.reason === 'forbidden_devid') {
-                            errorMessage.textContent = 'Login failed: Your device ID is not on the whitelist.';
-                        } else {
-                            errorMessage.textContent = `Login failed: ${data.reason || 'Unknown error'}`;
-                        }
-                        statusMessage.textContent = 'Please log in to continue.';
-                        loginBtn.disabled = false;
-                    }
-                } catch (error) {
-                    console.error('Login request failed:', error);
-                    errorMessage.textContent = 'Failed to connect to the server.';
-                    statusMessage.textContent = 'Please log in to continue.';
-                    loginBtn.disabled = false;
+                    return {
+                        authenticated: true,
+                        devid: data.devid,
+                        loginAt: data.loginAt
+                    };
+                } else {
+                    return { authenticated: false };
                 }
-            });
+            } catch (error) {
+                console.error('認証状態の確認に失敗:', error);
+                return { authenticated: false, error: error.message };
+            }
+        }
+
+        /**
+         * ログイン処理
+         */
+        async function login() {
+            const devid = getOrCreateDevId();
+            
+            loginBtn.disabled = true;
+            statusMessage.innerHTML = '<div class="loading-spinner"></div>ログイン中...';
+            statusMessage.className = 'status-message status-loading';
+            hideMessages();
+
+            try {
+                const response = await fetch('/user/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include', // Cookieを含めてリクエスト
+                    body: JSON.stringify({ devid: devid })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(data.message || 'ログインに成功しました');
+                    
+                    // 認証成功後の状態更新
+                    setTimeout(() => {
+                        updateUIForLoggedInUser({
+                            devid: data.devid,
+                            loginAt: new Date().toISOString()
+                        });
+                    }, 1000);
+                } else {
+                    throw new Error(data.message || `ログインに失敗しました (${data.reason})`);
+                }
+            } catch (error) {
+                console.error('ログインエラー:', error);
+                showError(error.message || 'ログイン処理中にエラーが発生しました');
+                updateUIForLoggedOutUser();
+            } finally {
+                loginBtn.disabled = false;
+            }
+        }
+
+        /**
+         * ログアウト処理
+         */
+        async function logout() {
+            logoutBtn.disabled = true;
+            statusMessage.innerHTML = '<div class="loading-spinner"></div>ログアウト中...';
+            statusMessage.className = 'status-message status-loading';
+            hideMessages();
+
+            try {
+                const response = await fetch('/user/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showSuccess(data.message || 'ログアウトしました');
+                    updateUIForLoggedOutUser();
+                } else {
+                    throw new Error(data.message || 'ログアウトに失敗しました');
+                }
+            } catch (error) {
+                console.error('ログアウトエラー:', error);
+                showError(error.message || 'ログアウト処理中にエラーが発生しました');
+            } finally {
+                logoutBtn.disabled = false;
+            }
+        }
+
+        /**
+         * ログイン済みユーザー用のUI更新
+         */
+        function updateUIForLoggedInUser(userdata) {
+            const loginTime = new Date(userdata.loginAt).toLocaleString('ja-JP');
+            
+            statusMessage.textContent = '認証済み';
+            statusMessage.className = 'status-message status-success';
+            
+            userInfo.innerHTML = `
+                <p><strong>Device ID:</strong> ${userdata.devid}</p>
+                <p><strong>ログイン日時:</strong> ${loginTime}</p>
+            `;
+            userInfo.style.display = 'block';
+            
+            loginSection.style.display = 'none';
+            loggedInSection.style.display = 'block';
+        }
+
+        /**
+         * ログアウト済みユーザー用のUI更新
+         */
+        function updateUIForLoggedOutUser() {
+            statusMessage.textContent = 'ログインしてください';
+            statusMessage.className = 'status-message';
+            
+            userInfo.style.display = 'none';
+            loginSection.style.display = 'block';
+            loggedInSection.style.display = 'none';
+        }
+
+        /**
+         * ページ読み込み時の初期化処理
+         */
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Device IDの初期化
+            getOrCreateDevId();
+
+            // 認証状態の確認
+            const authStatus = await checkAuthStatus();
+            
+            if (authStatus.authenticated) {
+                updateUIForLoggedInUser(authStatus);
+            } else {
+                updateUIForLoggedOutUser();
+                if (authStatus.error) {
+                    showError('サーバーとの通信に失敗しました');
+                }
+            }
+
+            // イベントリスナーの設定
+            loginBtn.addEventListener('click', login);
+            logoutBtn.addEventListener('click', logout);
+        });
+
+        /**
+         * ページ表示時の認証チェック（ページフォーカス時）
+         */
+        window.addEventListener('focus', async () => {
+            // ページにフォーカスが戻った時に認証状態を再確認
+            const authStatus = await checkAuthStatus();
+            if (!authStatus.authenticated && loggedInSection.style.display !== 'none') {
+                updateUIForLoggedOutUser();
+                showError('セッションが期限切れです');
+            }
         });
     </script>
 </body>

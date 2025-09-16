@@ -4,7 +4,10 @@
   "description": "middle ware driver",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node index.js",
+    "dev": "tsc && node index.js"
   },
   "keywords": [
     "devlop"
@@ -13,8 +16,13 @@
   "license": "MIT",
   "dependencies": {
     "@types/express": "^5.0.3",
+    "@types/express-session": "^1.18.2",
     "@types/node": "^24.5.0",
+    "@types/uuid": "^10.0.0",
+    "connect-mongo": "^5.1.0",
     "express": "^5.1.0",
-    "typescript": "^5.9.2"
+    "express-session": "^1.18.2",
+    "typescript": "^5.9.2",
+    "uuid": "^13.0.0"
   }
 }
