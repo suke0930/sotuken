@@ -88,6 +88,7 @@ const authMiddleware: express.RequestHandler = (req, res, next) => {
 const logoutHandler: express.RequestHandler = (req, res) => {
     req.session.destroy((err) => {
         if (err) {
+            //エラーハンドリング
             console.error("Session destruction failed:", err);
             return res.status(500).json({
                 ok: false,
