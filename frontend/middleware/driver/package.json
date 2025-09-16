@@ -12,7 +12,8 @@
   "author": "suke",
   "license": "MIT",
   "dependencies": {
-    "@types/node": "^24.4.0",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.0",
     "express": "^5.1.0",
     "typescript": "^5.9.2"
   }
