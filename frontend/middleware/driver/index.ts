@@ -223,22 +223,12 @@ class ApiRouter {
 
             // セッション固定攻撃対策: 認証成功時にセッションIDを再生成
             await new Promise<void>((resolve, reject) => {
-                // セッションIDのローテーション（既存セッションの属性を維持しつつIDのみ変更）
-                if (typeof req.session.rotate === 'function') {
-                    req.session.rotate((err: any) => {
-                        if (err) return reject(err);
-                        req.session.devid = devid;
-                        req.session.loginAt = new Date().toISOString();
-                        return req.session.save((saveErr) => saveErr ? reject(saveErr) : resolve());
-                    });
-                    return;
-                }
-                // 互換: rotate がない場合は regenerate を使用
                 req.session.regenerate((err) => {
                     if (err) return reject(err);
+                    // 新しいセッションに認証情報を設定
                     req.session.devid = devid;
                     req.session.loginAt = new Date().toISOString();
-                    return req.session.save((saveErr) => saveErr ? reject(saveErr) : resolve());
+                    req.session.save((saveErr) => saveErr ? reject(saveErr) : resolve());
                 });
             });
             console.log(`User logged in: ${devid} at ${req.session.loginAt}`);
@@ -268,8 +258,7 @@ class ApiRouter {
                 console.error("Session destruction failed:", err);
                 return res.status(500).json({ ok: false, reason: "logout_failed", message: "ログアウト処理中にエラーが発生しました" });
             }
-            // クッキー削除時も発行時と同一属性を指定すると確実に無効化できる
-            res.clearCookie(SESSION_NAME, { path: '/', httpOnly: true, sameSite: 'lax', secure: false });
+            res.clearCookie(SESSION_NAME);
             return res.status(200).json({ ok: true, message: "ログアウトしました" });
         });
     };
