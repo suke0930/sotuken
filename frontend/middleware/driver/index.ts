@@ -221,8 +221,16 @@ class ApiRouter {
                 return res.status(401).json({ ok: false, reason: "forbidden_devid", message: "許可されていないデバイスIDです" });
             }
 
-            req.session.devid = devid;
-            req.session.loginAt = new Date().toISOString();
+            // セッション固定攻撃対策: 認証成功時にセッションIDを再生成
+            await new Promise<void>((resolve, reject) => {
+                req.session.regenerate((err) => {
+                    if (err) return reject(err);
+                    // 新しいセッションに認証情報を設定
+                    req.session.devid = devid;
+                    req.session.loginAt = new Date().toISOString();
+                    req.session.save((saveErr) => saveErr ? reject(saveErr) : resolve());
+                });
+            });
             console.log(`User logged in: ${devid} at ${req.session.loginAt}`);
 
             return res.status(200).json({ ok: true, message: "ログインに成功しました", devid: devid });
