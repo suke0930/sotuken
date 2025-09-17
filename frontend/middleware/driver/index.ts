@@ -8,6 +8,7 @@ import session from 'express-session';
 // 開発環境用のファイルパス設定
 const DEV_SECRET_DIR = path.join(__dirname, '..', 'devsecret');
 const USERS_FILE = path.join(DEV_SECRET_DIR, 'users.json');
+const SERVERS_FILE = path.join(DEV_SECRET_DIR, 'servers.json');
 
 // セッション設定
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
@@ -28,6 +29,22 @@ declare global {
             devid?: string;
         }
     }
+}
+
+// Minecraftサーバーエントリの型定義
+type ServerSoftware = "vanilla" | "mohist" | "paper";
+
+interface MinecraftServerEntry {
+    id: string;
+    serverName: string;
+    minecraftVersion: string;
+    serverSoftware: ServerSoftware;
+    jdkVersion: string;
+    managedBy: string[];
+    connectTo: string;
+    createdAt: string;
+    isRunning: boolean;
+    serverFilePath: string;
 }
 
 /**
@@ -64,6 +81,119 @@ class DevUserManager {
             console.error("Failed to authenticate user:", error);
             return false;
         }
+    }
+}
+
+/**
+ * 開発用のMinecraftサーバー管理クラス
+ * JSONベースのサーバーエントリ管理を行う
+ */
+class MinecraftServerManager {
+    /**
+     * devsecretディレクトリとサーバーデータファイルが存在しない場合に初期化する
+     */
+    static async initialize() {
+        try {
+            await fs.mkdir(DEV_SECRET_DIR, { recursive: true });
+            await fs.access(SERVERS_FILE);
+        } catch {
+            console.log(`Initializing ${SERVERS_FILE}...`);
+            await fs.writeFile(SERVERS_FILE, JSON.stringify([], null, 2));
+        }
+    }
+
+    /**
+     * サーバーリストをファイルから読み込む
+     * @returns サーバーエントリの配列
+     */
+    private static async readServers(): Promise<MinecraftServerEntry[]> {
+        try {
+            const serversData = await fs.readFile(SERVERS_FILE, 'utf-8');
+            return JSON.parse(serversData);
+        } catch (error) {
+            console.error("Failed to read servers file:", error);
+            return [];
+        }
+    }
+
+    /**
+     * サーバーリストをファイルに書き込む
+     * @param servers サーバーエントリの配列
+     */
+    private static async writeServers(servers: MinecraftServerEntry[]): Promise<void> {
+        await fs.writeFile(SERVERS_FILE, JSON.stringify(servers, null, 2));
+    }
+
+    /**
+     * 指定されたユーザーが管理するすべてのサーバーを取得する
+     * @param devid ユーザーID
+     * @returns ユーザーが管理するサーバーエントリの配列
+     */
+    static async getServersForUser(devid: string): Promise<MinecraftServerEntry[]> {
+        const allServers = await this.readServers();
+        return allServers.filter(server => server.managedBy.includes(devid));
+    }
+
+    /**
+     * 新しいサーバーを追加する
+     * @param serverData 新しいサーバーのデータ
+     * @param creatorDevId 作成者のユーザーID
+     * @returns 作成されたサーバーエントリ
+     */
+    static async addServer(
+        serverData: Omit<MinecraftServerEntry, 'id' | 'createdAt' | 'isRunning' | 'managedBy'>,
+        creatorDevId: string
+    ): Promise<MinecraftServerEntry> {
+        const allServers = await this.readServers();
+        const newServer: MinecraftServerEntry = {
+            ...serverData,
+            id: crypto.randomUUID(),
+            managedBy: [creatorDevId],
+            createdAt: new Date().toISOString(),
+            isRunning: false,
+        };
+        allServers.push(newServer);
+        await this.writeServers(allServers);
+        return newServer;
+    }
+
+    /**
+     * サーバー情報を更新する
+     * @param id 更新するサーバーのID
+     * @param updates 更新内容
+     * @param devid 操作を行うユーザーID
+     * @returns 更新後のサーバーエントリ、権限がない場合はnull
+     */
+    static async updateServer(id: string, updates: Partial<Omit<MinecraftServerEntry, 'id'>>, devid: string): Promise<MinecraftServerEntry | null> {
+        const allServers = await this.readServers();
+        const serverIndex = allServers.findIndex(s => s.id === id);
+
+        //allServers[serverIndexの存在チェック
+        if (!allServers[serverIndex]) {
+            return null; // サーバーが存在しない
+        }
+        if (serverIndex === -1 || !allServers[serverIndex].managedBy.includes(devid)) {
+            return null; // サーバーが存在しないか、権限がない
+        }
+        const updatedServer = { ...allServers[serverIndex], ...updates, id }; // idは変更不可
+        allServers[serverIndex] = updatedServer;
+        await this.writeServers(allServers);
+        return updatedServer;
+    }
+
+    /**
+     * サーバーを削除する
+     * @param id 削除するサーバーのID
+     * @param devid 操作を行うユーザーID
+     * @returns 削除が成功した場合はtrue、失敗した場合はfalse
+     */
+    static async deleteServer(id: string, devid: string): Promise<boolean> {
+        const allServers = await this.readServers();
+        const server = allServers.find(s => s.id === id);
+        if (!server || !server.managedBy.includes(devid)) return false; // サーバーが存在しないか、権限がない
+        const newServers = allServers.filter(s => s.id !== id);
+        await this.writeServers(newServers);
+        return true;
     }
 }
 
@@ -293,11 +423,80 @@ class SampleApiRouter {
 }
 
 /**
+ * Minecraftサーバー管理APIのルーティングを行うクラス
+ */
+class MinecraftServerRouter {
+    public readonly router: express.Router;
+
+    constructor(private authMiddleware: express.RequestHandler) {
+        this.router = express.Router();
+        this.configureRoutes();
+    }
+
+    private configureRoutes() {
+        // 自分の管理するサーバー一覧を取得
+        this.router.get('/', this.authMiddleware, this.getServersHandler);
+        // 新しいサーバーを作成
+        this.router.post('/', this.authMiddleware, this.createServerHandler);
+        // 特定のサーバーを更新
+        this.router.put('/:id', this.authMiddleware, this.updateServerHandler);
+        // 特定のサーバーを削除
+        this.router.delete('/:id', this.authMiddleware, this.deleteServerHandler);
+    }
+
+    private getServersHandler: express.RequestHandler = async (req, res) => {
+        const servers = await MinecraftServerManager.getServersForUser(req.devid!);
+        res.json({ ok: true, servers });
+    };
+
+    private createServerHandler: express.RequestHandler = async (req, res) => {
+        // 本来はここで詳細なバリデーションが必要
+        const { serverName, minecraftVersion, serverSoftware, jdkVersion, connectTo, serverFilePath } = req.body;
+        if (!serverName || !minecraftVersion || !serverSoftware) {
+            return res.status(400).json({ ok: false, message: "必須項目が不足しています。" });
+        }
+        const newServer = await MinecraftServerManager.addServer(
+            { serverName, minecraftVersion, serverSoftware, jdkVersion, connectTo, serverFilePath },
+            req.devid!
+        );
+        res.status(201).json({ ok: true, server: newServer });
+    };
+
+    private updateServerHandler: express.RequestHandler = async (req, res) => {
+        const { id } = req.params;
+        const updates = req.body;
+        //idが存在しなかったときのエラー処理
+        if (!id) {
+            return res.status(400).json({ ok: false, message: "サーバーIDが必要です。" });
+        }
+        const updatedServer = await MinecraftServerManager.updateServer(id, updates, req.devid!);
+        if (!updatedServer) {
+            return res.status(404).json({ ok: false, message: "サーバーが見つからないか、更新権限がありません。" });
+        }
+        res.json({ ok: true, server: updatedServer });
+    };
+
+    private deleteServerHandler: express.RequestHandler = async (req, res) => {
+        const { id } = req.params;
+        //idが存在しなかったときのエラー処理
+        if (!id) {
+            return res.status(400).json({ ok: false, message: "サーバーIDが必要です。" });
+        }
+        const success = await MinecraftServerManager.deleteServer(id, req.devid!);
+        if (!success) {
+            return res.status(404).json({ ok: false, message: "サーバーが見つからないか、削除権限がありません。" });
+        }
+        res.status(200).json({ ok: true, message: "サーバーを削除しました。" });
+    };
+}
+
+/**
  * アプリケーションのエントリーポイント
  */
 async function main(port: number): Promise<void> {
     // 1. 開発用ユーザーデータの初期化
     await DevUserManager.initialize();
+    await MinecraftServerManager.initialize();
 
     // 2. Expressアプリケーションのインスタンス化
     const app = express();
@@ -313,6 +512,10 @@ async function main(port: number): Promise<void> {
     // 4.1. 【雛形】サンプルAPIルーターのセットアップ
     const sampleApiRouter = new SampleApiRouter(middlewareManager.authMiddleware);
     app.use('/api/sample', sampleApiRouter.router); // `/api/sample` プレフィックスでマウント
+
+    // 4.2. Minecraftサーバー管理APIルーターのセットアップ
+    const mcServerRouter = new MinecraftServerRouter(middlewareManager.authMiddleware);
+    app.use('/api/servers', mcServerRouter.router);
 
     // 5. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
