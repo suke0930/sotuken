@@ -16,7 +16,7 @@ declare global {
 }
 
 // Minecraftサーバーエントリの型定義
-export type ServerSoftware = "vanilla" | "mohist" | "paper";
+export type ServerSoftware = "vanilla" | "mohist" | "paper" | "forge" | "fabric" | "bukkit" | "spigot";
 
 export interface MinecraftServerEntry {
     id: string;
