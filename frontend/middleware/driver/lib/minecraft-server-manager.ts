@@ -45,12 +45,12 @@ export class MinecraftServerManager {
 
     /**
      * 指定されたユーザーが管理するすべてのサーバーを取得する
-     * @param devid ユーザーID
+     * @param userId ユーザーID
      * @returns ユーザーが管理するサーバーエントリの配列
      */
-    static async getServersForUser(devid: string): Promise<MinecraftServerEntry[]> {
+    static async getServersForUser(userId: string): Promise<MinecraftServerEntry[]> {
         const allServers = await this.readServers();
-        return allServers.filter(server => server.managedBy.includes(devid));
+        return allServers.filter(server => server.managedBy.includes(userId));
     }
 
     /**
@@ -61,13 +61,13 @@ export class MinecraftServerManager {
      */
     static async addServer(
         serverData: Omit<MinecraftServerEntry, 'id' | 'createdAt' | 'isRunning' | 'managedBy'>,
-        creatorDevId: string
+        creatorUserId: string
     ): Promise<MinecraftServerEntry> {
         const allServers = await this.readServers();
         const newServer: MinecraftServerEntry = {
             ...serverData,
             id: crypto.randomUUID(),
-            managedBy: [creatorDevId],
+            managedBy: [creatorUserId],
             createdAt: new Date().toISOString(),
             isRunning: false,
         };
@@ -80,16 +80,16 @@ export class MinecraftServerManager {
      * サーバー情報を更新する
      * @param id 更新するサーバーのID
      * @param updates 更新内容
-     * @param devid 操作を行うユーザーID
+     * @param userId 操作を行うユーザーID
      * @returns 更新後のサーバーエントリ、権限がない場合はnull
      */
-    static async updateServer(id: string, updates: Partial<Omit<MinecraftServerEntry, 'id'>>, devid: string): Promise<MinecraftServerEntry | null> {
+    static async updateServer(id: string, updates: Partial<Omit<MinecraftServerEntry, 'id'>>, userId: string): Promise<MinecraftServerEntry | null> {
         const allServers = await this.readServers();
         const serverIndex = allServers.findIndex(s => s.id === id);
         if (!allServers[serverIndex]) {
             return null;
         }
-        if (serverIndex === -1 || !allServers[serverIndex].managedBy.includes(devid)) {
+        if (serverIndex === -1 || !allServers[serverIndex].managedBy.includes(userId)) {
             return null; // サーバーが存在しないか、権限がない
         }
         const updatedServer = { ...allServers[serverIndex], ...updates, id }; // idは変更不可
@@ -101,16 +101,15 @@ export class MinecraftServerManager {
     /**
      * サーバーを削除する
      * @param id 削除するサーバーのID
-     * @param devid 操作を行うユーザーID
+     * @param userId 操作を行うユーザーID
      * @returns 削除が成功した場合はtrue、失敗した場合はfalse
      */
-    static async deleteServer(id: string, devid: string): Promise<boolean> {
+    static async deleteServer(id: string, userId: string): Promise<boolean> {
         const allServers = await this.readServers();
         const server = allServers.find(s => s.id === id);
-        if (!server || !server.managedBy.includes(devid)) return false; // サーバーが存在しないか、権限がない
+        if (!server || !server.managedBy.includes(userId)) return false; // サーバーが存在しないか、権限がない
         const newServers = allServers.filter(s => s.id !== id);
         await this.writeServers(newServers);
         return true;
     }
 }
-

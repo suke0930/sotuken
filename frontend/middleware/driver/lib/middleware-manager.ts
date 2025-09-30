@@ -68,8 +68,8 @@ export class MiddlewareManager {
      * セッションをチェックし、未認証の場合は401エラーを返す
      */
     public authMiddleware: express.RequestHandler = (req, res, next) => {
-        if (req.session?.devid) {
-            req.devid = req.session.devid; // 後続の処理で使えるようにリクエストオブジェクトに格納
+        if (req.session?.userId) {
+            req.userId = req.session.userId; // 後続の処理で使えるようにリクエストオブジェクトに格納
             return next();
         }
         return res.status(401).json({ ok: false, reason: "unauthorized", message: "ログインが必要です" });
