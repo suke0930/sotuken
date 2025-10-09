@@ -54,9 +54,17 @@ export class MinecraftServerManager {
     }
 
     /**
+     * 全サーバーからID検索（権限チェックは呼び出し元で実施）
+     */
+    static async getById(id: string): Promise<MinecraftServerEntry | undefined> {
+        const all = await this.readServers();
+        return all.find(s => s.id === id);
+    }
+
+    /**
      * 新しいサーバーを追加する
      * @param serverData 新しいサーバーのデータ
-     * @param creatorDevId 作成者のユーザーID
+     * @param creatorUserId 作成者のユーザーID
      * @returns 作成されたサーバーエントリ
      */
     static async addServer(
@@ -86,11 +94,12 @@ export class MinecraftServerManager {
     static async updateServer(id: string, updates: Partial<Omit<MinecraftServerEntry, 'id'>>, userId: string): Promise<MinecraftServerEntry | null> {
         const allServers = await this.readServers();
         const serverIndex = allServers.findIndex(s => s.id === id);
-        if (!allServers[serverIndex]) {
+        if (serverIndex === -1) {
             return null;
         }
-        if (serverIndex === -1 || !allServers[serverIndex].managedBy.includes(userId)) {
-            return null; // サーバーが存在しないか、権限がない
+        if (!allServers[serverIndex]) return null;
+        if (!allServers[serverIndex].managedBy.includes(userId)) {
+            return null; // 権限がない
         }
         const updatedServer = { ...allServers[serverIndex], ...updates, id }; // idは変更不可
         allServers[serverIndex] = updatedServer;

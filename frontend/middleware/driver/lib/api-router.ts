@@ -4,6 +4,13 @@ import { DevUserManager } from './dev-user-manager';
 import { MinecraftServerManager } from './minecraft-server-manager';
 import { SESSION_NAME } from './constants';
 
+// 追加インポート（拡張機能）
+import { JdkManager } from './jdk-manager';
+import { JobManager } from './job-manager';
+import { MinecraftProcessManager } from './minecraft-process-manager';
+import { listDir } from './file-browser';
+import { FrpManager } from './frp-manager';
+
 /**
  * APIエンドポイントのルーティングを管理するクラス
  */
@@ -20,10 +27,6 @@ export class ApiRouter {
         // 認証状態に関わらずトップページは表示する
         // 実際の表示内容はフロントエンドのJavaScriptが認証状態を見て決定する
         this.app.get('/', (req, res) => {
-            // 以前はここで直接ファイルを返していましたが、
-            // express.staticミドルウェアが 'web' ディレクトリを配信するため、
-            // このルート定義は実質的に不要になる可能性があります。
-            // ただし、明示的にルートパスへの応答を定義しておくことは良い習慣です。
             res.sendFile(path.join(__dirname, '..', 'web', 'index.html'));
         });
 
@@ -165,7 +168,7 @@ export class SampleApiRouter {
 }
 
 /**
- * Minecraftサーバー管理APIのルーティングを行うクラス
+ * Minecraftサーバー管理APIのルーティングを行うクラス（CRUD）
  */
 export class MinecraftServerRouter {
     public readonly router: express.Router;
@@ -178,6 +181,7 @@ export class MinecraftServerRouter {
     private configureRoutes() {
         this.router.get('/', this.authMiddleware, this.getServersHandler);
         this.router.post('/', this.authMiddleware, this.createServerHandler);
+        this.router.get('/:id', this.authMiddleware, this.getServerHandler);
         this.router.put('/:id', this.authMiddleware, this.updateServerHandler);
         this.router.delete('/:id', this.authMiddleware, this.deleteServerHandler);
     }
@@ -188,15 +192,33 @@ export class MinecraftServerRouter {
     };
 
     private createServerHandler: express.RequestHandler = async (req, res) => {
-        const { serverName, minecraftVersion, serverSoftware, jdkVersion, connectTo, serverFilePath } = req.body;
-        if (!serverName || !minecraftVersion || !serverSoftware) {
+        const { serverName, description, minecraftVersion, serverSoftware, jdkVersion, connectTo, serverFilePath, autoJdk } = req.body;
+        if (!serverName || !minecraftVersion || !serverSoftware || !serverFilePath) {
             return res.status(400).json({ ok: false, message: "必須項目が不足しています。" });
         }
+
+        // 推奨JDKの判定と自動ダウンロードジョブ
+        const recommended = JdkManager.recommend(minecraftVersion);
+        const jdk = jdkVersion || recommended;
+        const found = await JdkManager.find(jdk);
+        const jobs: any[] = [];
+        if (!found && autoJdk === 'now') {
+            const job = await JdkManager.download(jdk, req.userId!);
+            jobs.push(job);
+        }
+
         const newServer = await MinecraftServerManager.addServer(
-            { serverName, minecraftVersion, serverSoftware, jdkVersion, connectTo, serverFilePath },
+            { serverName, description, minecraftVersion, serverSoftware, jdkVersion: jdk, connectTo, serverFilePath },
             req.userId!
         );
-        res.status(201).json({ ok: true, server: newServer });
+        res.status(201).json({ ok: true, server: newServer, jobs });
+    };
+
+    private getServerHandler: express.RequestHandler = async (req, res) => {
+        const all = await MinecraftServerManager.getServersForUser(req.userId!);
+        const server = all.find(s => s.id === req.params.id);
+        if (!server) return res.status(404).json({ ok: false, message: "サーバーが見つかりません。" });
+        res.json({ ok: true, server });
     };
 
     private updateServerHandler: express.RequestHandler = async (req, res) => {
@@ -214,5 +236,137 @@ export class MinecraftServerRouter {
         const success = await MinecraftServerManager.deleteServer(id, req.userId!);
         if (!success) return res.status(404).json({ ok: false, message: "サーバーが見つからないか、削除権限がありません。" });
         res.status(200).json({ ok: true, message: "サーバーを削除しました。" });
+    };
+}
+
+/**
+ * JDK 管理ルーター
+ */
+export class JdkRouter {
+    public readonly router = express.Router();
+    constructor(private auth: express.RequestHandler) {
+        this.router.get('/', this.auth, this.list);
+        this.router.post('/check', this.auth, this.check);
+        this.router.post('/download', this.auth, this.download);
+    }
+    private list: express.RequestHandler = async (req, res) => {
+        const jdks = await JdkManager.list();
+        res.json({ ok: true, jdks });
+    };
+    private check: express.RequestHandler = async (req, res) => {
+        const { minecraftVersion, serverSoftware } = req.body;
+        if (!minecraftVersion || !serverSoftware) return res.status(400).json({ ok: false, message: 'invalid body' });
+        const recommended = JdkManager.recommend(minecraftVersion);
+        const found = await JdkManager.find(recommended);
+        res.json({ ok: true, recommended, installed: !!found, found });
+    };
+    private download: express.RequestHandler = async (req, res) => {
+        const { version } = req.body;
+        if (!version) return res.status(400).json({ ok: false, message: 'version required' });
+        const job = await JdkManager.download(version, req.userId!);
+        res.status(202).json({ ok: true, job });
+    };
+}
+
+/**
+ * ジョブルーター
+ */
+export class JobRouter {
+    public readonly router = express.Router();
+    constructor(private auth: express.RequestHandler) {
+        this.router.get('/:id', this.auth, this.get);
+        this.router.get('/', this.auth, this.list);
+        this.router.post('/:id/cancel', this.auth, this.cancel);
+    }
+    private get: express.RequestHandler = (req, res) => {
+        const job = JobManager.get(req.params.id);
+        if (!job || job.owner !== req.userId) return res.status(404).json({ ok: false, message: 'not found' });
+        res.json({ ok: true, job });
+    };
+    private list: express.RequestHandler = (req, res) => {
+        const items = JobManager.list({ owner: req.userId! });
+        res.json({ ok: true, jobs: items });
+    };
+    private cancel: express.RequestHandler = (req, res) => {
+        const job = JobManager.get(req.params.id);
+        if (!job || job.owner !== req.userId) return res.status(404).json({ ok: false });
+        JobManager.update(job.id, { status: 'canceled' });
+        res.json({ ok: true, job: JobManager.get(job.id) });
+    };
+}
+
+/**
+ * サーバー操作ルーター（起動/停止/コマンド/ファイル/FRP）
+ */
+export class MinecraftServerOpsRouter {
+    public readonly router = express.Router();
+    constructor(private auth: express.RequestHandler) {
+        this.router.post('/:id/start', this.auth, this.start);
+        this.router.post('/:id/stop', this.auth, this.stop);
+        this.router.post('/:id/command', this.auth, this.command);
+        this.router.get('/:id/files', this.auth, this.files);
+        this.router.post('/:id/frp', this.auth, this.assignFrp);
+        this.router.delete('/:id/frp/:forwardId', this.auth, this.unassignFrp);
+    }
+
+    private start: express.RequestHandler = async (req, res) => {
+        const serverId = req.params.id;
+        const servers = await MinecraftServerManager.getServersForUser(req.userId!);
+        const server = servers.find(s => s.id === serverId);
+        if (!server) return res.status(404).json({ ok: false, message: 'server not found' });
+        try {
+            const job = await MinecraftProcessManager.start(server, req.userId!);
+            res.status(202).json({ ok: true, job });
+        } catch (e: any) {
+            res.status(400).json({ ok: false, message: e.message });
+        }
+    };
+
+    private stop: express.RequestHandler = async (req, res) => {
+        const serverId = req.params.id;
+        const job = await MinecraftProcessManager.stop(serverId, req.userId!);
+        res.status(202).json({ ok: true, job });
+    };
+
+    private command: express.RequestHandler = async (req, res) => {
+        const { command } = req.body;
+        if (!command) return res.status(400).json({ ok: false, message: 'command required' });
+        try {
+            MinecraftProcessManager.sendCommand(req.params.id, command);
+            res.json({ ok: true });
+        } catch (e: any) {
+            res.status(400).json({ ok: false, message: e.message });
+        }
+    };
+
+    private files: express.RequestHandler = async (req, res) => {
+        const serverId = req.params.id;
+        const pathArg = String(req.query.path || '');
+        const servers = await MinecraftServerManager.getServersForUser(req.userId!);
+        const server = servers.find(s => s.id === serverId);
+        if (!server) return res.status(404).json({ ok: false, message: 'server not found' });
+        try {
+            const listing = await listDir(server.serverFilePath, pathArg);
+            res.json({ ok: true, ...listing });
+        } catch (e: any) {
+            res.status(400).json({ ok: false, message: e.message });
+        }
+    };
+
+    private assignFrp: express.RequestHandler = async (req, res) => {
+        const { type, remotePort, subdomain } = req.body;
+        const serverId = req.params.id;
+        const server = (await MinecraftServerManager.getServersForUser(req.userId!)).find(s => s.id === serverId);
+        if (!server) return res.status(404).json({ ok: false, message: 'server not found' });
+        const frp = await FrpManager.assign(serverId, type, { remotePort, subdomain });
+        const updated = await MinecraftServerManager.updateServer(serverId, { frp }, req.userId!);
+        res.json({ ok: true, server: updated });
+    };
+
+    private unassignFrp: express.RequestHandler = async (req, res) => {
+        const { id, forwardId } = req.params;
+        await FrpManager.unassign(forwardId);
+        const updated = await MinecraftServerManager.updateServer(id, { frp: undefined as any }, req.userId!);
+        res.json({ ok: true, server: updated });
     };
 }

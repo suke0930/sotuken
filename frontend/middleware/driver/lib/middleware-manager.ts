@@ -7,6 +7,8 @@ import { SESSION_NAME, SESSION_SECRET } from './constants';
  * ミドルウェアのセットアップと管理を行うクラス
  */
 export class MiddlewareManager {
+    public sessionMiddleware?: express.RequestHandler & { store?: session.Store };
+
     constructor(private app: express.Express) { }
 
     /**
@@ -30,7 +32,7 @@ export class MiddlewareManager {
      * express-sessionミドルウェアをセットアップする
      */
     private setupSession() {
-        this.app.use(session({
+        const mw = session({
             name: SESSION_NAME,
             secret: SESSION_SECRET,
             resave: false,
@@ -41,7 +43,9 @@ export class MiddlewareManager {
                 maxAge: 24 * 60 * 60 * 1000,
                 sameSite: 'lax'
             },
-        }));
+        });
+        this.sessionMiddleware = mw as any;
+        this.app.use(mw);
     }
 
     /**
