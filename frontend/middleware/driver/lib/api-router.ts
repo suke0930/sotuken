@@ -279,19 +279,28 @@ export class JobRouter {
         this.router.post('/:id/cancel', this.auth, this.cancel);
     }
     private get: express.RequestHandler = (req, res) => {
-        const job = JobManager.get(req.params.id);
-        if (!job || job.owner !== req.userId) return res.status(404).json({ ok: false, message: 'not found' });
-        res.json({ ok: true, job });
+        if (req.params.id) {
+            const job = JobManager.get(req.params.id);
+            if (!job || job.owner !== req.userId) return res.status(404).json({ ok: false, message: 'not found' });
+            res.json({ ok: true, job });
+        } else {
+            res.status(400).json({ ok: false, message: 'id notfound' });
+        }
     };
     private list: express.RequestHandler = (req, res) => {
         const items = JobManager.list({ owner: req.userId! });
         res.json({ ok: true, jobs: items });
     };
     private cancel: express.RequestHandler = (req, res) => {
-        const job = JobManager.get(req.params.id);
-        if (!job || job.owner !== req.userId) return res.status(404).json({ ok: false });
-        JobManager.update(job.id, { status: 'canceled' });
-        res.json({ ok: true, job: JobManager.get(job.id) });
+        if (req.params.id) {
+
+            const job = JobManager.get(req.params.id);
+            if (!job || job.owner !== req.userId) return res.status(404).json({ ok: false });
+            JobManager.update(job.id, { status: 'canceled' });
+            res.json({ ok: true, job: JobManager.get(job.id) });
+
+        } else { res.status(400).json({ ok: false, message: 'id notfound' }); }
+
     };
 }
 
@@ -324,16 +333,21 @@ export class MinecraftServerOpsRouter {
 
     private stop: express.RequestHandler = async (req, res) => {
         const serverId = req.params.id;
-        const job = await MinecraftProcessManager.stop(serverId, req.userId!);
-        res.status(202).json({ ok: true, job });
+        if (serverId) {
+            const job = await MinecraftProcessManager.stop(serverId, req.userId!);
+            res.status(202).json({ ok: true, job });
+        } else { res.status(400).json({ ok: false, message: 'id notfound' }); }
+
     };
 
     private command: express.RequestHandler = async (req, res) => {
         const { command } = req.body;
         if (!command) return res.status(400).json({ ok: false, message: 'command required' });
         try {
-            MinecraftProcessManager.sendCommand(req.params.id, command);
-            res.json({ ok: true });
+            if (req.params.id) {
+                MinecraftProcessManager.sendCommand(req.params.id, command);
+                res.json({ ok: true });
+            } else { res.status(400).json({ ok: false, message: 'id notfound' }); }
         } catch (e: any) {
             res.status(400).json({ ok: false, message: e.message });
         }
@@ -358,15 +372,22 @@ export class MinecraftServerOpsRouter {
         const serverId = req.params.id;
         const server = (await MinecraftServerManager.getServersForUser(req.userId!)).find(s => s.id === serverId);
         if (!server) return res.status(404).json({ ok: false, message: 'server not found' });
-        const frp = await FrpManager.assign(serverId, type, { remotePort, subdomain });
-        const updated = await MinecraftServerManager.updateServer(serverId, { frp }, req.userId!);
-        res.json({ ok: true, server: updated });
+
+        if (serverId) {
+            const frp = await FrpManager.assign(serverId, type, { remotePort, subdomain });
+            const updated = await MinecraftServerManager.updateServer(serverId, { frp }, req.userId!);
+            res.json({ ok: true, server: updated });
+        } else { res.status(400).json({ ok: false, message: 'id notfound' }); }
+
     };
 
     private unassignFrp: express.RequestHandler = async (req, res) => {
         const { id, forwardId } = req.params;
-        await FrpManager.unassign(forwardId);
-        const updated = await MinecraftServerManager.updateServer(id, { frp: undefined as any }, req.userId!);
-        res.json({ ok: true, server: updated });
+        if (forwardId && id) {
+            await FrpManager.unassign(forwardId);
+            const updated = await MinecraftServerManager.updateServer(id, { frp: undefined as any }, req.userId!);
+            res.json({ ok: true, server: updated });
+        } else { res.status(400).json({ ok: false, message: 'id notfound' }); }
+
     };
 }

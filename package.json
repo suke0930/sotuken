@@ -1,6 +1,10 @@
 {
   "dependencies": {
-    "bcrypt": "^6.0.0"
+    "@types/node": "^24.7.1",
+    "@types/ws": "^8.18.1",
+    "bcrypt": "^6.0.0",
+    "cookie": "^1.0.2",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0"

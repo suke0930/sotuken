@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { EventEmitter } from 'events';
-import { Job, JobStatus, JobType } from './types';
+import { Job, JobType } from './types';
 
 export class JobManager {
     private static jobs = new Map<string, Job>();

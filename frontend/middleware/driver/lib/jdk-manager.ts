@@ -21,6 +21,7 @@ export class JdkManager {
     // 単純な推奨ロジック（必要あれば差し替え）
     static recommend(minecraftVersion: string): "8" | "11" | "17" | "21" {
         const parts = minecraftVersion.split('.');
+        if (!parts[0]) throw Error;
         const major = parseInt(parts[0], 10);
         const minor = parseInt(parts[1] || '0', 10);
         if (major <= 1 && minor <= 16) return "8";
