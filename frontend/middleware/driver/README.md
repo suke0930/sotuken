@@ -1,168 +1,350 @@
-# Front Driver - セキュアなセッション管理システム
+```markdown
+# Minecraft Server Manager - Frontend Driver
 
-`express-session`を使用したセキュアなセッション管理システムです。このプロジェクトは、Webサイトで「ログインしている人だけが見れるページ」を実現するための基本的な仕組み（セッション管理と認証）を提供します。
+Minecraftサーバーの構築・管理を簡単に行えるWebベースの管理システムです。JDKの自動インストール、サーバーソフトウェアの管理、プロセス制御などを統合的に提供します。
 
-特に、Webアプリケーションの認証の仕組みを学ぶための教材となることを目指しています。
+## 🎯 システム概要
 
-## 📖 アーキテクチャ
+このシステムは、Minecraftサーバーの構築と管理を効率化するために設計された3層アーキテクチャのWebアプリケーションです。
 
-```
-  [ブラウザ (フロントエンド)]                           [サーバー (バックエンド)]
- (index.html, demo.html)                               (Node.js + Express)
-
-      │                                                       │
- 1.   ├─ GET / (ログインページ表示) ──────────────────────────> │
-      │ <────────────────────────────────────────── HTMLを返す │
-      │                                                       │
- 2.   ├─ POST /user/login (devidを送信) ──────────────────────> │
-      │                                                       │  (1) devidをusers.jsonで検証
-      │                                                       │  (2) 認証成功ならセッション作成
-      │                                                       │
-      │ <─── (Set-Cookieヘッダ & 成功JSON) ─────────────────── │
-      │                                                       │
- 3.   ├─ GET /demo (Cookieを付けてリクエスト) ────────────────> │
-      │                                                       │  (1) Cookieを検証しセッション復元
-      │                                                       │  (2) 認証済みかチェック
-      │                                                       │
-      │ <────────────────────────────────────────── HTMLを返す │
+### アーキテクチャ
 
 ```
-
-## � セキュリティ機能
-
-### 実装済みセキュリティ対策
-
-- **express-session**: 堅牢なセッション管理
-- **HTTPOnly Cookie**: XSS攻撃を防ぐCookie設定
-- **SameSite設定**: CSRF攻撃を防ぐ（開発環境: `lax`）
-- **セッション有効期限**: 24時間の自動タイムアウト
-- **セキュリティヘッダー**: 基本的なセキュリティヘッダーを設定
-- **入力検証**: 適切なバリデーション処理
-
-### 本番環境用設定（推奨）
-
-以下の設定は現在コメントアウトされていますが、本番環境では有効にしてください：
-
-```typescript
-// 本番環境用設定
-store: new MongoStore({
-    mongoUrl: process.env.MONGODB_URI,
-    touchAfter: 24 * 3600 // 24時間ごとにセッションを更新
-}),
-cookie: {
-    secure: true,        // HTTPS必須
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'strict'   // より厳格なCSRF保護
-}
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│                 │     │                 │     │                 │
+│   フロントエンド  │────▶│  メインサーバー   │────▶│ アセットサーバー │
+│   (Browser)     │     │  (Port: 12800)  │     │  (Port: 12801)  │
+│                 │     │                 │     │                 │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │                        │
+        │                       │                        │
+    HTML/JS/CSS          Express + Session         リソース配信
+                          認証・API・プロキシ        JDK/サーバー管理
 ```
 
-## 🚀 使用方法
+### 主要コンポーネント
 
-### 1. 依存関係のインストール
+1. **フロントエンド**: React風のバニラJavaScriptによるSPA
+2. **メインサーバー**: Express.jsベースの認証・API・プロキシサーバー
+3. **アセットサーバー**: JDKやサーバーソフトウェアのリソース管理サーバー
 
+## 🚀 機能一覧
+
+### 認証・セキュリティ
+- ✅ セッションベース認証（express-session）
+- ✅ HTTPOnly Cookieによる安全なセッション管理
+- ✅ 全APIエンドポイントの認証保護
+- ✅ ダウンロード監査ログ
+
+### サーバー管理
+- ✅ Minecraftサーバーの作成・編集・削除（CRUD）
+- ✅ 複数バージョン対応（1.16.5 〜 1.20.6）
+- ✅ 各種サーバーソフトウェア対応
+  - Vanilla（公式）
+  - Paper（推奨）
+  - Spigot
+  - Bukkit
+  - Mohist（Mod + Plugin）
+  - Forge（Mod対応）
+  - Fabric（軽量Mod）
+
+### JDK管理
+- ✅ 推奨JDKの自動判定
+- ✅ JDKの自動ダウンロード・インストール
+- ✅ バージョン別JDK管理（8, 11, 17, 21）
+- ✅ ダウンロードプログレス表示
+
+### プロセス管理
+- ✅ サーバーの起動・停止
+- ✅ リアルタイムコンソール出力（WebSocket）
+- ✅ コマンド実行
+- ✅ ステータス監視
+
+## 📦 インストール
+
+### 前提条件
+- Node.js 18.0以上
+- npm または yarn
+- 2GB以上の空きディスク容量
+
+### セットアップ手順
+
+1. **リポジトリのクローン**
 ```bash
-npm i
+git clone <repository-url>
+cd frontend/middleware/driver
 ```
 
-### 3. サーバー起動
-
+2. **依存関係のインストール**
 ```bash
+npm install
+```
+
+3. **環境設定（オプション）**
+```bash
+# .env ファイルを作成
+echo "SESSION_SECRET=$(openssl rand -hex 32)" > .env
+echo "NODE_ENV=development" >> .env
+echo "ASSET_SERVER_URL=http://localhost:12801" >> .env
+```
+
+## 🏃 起動方法
+
+### 開発環境
+
+**方法1: 個別起動**
+```bash
+# ターミナル1: アセットサーバー起動
+npm run start:asset
+
+# ターミナル2: メインサーバー起動
 npm run dev
 ```
 
-または
+**方法2: 同時起動**
+```bash
+npm run dev:all
+```
+
+### 本番環境
 
 ```bash
-npm start
+# ビルド
+npm run build
+
+# PM2での起動（推奨）
+pm2 start ecosystem.config.js
 ```
 
-### 4. アクセス
+## 🔌 API仕様
 
-ブラウザで `http://localhost:12800` にアクセス
+### 認証エンドポイント
 
-## 📁 ファイル構造
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| POST | `/user/signup` | 初回ユーザー登録 | 不要 |
+| POST | `/user/login` | ログイン | 不要 |
+| GET | `/user/auth` | 認証状態確認 | 不要 |
+| POST | `/user/logout` | ログアウト | 必要 |
+
+### サーバー管理API
+
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | `/api/servers` | サーバー一覧取得 | 必要 |
+| POST | `/api/servers` | サーバー作成 | 必要 |
+| GET | `/api/servers/:id` | サーバー詳細取得 | 必要 |
+| PUT | `/api/servers/:id` | サーバー更新 | 必要 |
+| DELETE | `/api/servers/:id` | サーバー削除 | 必要 |
+| POST | `/api/servers/:id/start` | サーバー起動 | 必要 |
+| POST | `/api/servers/:id/stop` | サーバー停止 | 必要 |
+| POST | `/api/servers/:id/command` | コマンド実行 | 必要 |
+
+### JDK管理API
+
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | `/api/jdks` | インストール済みJDK一覧 | 必要 |
+| POST | `/api/jdks/check` | 推奨JDK確認 | 必要 |
+| POST | `/api/jdks/download` | JDKダウンロード開始 | 必要 |
+
+### アセットプロキシAPI
+
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | `/api/assets/resources` | 利用可能リソース一覧 | 必要 |
+| GET | `/api/assets/resources/:id` | リソース詳細 | 必要 |
+| GET | `/api/assets/download/:type/:file` | ファイルダウンロード | 必要 |
+
+### ジョブ管理API
+
+| メソッド | パス | 説明 | 認証 |
+|---------|------|------|------|
+| GET | `/api/jobs` | ジョブ一覧 | 必要 |
+| GET | `/api/jobs/:id` | ジョブ詳細 | 必要 |
+| POST | `/api/jobs/:id/cancel` | ジョブキャンセル | 必要 |
+
+## 🔄 データフロー
+
+### 1. サーバー作成フロー
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant F as フロントエンド
+    participant M as メインサーバー
+    participant A as アセットサーバー
+    
+    U->>F: サーバー作成フォーム入力
+    F->>M: POST /api/servers
+    M->>M: JDK推奨バージョン判定
+    M->>A: JDKリソース確認（内部通信）
+    A-->>M: リソース情報
+    M->>M: JDKダウンロードジョブ作成
+    M-->>F: サーバー作成完了 + ジョブID
+    F->>F: プログレスバー表示
+    M->>A: JDKダウンロード（バックグラウンド）
+    A-->>M: ストリーミングダウンロード
+    M->>M: ./Resource/jdk/に保存
+    M-->>F: WebSocketで進捗通知
+```
+
+### 2. 認証フロー
+
+```mermaid
+sequenceDiagram
+    participant U as ユーザー
+    participant F as フロントエンド
+    participant M as メインサーバー
+    
+    U->>F: ログイン情報入力
+    F->>M: POST /user/login
+    M->>M: 認証処理
+    M-->>F: Set-Cookie (Session ID)
+    F->>M: GET /api/servers (Cookie付き)
+    M->>M: セッション検証
+    M-->>F: サーバー一覧
+```
+
+## 📁 ディレクトリ構造
 
 ```
-frontend/middleware/driver/
-├── index.ts          # メインサーバーファイル
-├── package.json      # 依存関係とスクリプト
-├── tsconfig.json     # TypeScript設定
-├── web/             # 静的ファイル
-│   ├── index.html   # ログインページ
-│   └── demo.html    # 認証必須デモページ
-└── devsecret/       # 開発用データ（自動生成）
-    └── users.json   # 許可されたユーザーリスト
+driver/
+├── index.ts                 # エントリーポイント
+├── server/
+│   └── asset-server.ts      # アセットサーバー
+├── lib/
+│   ├── api-router.ts        # APIルーティング
+│   ├── middleware-manager.ts # ミドルウェア管理
+│   ├── dev-user-manager.ts  # ユーザー管理
+│   ├── minecraft-server-manager.ts # サーバー管理
+│   ├── minecraft-process-manager.ts # プロセス管理
+│   ├── jdk-manager.ts       # JDK管理
+│   ├── job-manager.ts       # ジョブ管理
+│   ├── ws-server.ts         # WebSocketサーバー
+│   ├── frp-manager.ts       # FRP管理（ポート転送）
+│   ├── file-browser.ts      # ファイルブラウザ
+│   ├── constants.ts         # 定数定義
+│   └── types.ts             # 型定義
+├── web/
+│   ├── index.html           # メインページ
+│   ├── demo.html            # デモページ
+│   ├── auth.js              # 認証処理
+│   ├── app.js               # アプリケーションロジック
+│   └── components/
+│       └── progress-bar.js  # プログレスバー
+├── devsecret/               # 開発用データ（.gitignore）
+│   ├── users.json           # ユーザーデータ
+│   ├── servers.json         # サーバー設定
+│   └── servers_data/        # サーバーデータ
+│       └── jdks/            # JDKインストール先
+├── dummyfile/               # ダミーファイル（開発用）
+├── Resource/                # リソース格納
+│   ├── jdk/                 # JDKファイル
+│   └── server/              # サーバーファイル
+├── package.json
+├── tsconfig.json
+└── ecosystem.config.js      # PM2設定
 ```
 
-## 🔧 API エンドポイント
+## 🔧 設定
 
-### 認証系
+### セッション設定（`lib/constants.ts`）
 
-- `POST /user/login` - ログイン処理
-- `GET /user/auth` - セッション状態確認  
-- `POST /user/logout` - ログアウト処理
+```typescript
+// セッション設定
+export const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
+export const SESSION_NAME = 'frontdriver-session';
 
-### ページ系
+// データディレクトリ
+export const DATA_DIR = process.env.DATA_DIR || path.join(DEV_SECRET_DIR, 'servers_data');
+export const JDKS_DIR = path.join(DATA_DIR, 'jdks');
+```
 
-- `GET /` - ログインページ
-- `GET /demo` - 認証必須デモページ（認証ミドルウェア使用）
-- `GET /api/protected` - 認証必須APIの例
+### アセットサーバー設定
 
-## 💡 主な改善点
+```typescript
+const ASSET_PORT = 12801;
+const DUMMY_FILES_DIR = path.join(__dirname, '..', 'dummyfile');
+```
 
-### 従来の実装との比較
+## 🐛 トラブルシューティング
 
-| 項目 | 従来（独自実装） | 新実装（express-session） |
-|------|-----------------|---------------------------|
-| セッション管理 | JSON ファイル | メモリ（本番はMongoDB） |
-| セキュリティ | 基本的 | HTTPOnly, SameSite, CSRF保護 |
-| セッションID | 手動生成 | express-sessionが自動管理 |
-| Cookie管理 | LocalStorage | HTTPOnly Cookie |
-| 有効期限 | 手動管理 | 自動管理（24時間） |
-| エラーハンドリング | 基本的 | 包括的なエラーハンドリング |
+### よくある問題と解決方法
 
-### セキュリティの向上
+**Q: アセットサーバーに接続できない**
+```bash
+# アセットサーバーが起動しているか確認
+curl http://localhost:12801/health
 
-1. **XSS攻撃対策**: HTTPOnly Cookieでクライアントサイドからのアクセスを防止
-2. **CSRF攻撃対策**: SameSite設定で外部サイトからのリクエストを制限
-3. **セッション固定攻撃対策**: express-sessionの自動セッション再生成
-4. **セッションハイジャック対策**: セキュアなセッション管理
+# 起動していない場合
+npm run start:asset
+```
 
-## 🔬 テスト方法
+**Q: セッションが維持されない**
+```bash
+# Cookieが有効か確認（ブラウザの開発者ツール）
+# SESSION_SECRETが設定されているか確認
+echo $SESSION_SECRET
+```
 
-### 1. 基本動作テスト
+**Q: JDKダウンロードが失敗する**
+```bash
+# ディレクトリの権限を確認
+ls -la ./Resource/jdk/
 
-1. ログインページでDevice IDが自動生成されることを確認
-2. ログインボタンクリックで認証処理が行われることを確認
-3. 認証成功後にデモページへリダイレクトされることを確認
+# 手動でディレクトリを作成
+mkdir -p ./Resource/jdk
+```
 
-### 2. セッション管理テスト
+## 🔒 セキュリティ考慮事項
 
-1. ログアウト後にセッションが無効になることを確認
-2. ブラウザ再起動後もセッションが維持されることを確認（有効期限内）
-3. 直接`/demo`にアクセスして認証チェックが機能することを確認
+### 実装済みのセキュリティ対策
 
-### 3. セキュリティテスト
+- ✅ HTTPOnly Cookie（XSS対策）
+- ✅ SameSite Cookie（CSRF対策）
+- ✅ セッション有効期限（24時間）
+- ✅ bcryptによるパスワードハッシュ化
+- ✅ 全APIエンドポイントの認証保護
+- ✅ ダウンロード監査ログ
 
-1. 開発者ツールでCookieがHTTPOnlyに設定されていることを確認
-2. JavaScriptからセッション情報にアクセスできないことを確認
-3. 保護されたAPIが認証なしでアクセスできないことを確認
+### 本番環境での追加推奨事項
 
-## 🌟 今後の拡張予定
+1. **HTTPS化**
+```nginx
+server {
+    listen 443 ssl http2;
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+}
+```
 
-- [ ] MongoDB セッションストアの実装
-- [ ] レート制限の実装
-- [ ] 2要素認証の対応
-- [ ] セッション分析・監視機能
-- [ ] ロードバランサー対応
+2. **環境変数の外部化**
+```bash
+# .env.production
+NODE_ENV=production
+SESSION_SECRET=<strong-random-string>
+MONGODB_URI=mongodb://localhost:27017/minecraft
+```
 
-## ⚠️ 注意事項
+3. **Rate Limiting**
+```typescript
+import rateLimit from 'express-rate-limit';
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100
+});
+```
 
-- 現在は**開発環境用**の設定です
-- 本番環境では必ず以下を実施してください：
-  - HTTPS の使用
-  - セッションストアをMongoDBに変更
-  - セキュリティヘッダーの強化
-  - 環境変数での設定管理
-  - ログ・監視システムの導入
+## 📝 ライセンス
+
+MIT License
+
+## 🤝 貢献
+
+プルリクエストを歓迎します。大きな変更の場合は、まずissueを開いて変更内容を議論してください。
+
+## 📞 サポート
+
+問題が発生した場合は、GitHubのIssueセクションで報告してください。
+```

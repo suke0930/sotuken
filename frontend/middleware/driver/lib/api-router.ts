@@ -10,6 +10,7 @@ import { JobManager } from './job-manager';
 import { MinecraftProcessManager } from './minecraft-process-manager';
 import { listDir } from './file-browser';
 import { FrpManager } from './frp-manager';
+import axios from 'axios';
 
 /**
  * APIエンドポイントのルーティングを管理するクラス
@@ -390,4 +391,181 @@ export class MinecraftServerOpsRouter {
         } else { res.status(400).json({ ok: false, message: 'id notfound' }); }
 
     };
+}
+
+/**
+ * アセットサーバープロキシルーター（認証付き）
+ */
+export class AssetProxyRouter {
+    public readonly router = express.Router();
+    private readonly ASSET_SERVER_URL = process.env.ASSET_SERVER_URL || 'http://localhost:12801';
+
+    constructor(private authMiddleware: express.RequestHandler) {
+        // すべてのルートに認証ミドルウェアを適用
+        this.router.use(this.authMiddleware);
+
+        // ルート定義（Express 5対応）
+        this.router.get('/resources', this.getResources);
+        this.router.get('/resources/:id', this.getResourceById);
+        // ワイルドカードの代わりに正規表現パターンを使用
+        this.router.get(/^\/download\/(.+)/, this.proxyDownload);
+        this.router.get('/health', this.healthCheck);
+    }
+
+    private getResources: express.RequestHandler = async (req, res) => {
+        try {
+            const { type } = req.query;
+            const url = `${this.ASSET_SERVER_URL}/api/resources${type ? `?type=${type}` : ''}`;
+
+            console.log(`[${req.userId}] Proxying request to: ${url}`);
+            const response = await axios.get(url);
+
+            // URLをプロキシ経由に書き換え
+            if (response.data.resources) {
+                response.data.resources = response.data.resources.map((r: any) => ({
+                    ...r,
+                    downloadUrl: r.redistributable && r.downloadUrl ?
+                        r.downloadUrl.replace(this.ASSET_SERVER_URL, '/api/assets') :
+                        r.downloadUrl
+                }));
+            }
+
+            // ユーザー情報を追加
+            response.data.requestedBy = req.userId;
+
+            res.json(response.data);
+        } catch (error: any) {
+            console.error(`[${req.userId}] Asset proxy error:`, error.message);
+            res.status(error.response?.status || 500).json({
+                ok: false,
+                message: 'Failed to fetch resources from asset server',
+                error: error.message
+            });
+        }
+    };
+
+    private getResourceById: express.RequestHandler = async (req, res) => {
+        try {
+            const { id } = req.params;
+            const url = `${this.ASSET_SERVER_URL}/api/resources/${id}`;
+
+            console.log(`[${req.userId}] Fetching resource: ${id}`);
+            const response = await axios.get(url);
+
+            // URLをプロキシ経由に書き換え
+            if (response.data.resource?.downloadUrl && response.data.resource.redistributable) {
+                response.data.resource.downloadUrl = response.data.resource.downloadUrl
+                    .replace(this.ASSET_SERVER_URL, '/api/assets');
+            }
+
+            res.json(response.data);
+        } catch (error: any) {
+            console.error(`[${req.userId}] Asset proxy error:`, error.message);
+            res.status(error.response?.status || 500).json({
+                ok: false,
+                message: 'Failed to fetch resource from asset server',
+                error: error.message
+            });
+        }
+    };
+
+    private proxyDownload: express.RequestHandler = async (req, res) => {
+        try {
+            // 正規表現からパスを取得
+            // req.params[0] には /download/ 以降のパスが入る
+            const downloadPath = req.params[0] || req.path.replace('/download/', '');
+            const url = `${this.ASSET_SERVER_URL}/download/${downloadPath}`;
+
+            console.log(`[${req.userId}] Proxying download: ${url}`);
+
+            // ダウンロードログを記録（監査用）
+            this.logDownload(req.userId!, downloadPath);
+
+            // ストリーミングプロキシ
+            const response = await axios({
+                method: 'GET',
+                url: url,
+                responseType: 'stream',
+                headers: {
+                    ...(req.headers.range && { range: req.headers.range })
+                },
+                validateStatus: () => true // すべてのステータスコードを許可
+            });
+
+            // エラーレスポンスの場合
+            if (response.status >= 400) {
+                res.status(response.status).json({
+                    ok: false,
+                    message: `Download failed with status ${response.status}`,
+                    path: downloadPath
+                });
+                return;
+            }
+
+            // レスポンスヘッダーを転送
+            Object.entries(response.headers).forEach(([key, value]) => {
+                // 特定のヘッダーは転送しない
+                const skipHeaders = ['connection', 'transfer-encoding', 'content-encoding'];
+                if (!skipHeaders.includes(key.toLowerCase())) {
+                    res.setHeader(key, value as string);
+                }
+            });
+
+            // ストリームをパイプ
+            response.data.pipe(res);
+
+            // ダウンロード完了時のログ
+            response.data.on('end', () => {
+                console.log(`[${req.userId}] Download completed: ${downloadPath}`);
+            });
+
+            // エラー処理
+            response.data.on('error', (error: any) => {
+                console.error(`[${req.userId}] Stream error:`, error);
+                if (!res.headersSent) {
+                    res.status(500).json({
+                        ok: false,
+                        message: 'Stream error during download',
+                        error: error.message
+                    });
+                }
+            });
+
+        } catch (error: any) {
+            console.error(`[${req.userId}] Download proxy error:`, error.message);
+            if (!res.headersSent) {
+                res.status(error.response?.status || 500).json({
+                    ok: false,
+                    message: 'Failed to proxy download',
+                    error: error.message
+                });
+            }
+        }
+    };
+
+    private healthCheck: express.RequestHandler = async (req, res) => {
+        try {
+            const response = await axios.get(`${this.ASSET_SERVER_URL}/health`);
+            res.json({
+                ok: true,
+                proxy: 'healthy',
+                assetServer: response.data,
+                user: req.userId
+            });
+        } catch (error) {
+            res.status(503).json({
+                ok: false,
+                proxy: 'healthy',
+                assetServer: 'unreachable',
+                user: req.userId
+            });
+        }
+    };
+
+    // ダウンロードログを記録（監査用）
+    private logDownload(userId: string, resource: string) {
+        const timestamp = new Date().toISOString();
+        console.log(`[DOWNLOAD_LOG] ${timestamp} - User: ${userId} - Resource: ${resource}`);
+        // 実運用では、ここでデータベースやログファイルに記録
+    }
 }

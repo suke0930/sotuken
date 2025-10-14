@@ -2,6 +2,7 @@ import express from 'express';
 import session from 'express-session';
 import path from 'path';
 import { SESSION_NAME, SESSION_SECRET } from './constants';
+import { JobManager } from './job-manager';
 
 /**
  * ミドルウェアのセットアップと管理を行うクラス
@@ -86,4 +87,34 @@ export class MiddlewareManager {
         console.error('Unhandled error:', error);
         res.status(500).json({ ok: false, reason: "internal_server_error", message: "予期しないエラーが発生しました" });
     };
+    public setupProgressEndpoint(app: express.Express) {
+        app.get('/api/progress/:jobId', this.authMiddleware, (req, res) => {
+            const { jobId } = req.params;
+
+            res.writeHead(200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
+            });
+
+            const sendProgress = (job: any) => {
+                if (job.id === jobId) {
+                    res.write(`data: ${JSON.stringify(job)}\n\n`);
+                    if (job.status === 'success' || job.status === 'failed') {
+                        res.end();
+                    }
+                }
+            };
+
+            JobManager.events.on('job:progress', sendProgress);
+            JobManager.events.on('job:completed', sendProgress);
+            JobManager.events.on('job:failed', sendProgress);
+
+            req.on('close', () => {
+                JobManager.events.off('job:progress', sendProgress);
+                JobManager.events.off('job:completed', sendProgress);
+                JobManager.events.off('job:failed', sendProgress);
+            });
+        });
+    }
 }

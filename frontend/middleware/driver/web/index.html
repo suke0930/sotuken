@@ -7,6 +7,65 @@
     <title>Minecraft Server Manager - Frontend Driver</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* プログレスバー用のスタイル */
+        .progress-container {
+            margin: 20px 0;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .progress-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+            transition: opacity 0.3s ease;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .progress-title {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .progress-percentage {
+            color: #6366f1;
+            font-weight: 600;
+        }
+
+        .progress-bar-container {
+            height: 20px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .progress-status {
+            font-weight: 500;
+        }
+
         /* Modern CSS Reset & Base Styles */
         * {
             box-sizing: border-box;
@@ -453,6 +512,56 @@
             margin-bottom: 20px;
         }
 
+        /* アラートメッセージ */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-warning {
+            background: #fed7aa;
+            color: #92400e;
+            border: 1px solid #fdba74;
+        }
+
+        .alert i {
+            font-size: 18px;
+        }
+
+        .jdk-status-container {
+            margin-top: 10px;
+        }
+
+        /* フォームチェックボックス */
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-check-input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .form-check-label {
+            cursor: pointer;
+            user-select: none;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
         /* Console */
         .console-box {
             background: #1f2937;
@@ -681,26 +790,31 @@
                 </div>
 
                 <!-- サーバー作成/編集セクション -->
+                <!-- サーバー作成フォームの修正部分 -->
                 <div id="create-tab" class="content-section">
                     <div class="section-title">
                         <i class="fas fa-plus-circle"></i>
                         <span id="form-title">新しいMinecraftサーバーを作成</span>
                     </div>
+
+                    <!-- プログレスバーコンテナ -->
+                    <div id="progress-container" class="progress-container"></div>
+
                     <form id="serverForm">
                         <input type="hidden" id="serverId" name="serverId">
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="serverName">
-                                    <i class="fas fa-tag"></i>
-                                    サーバー名
+                                    <i class="fas fa-tag"></i> サーバー名
                                 </label>
                                 <input type="text" id="serverName" name="serverName" required
                                     placeholder="例: My Minecraft Server">
                             </div>
+
                             <div class="form-group">
                                 <label for="minecraftVersion">
-                                    <i class="fas fa-code-branch"></i>
-                                    Minecraftバージョン
+                                    <i class="fas fa-code-branch"></i> Minecraftバージョン
                                 </label>
                                 <select id="minecraftVersion" name="minecraftVersion" required>
                                     <option value="">バージョンを選択してください</option>
@@ -715,38 +829,54 @@
                                 </select>
                             </div>
                         </div>
+
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="serverSoftware">
-                                    <i class="fas fa-cogs"></i>
-                                    サーバーソフトウェア
+                                    <i class="fas fa-cogs"></i> サーバーソフトウェア
                                 </label>
                                 <select id="serverSoftware" name="serverSoftware" required>
-                                    <option value="">ソフトウェアを選択してください</option>
-                                    <option value="vanilla">Vanilla (公式)</option>
-                                    <option value="paper">Paper (推奨)</option>
-                                    <option value="spigot">Spigot</option>
-                                    <option value="bukkit">Bukkit</option>
-                                    <option value="mohist">Mohist (Mod + Plugin)</option>
-                                    <option value="forge">Forge (Mod)</option>
-                                    <option value="fabric">Fabric (軽量Mod)</option>
+                                    <option value="">先にMinecraftバージョンを選択してください</option>
                                 </select>
                             </div>
+
+                            <div class="form-group">
+                                <label for="jdkVersion">
+                                    <i class="fas fa-coffee"></i> JDKバージョン
+                                </label>
+                                <select id="jdkVersion" name="jdkVersion" required>
+                                    <option value="">JDKを選択してください</option>
+                                </select>
+                                <div id="jdk-status"></div>
+
+                                <div class="form-check mt-2">
+                                    <input type="checkbox" class="form-check-input" id="auto-download-jdk" checked>
+                                    <label class="form-check-label" for="auto-download-jdk">
+                                        必要なJDKを自動的にダウンロード
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
                                 <label for="serverFilePath">
-                                    <i class="fas fa-folder"></i>
-                                    保存先パス
+                                    <i class="fas fa-folder"></i> 保存先パス
                                 </label>
                                 <input type="text" id="serverFilePath" name="serverFilePath" required
                                     placeholder="/path/to/server">
                             </div>
                         </div>
+
                         <button type="submit" id="form-submit-button" class="btn btn-primary">
                             <i class="fas fa-rocket"></i>
                             <span id="form-submit-text">サーバーを作成</span>
                         </button>
                     </form>
                 </div>
+
+                <!-- プログレスバー用のスクリプト追加 -->
+                <script src="/components/progress-bar.js"></script>
 
                 <!-- システム設定セクション -->
                 <div id="settings-tab" class="content-section">

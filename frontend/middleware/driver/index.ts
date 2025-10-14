@@ -6,7 +6,7 @@ import { SESSION_SECRET } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
-import { ApiRouter, MinecraftServerRouter, SampleApiRouter, JdkRouter, JobRouter, MinecraftServerOpsRouter } from './lib/api-router';
+import { ApiRouter, MinecraftServerRouter, SampleApiRouter, JdkRouter, JobRouter, MinecraftServerOpsRouter, AssetProxyRouter } from './lib/api-router';
 import { WsHub } from './lib/ws-server';
 import { MinecraftProcessManager } from './lib/minecraft-process-manager';
 
@@ -43,8 +43,11 @@ async function main(port: number): Promise<void> {
     const jobRouter = new JobRouter(middlewareManager.authMiddleware);
     app.use('/api/jobs', jobRouter.router);
     const opsRouter = new MinecraftServerOpsRouter(middlewareManager.authMiddleware);
-    app.use('/api/servers', opsRouter.router);
 
+    app.use('/api/servers', opsRouter.router);
+    // 4.4. アセットサーバープロキシ（認証必須）
+    const assetProxyRouter = new AssetProxyRouter(middlewareManager.authMiddleware);
+    app.use('/api/assets', assetProxyRouter.router);
     // 5. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
 
