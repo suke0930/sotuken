@@ -7,7 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "npx ts-node index.ts",
-    "dev": "npx ts-node index.ts"
+    "dev": "npx ts-node index.ts",
+    "api": "npx ts-node backend/server.ts",
+    "api:dev": "npx ts-node backend/server.ts"
   },
   "keywords": [
     "devlop"
