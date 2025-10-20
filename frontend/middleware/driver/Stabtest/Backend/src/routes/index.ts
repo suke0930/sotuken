@@ -1,69 +1,68 @@
 import { Router } from 'express';
-import { ProxyController } from '../controllers/proxyController';
-import { DownloadController } from '../controllers/downloadController';
-import { WebSocketServer } from '../services/WebSocketServer';
+import {
+  getServersList,
+  getJDKList,
+  getAssetFilesList,
+} from '../controllers/proxyController';
+import {
+  startDownload,
+  getDownloadStatus,
+  getActiveDownloads,
+  cancelDownload,
+} from '../controllers/downloadController';
+
+const router = Router();
+
+// ========================================
+// Proxy Routes (Asset Server へのプロキシ)
+// ========================================
 
 /**
- * ルーターを作成
+ * サーバーリスト取得
+ * GET /api/list/servers
  */
-export function createRouter(
-  assetServerUrl: string,
-  wsServer: WebSocketServer,
-  downloadDir: string
-): Router {
-  const router = Router();
-  
-  // コントローラーを初期化
-  const proxyController = new ProxyController(assetServerUrl);
-  const downloadController = new DownloadController(wsServer, assetServerUrl, downloadDir);
-  
-  // ================
-  // プロキシAPI
-  // ================
-  
-  // Minecraftサーバー情報を取得（Asset Server経由）
-  router.get('/api/servers', proxyController.getServers);
-  
-  // JDK情報を取得（Asset Server経由）
-  router.get('/api/jdk', proxyController.getJDKs);
-  
-  // JDKファイルリストを取得（Asset Server経由）
-  router.get('/api/files/jdk', proxyController.getJDKFiles);
-  
-  // サーバーファイルリストを取得（Asset Server経由）
-  router.get('/api/files/servers', proxyController.getServerFiles);
-  
-  // Asset Serverのヘルスチェック
-  router.get('/api/health/asset', proxyController.checkAssetHealth);
-  
-  // ================
-  // ダウンロードAPI
-  // ================
-  
-  // JDKファイルをダウンロード
-  router.post('/api/download/jdk', downloadController.downloadJDK);
-  
-  // サーバーファイルをダウンロード
-  router.post('/api/download/server', downloadController.downloadServer);
-  
-  // ダウンロードをキャンセル
-  router.post('/api/download/cancel/:taskId', downloadController.cancelDownload);
-  
-  // アクティブなダウンロードタスク一覧を取得
-  router.get('/api/download/tasks', downloadController.getActiveTasks);
-  
-  // ================
-  // ヘルスチェック
-  // ================
-  
-  router.get('/health', (req, res) => {
-    res.status(200).json({
-      success: true,
-      status: 'healthy',
-      service: 'Backend Proxy Server',
-      timestamp: new Date().toISOString(),
-    });
-  });
-  
-  return router;
-}
+router.get('/list/servers', getServersList);
+
+/**
+ * JDKリスト取得
+ * GET /api/list/jdk
+ */
+router.get('/list/jdk', getJDKList);
+
+/**
+ * Assetファイルリスト取得
+ * GET /api/list/assets/:type
+ * :type = 'jdk' | 'servers'
+ */
+router.get('/list/assets/:type', getAssetFilesList);
+
+// ========================================
+// Download Routes
+// ========================================
+
+/**
+ * ダウンロード開始
+ * POST /api/download
+ * Body: { url: string, filename?: string }
+ */
+router.post('/download', startDownload);
+
+/**
+ * ダウンロードステータス取得
+ * GET /api/download/:taskId
+ */
+router.get('/download/:taskId', getDownloadStatus);
+
+/**
+ * アクティブなダウンロード一覧取得
+ * GET /api/downloads
+ */
+router.get('/downloads', getActiveDownloads);
+
+/**
+ * ダウンロードキャンセル
+ * DELETE /api/download/:taskId
+ */
+router.delete('/download/:taskId', cancelDownload);
+
+export default router;
