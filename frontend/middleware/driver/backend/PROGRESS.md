@@ -89,12 +89,13 @@ Minecraftサーバーセットアップ支援システムのバックエンドAP
 ## 📈 Metrics
 
 ### Code Statistics
-- **Total Files**: 17
-  - Core Files: 7
+- **Total Files**: 21
+  - Core Files: 8 (routes/assets.ts 追加)
   - Type Definitions: 4
-  - Documentation: 6
-- **Total Lines**: ~1,500+ lines
-- **Documentation Pages**: 6
+  - Documentation: 7 (ASSETS_API.md 追加)
+  - Resources: 2
+- **Total Lines**: ~1,700+ lines
+- **Documentation Pages**: 7
 
 ### API Performance
 - **Health Check**: < 50ms

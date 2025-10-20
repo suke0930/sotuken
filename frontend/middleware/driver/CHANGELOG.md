@@ -1,5 +1,43 @@
 # Changelog
 
+## [2025-10-19] - Asset Server Implementation
+
+### Added
+
+#### Asset Distribution API
+- Implement asset file distribution endpoints for JDK and server software
+- Add `/api/assets/jdk/{version}/{os}/{filename}` - JDK file download
+- Add `/api/assets/servers/{type}/{version}/{filename}` - Server software download
+- Add `/api/assets/list/jdk` - List available JDK files
+- Add `/api/assets/list/servers` - List available server files
+
+#### Security Features
+- Path traversal attack prevention
+- File type validation (files only, no directories)
+- File existence checking with 404 handling
+- Streaming file delivery for large files
+
+#### Resources Directory
+- Create `resources/` directory structure for asset storage
+- Add `resources/jdk/` for JDK distributions
+- Add `resources/servers/` for Minecraft server software
+- Add README.md with directory structure guide
+
+#### Documentation
+- Create ASSETS_API.md - Complete asset API specification
+- Add usage examples (cURL, JavaScript, Python)
+- Document security features and best practices
+- Include license information for redistribution
+
+### Technical Implementation
+- Use Express router with regex path matching
+- Implement streaming file delivery with `fs.createReadStream()`
+- Add proper Content-Type and Content-Disposition headers
+- Support download progress with Content-Length header
+- Recursive file listing with relative paths
+
+---
+
 ## [2025-10-19] - API Server Implementation
 
 ### Added

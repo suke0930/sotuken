@@ -128,6 +128,52 @@ GET /api/assets/list/servers   # サーバーファイル一覧
 - **Fabric**: https://fabricmc.net/use/server/
 - **Paper**: https://papermc.io/downloads/paper
 
+## ダミーファイル生成（開発・テスト用）
+
+開発やテスト環境で実際のファイルをダウンロードせずにディレクトリ構造を構築できます。
+
+### makedummy.ts の使用方法
+
+```bash
+# 通常実行（定義済みサイズでファイル作成）
+cd resources
+npx ts-node makedummy.ts
+
+# ファイルサイズを一括指定
+npx ts-node makedummy.ts --size 10KB
+npx ts-node makedummy.ts --size 1MB
+```
+
+### 生成されるファイル
+
+**JDK（各バージョン × 3プラットフォーム）:**
+- JDK 8: 140MB～160MB
+- JDK 11: 165MB～175MB
+- JDK 17: 175MB～185MB
+- JDK 21: 185MB～195MB
+
+**Minecraftサーバー:**
+- Vanilla: 30MB～50MB（4バージョン）
+- Forge: 5MB～7MB（3バージョン）
+- Fabric: 3MB～3.5MB（2バージョン）
+- Paper: 42MB～48MB（2バージョン）
+
+**合計:** 約2.5GB（デフォルトサイズの場合）
+
+### 注意事項
+
+- ダミーファイルは0埋めされたバイナリファイルです
+- 実際のJDKやサーバーとして**動作しません**
+- API動作確認・ダウンロード機能テスト用途のみ
+- 本番環境では実際のファイルを配置してください
+
+### ダミーファイルのクリーンアップ
+
+```bash
+# 生成されたダミーファイルをすべて削除
+rm -rf jdk/ servers/
+```
+
 ## 自動ダウンロードスクリプト（将来実装予定）
 
 将来的には、以下のような自動ダウンロードスクリプトの実装を推奨：
