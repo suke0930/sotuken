@@ -8,7 +8,7 @@
  * @usage
  * 1. 通常の実行 (定義済みのサイズでファイルを作成):
  *    ts-node makedummy.ts
- *
+ *-
  * 2. ファイルサイズを一括で指定して実行:
  *    ts-node makedummy.ts --size <size>
  *
