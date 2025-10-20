@@ -1,0 +1,78 @@
+[
+  {
+    "version": "8",
+    "downloads": [
+      {
+        "os": "windows",
+        "downloadUrl": "https://example.com/jdk/8/jdk-8-windows-x64.zip"
+      },
+      {
+        "os": "linux",
+        "downloadUrl": "https://example.com/jdk/8/jdk-8-linux-x64.tar.gz"
+      },
+      {
+        "os": "macos",
+        "downloadUrl": "https://example.com/jdk/8/jdk-8-macos-x64.dmg"
+      }
+    ],
+    "vendor": "AdoptOpenJDK",
+    "isLTS": true
+  },
+  {
+    "version": "11",
+    "downloads": [
+      {
+        "os": "windows",
+        "downloadUrl": "https://example.com/jdk/11/jdk-11-windows-x64.zip"
+      },
+      {
+        "os": "linux",
+        "downloadUrl": "https://example.com/jdk/11/jdk-11-linux-x64.tar.gz"
+      },
+      {
+        "os": "macos",
+        "downloadUrl": "https://example.com/jdk/11/jdk-11-macos-x64.dmg"
+      }
+    ],
+    "vendor": "AdoptOpenJDK",
+    "isLTS": true
+  },
+  {
+    "version": "17",
+    "downloads": [
+      {
+        "os": "windows",
+        "downloadUrl": "https://example.com/jdk/17/jdk-17-windows-x64.zip"
+      },
+      {
+        "os": "linux",
+        "downloadUrl": "https://example.com/jdk/17/jdk-17-linux-x64.tar.gz"
+      },
+      {
+        "os": "macos",
+        "downloadUrl": "https://example.com/jdk/17/jdk-17-macos-x64.dmg"
+      }
+    ],
+    "vendor": "Eclipse Temurin",
+    "isLTS": true
+  },
+  {
+    "version": "21",
+    "downloads": [
+      {
+        "os": "windows",
+        "downloadUrl": "https://example.com/jdk/21/jdk-21-windows-x64.zip"
+      },
+      {
+        "os": "linux",
+        "downloadUrl": "https://example.com/jdk/21/jdk-21-linux-x64.tar.gz"
+      },
+      {
+        "os": "macos",
+        "downloadUrl": "https://example.com/jdk/21/jdk-21-macos-x64.dmg"
+      }
+    ],
+    "vendor": "Eclipse Temurin",
+    "isLTS": true
+  }
+]

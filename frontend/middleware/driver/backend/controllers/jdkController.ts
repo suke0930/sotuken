@@ -1,16 +1,21 @@
 import { Request, Response } from 'express';
-import { exampleJDKData } from '../lib/jdkSampleData';
+import { getJDKData } from '../lib/jdkSampleData';
 import { JDKApiResponse } from '../types/jdk.types';
 
 /**
  * 全JDKバージョン情報を取得
  * GET /api/v1/jdk
+ * 
+ * JSONファイルからリアルタイムでデータを読み込みます
  */
 export const getAllJDKs = (req: Request, res: Response): void => {
   try {
+    // リアルタイムでJSONファイルから読み込み
+    const data = getJDKData();
+    
     const response: JDKApiResponse = {
       success: true,
-      data: exampleJDKData,
+      data: data,
       timestamp: new Date().toISOString(),
     };
 

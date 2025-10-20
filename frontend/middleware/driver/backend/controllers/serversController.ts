@@ -1,16 +1,21 @@
 import { Request, Response } from 'express';
-import { exampleData } from '../lib/sampleData';
+import { getServersData } from '../lib/sampleData';
 import { ServerApiResponse } from '../types/server.types';
 
 /**
  * 全サーバーソフトウェア情報を取得
  * GET /api/v1/servers
+ * 
+ * JSONファイルからリアルタイムでデータを読み込みます
  */
 export const getAllServers = (req: Request, res: Response): void => {
   try {
+    // リアルタイムでJSONファイルから読み込み
+    const data = getServersData();
+    
     const response: ServerApiResponse = {
       success: true,
-      data: exampleData,
+      data: data,
       timestamp: new Date().toISOString(),
     };
 

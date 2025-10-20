@@ -1,10 +1,11 @@
 import { JDKSchema, JDKVersion, OSType } from '../types/jdk.types';
+import { loadJDKData } from './dataLoader';
 
 /**
- * サンプルデータ: JDK バージョン情報
+ * JDKデータを取得（リアルタイムでJSONファイルから読み込み）
  * 
- * このデータは開発・テスト用のモックデータです。
- * 本番環境では外部API、データベース、または設定ファイルから取得することを推奨します。
+ * このデータはdata/jdk.jsonから読み込まれます。
+ * JSONファイルを更新すると、次のリクエスト時に自動的に反映されます。
  * 
  * 推奨ベンダー:
  * - Oracle JDK
@@ -12,84 +13,9 @@ import { JDKSchema, JDKVersion, OSType } from '../types/jdk.types';
  * - AdoptOpenJDK (Eclipse Temurin)
  * - Azul Zulu
  */
-export const exampleJDKData: JDKSchema = [
-  {
-    version: '8',
-    downloads: [
-      {
-        os: 'windows',
-        downloadUrl: 'https://example.com/jdk/8/jdk-8-windows-x64.zip',
-      },
-      {
-        os: 'linux',
-        downloadUrl: 'https://example.com/jdk/8/jdk-8-linux-x64.tar.gz',
-      },
-      {
-        os: 'macos',
-        downloadUrl: 'https://example.com/jdk/8/jdk-8-macos-x64.dmg',
-      },
-    ],
-    vendor: 'AdoptOpenJDK',
-    isLTS: true,
-  },
-  {
-    version: '11',
-    downloads: [
-      {
-        os: 'windows',
-        downloadUrl: 'https://example.com/jdk/11/jdk-11-windows-x64.zip',
-      },
-      {
-        os: 'linux',
-        downloadUrl: 'https://example.com/jdk/11/jdk-11-linux-x64.tar.gz',
-      },
-      {
-        os: 'macos',
-        downloadUrl: 'https://example.com/jdk/11/jdk-11-macos-x64.dmg',
-      },
-    ],
-    vendor: 'AdoptOpenJDK',
-    isLTS: true,
-  },
-  {
-    version: '17',
-    downloads: [
-      {
-        os: 'windows',
-        downloadUrl: 'https://example.com/jdk/17/jdk-17-windows-x64.zip',
-      },
-      {
-        os: 'linux',
-        downloadUrl: 'https://example.com/jdk/17/jdk-17-linux-x64.tar.gz',
-      },
-      {
-        os: 'macos',
-        downloadUrl: 'https://example.com/jdk/17/jdk-17-macos-x64.dmg',
-      },
-    ],
-    vendor: 'Eclipse Temurin',
-    isLTS: true,
-  },
-  {
-    version: '21',
-    downloads: [
-      {
-        os: 'windows',
-        downloadUrl: 'https://example.com/jdk/21/jdk-21-windows-x64.zip',
-      },
-      {
-        os: 'linux',
-        downloadUrl: 'https://example.com/jdk/21/jdk-21-linux-x64.tar.gz',
-      },
-      {
-        os: 'macos',
-        downloadUrl: 'https://example.com/jdk/21/jdk-21-macos-x64.dmg',
-      },
-    ],
-    vendor: 'Eclipse Temurin',
-    isLTS: true,
-  },
-];
+export function getJDKData(): JDKSchema {
+  return loadJDKData();
+}
 
 /**
  * 特定のJDKバージョンを検索
@@ -97,7 +23,8 @@ export const exampleJDKData: JDKSchema = [
  * @returns JDKVersion | undefined
  */
 export function findJDKByVersion(version: string): JDKVersion | undefined {
-  return exampleJDKData.find((jdk) => jdk.version === version);
+  const data = getJDKData();
+  return data.find((jdk) => jdk.version === version);
 }
 
 /**
@@ -106,7 +33,8 @@ export function findJDKByVersion(version: string): JDKVersion | undefined {
  * @returns JDKVersion[]
  */
 export function findJDKsByOS(os: OSType): JDKVersion[] {
-  return exampleJDKData.filter((jdk) =>
+  const data = getJDKData();
+  return data.filter((jdk) =>
     jdk.downloads.some((download) => download.os === os)
   );
 }
@@ -116,7 +44,8 @@ export function findJDKsByOS(os: OSType): JDKVersion[] {
  * @returns JDKVersion[]
  */
 export function getLTSVersions(): JDKVersion[] {
-  return exampleJDKData.filter((jdk) => jdk.isLTS === true);
+  const data = getJDKData();
+  return data.filter((jdk) => jdk.isLTS === true);
 }
 
 /**
@@ -125,7 +54,8 @@ export function getLTSVersions(): JDKVersion[] {
  * @returns JDKVersion[]
  */
 export function findJDKsByVendor(vendor: string): JDKVersion[] {
-  return exampleJDKData.filter(
+  const data = getJDKData();
+  return data.filter(
     (jdk) => jdk.vendor?.toLowerCase() === vendor.toLowerCase()
   );
 }
@@ -168,7 +98,8 @@ export function getLatestLTSVersion(): JDKVersion | undefined {
  * @returns string[]
  */
 export function getAvailableVersions(): string[] {
-  return exampleJDKData.map((jdk) => jdk.version);
+  const data = getJDKData();
+  return data.map((jdk) => jdk.version);
 }
 
 /**
@@ -176,7 +107,8 @@ export function getAvailableVersions(): string[] {
  * @returns string[]
  */
 export function getAvailableVendors(): string[] {
-  const vendors = exampleJDKData
+  const data = getJDKData();
+  const vendors = data
     .map((jdk) => jdk.vendor)
     .filter((vendor): vendor is string => vendor !== undefined);
   

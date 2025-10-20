@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Vanilla",
+    "versions": [
+      {
+        "version": "1.12.2",
+        "jdk": "8",
+        "downloadUrl": "https://example.com/vanilla/1.12.2/server.jar"
+      },
+      {
+        "version": "1.16.5",
+        "jdk": "11",
+        "downloadUrl": "https://example.com/vanilla/1.16.5/server.jar"
+      },
+      {
+        "version": "1.18.2",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/vanilla/1.18.2/server.jar"
+      },
+      {
+        "version": "1.20.1",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/vanilla/1.20.1/server.jar"
+      }
+    ]
+  },
+  {
+    "name": "Forge",
+    "versions": [
+      {
+        "version": "1.12.2",
+        "jdk": "8",
+        "downloadUrl": "https://example.com/forge/1.12.2/forge-installer.jar"
+      },
+      {
+        "version": "1.16.5",
+        "jdk": "11",
+        "downloadUrl": "https://example.com/forge/1.16.5/forge-installer.jar"
+      },
+      {
+        "version": "1.18.2",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/forge/1.18.2/forge-installer.jar"
+      },
+      {
+        "version": "1.20.1",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/forge/1.20.1/forge-installer.jar"
+      }
+    ]
+  },
+  {
+    "name": "Fabric",
+    "versions": [
+      {
+        "version": "1.16.5",
+        "jdk": "11",
+        "downloadUrl": "https://example.com/fabric/1.16.5/fabric-server.jar"
+      },
+      {
+        "version": "1.18.2",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/fabric/1.18.2/fabric-server.jar"
+      },
+      {
+        "version": "1.20.1",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/fabric/1.20.1/fabric-server.jar"
+      }
+    ]
+  },
+  {
+    "name": "Paper",
+    "versions": [
+      {
+        "version": "1.16.5",
+        "jdk": "11",
+        "downloadUrl": "https://example.com/paper/1.16.5/paper-server.jar"
+      },
+      {
+        "version": "1.18.2",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/paper/1.18.2/paper-server.jar"
+      },
+      {
+        "version": "1.20.1",
+        "jdk": "17",
+        "downloadUrl": "https://example.com/paper/1.20.1/paper-server.jar"
+      }
+    ]
+  }
+]
