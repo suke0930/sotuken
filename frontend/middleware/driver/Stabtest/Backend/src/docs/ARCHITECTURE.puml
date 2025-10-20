@@ -1,0 +1,65 @@
+@startuml Backend Architecture
+
+!define RECTANGLE class
+
+skinparam backgroundColor #FEFEFE
+skinparam componentStyle rectangle
+
+title Backend Proxy Server - Architecture
+
+package "Client (UI)" {
+  [Web Browser] as Browser
+}
+
+package "Backend Proxy Server" <<Rectangle>> {
+  [Express Server] as Express
+  [WebSocket Server] as WS
+  [Proxy Controller] as ProxyCtrl
+  [Download Controller] as DownloadCtrl
+  [Asset Proxy Service] as AssetProxy
+  [Download Task] as DownloadTask
+}
+
+package "Asset Server" <<Rectangle>> {
+  [API Server] as AssetAPI
+  [File Storage] as Storage
+}
+
+Browser --> Express : HTTP REST API
+Browser --> WS : WebSocket (進捗通知)
+
+Express --> ProxyCtrl : リクエスト処理
+Express --> DownloadCtrl : ダウンロード要求
+
+ProxyCtrl --> AssetProxy : Asset Server呼び出し
+DownloadCtrl --> AssetProxy : URL構築
+DownloadCtrl --> DownloadTask : タスク作成
+DownloadCtrl --> WS : 進捗送信
+
+AssetProxy --> AssetAPI : HTTP Request
+DownloadTask --> AssetAPI : ファイルダウンロード
+AssetAPI --> Storage : ファイル取得
+
+note right of Browser
+  クライアントはBackendを経由して
+  Asset Serverにアクセスする
+  （CORS対策 & ブラックボックス化）
+end note
+
+note right of WS
+  WebSocketでリアルタイムに
+  ダウンロード進捗を送信
+  - 速度 (MB/s)
+  - 進捗 (%)
+  - 残り時間
+end note
+
+note right of DownloadTask
+  ダウンロードタスククラス
+  - Axiosでストリーミング
+  - 進捗コールバック
+  - エラーハンドリング
+  - キャンセル機能
+end note
+
+@enduml
