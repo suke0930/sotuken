@@ -8,7 +8,7 @@ const router = Router();
  * アセット配信のベースディレクトリ
  * プロジェクトルートの resources ディレクトリ
  */
-const RESOURCES_BASE = path.join(__dirname, '../../resources');
+const RESOURCES_BASE = path.join(__dirname, '../resources');
 
 /**
  * ファイルの存在確認とセキュリティチェック
@@ -17,23 +17,23 @@ function validateFilePath(requestedPath: string, baseDir: string): string | null
   try {
     // パスを正規化
     const resolvedPath = path.resolve(baseDir, requestedPath);
-    
+
     // パストラバーサル攻撃を防ぐ：ベースディレクトリ外へのアクセスを禁止
     if (!resolvedPath.startsWith(baseDir)) {
       return null;
     }
-    
+
     // ファイルの存在確認
     if (!fs.existsSync(resolvedPath)) {
       return null;
     }
-    
+
     // ディレクトリでないことを確認（ファイルのみ配信）
     const stat = fs.statSync(resolvedPath);
     if (!stat.isFile()) {
       return null;
     }
-    
+
     return resolvedPath;
   } catch (error) {
     return null;
@@ -49,9 +49,9 @@ function validateFilePath(requestedPath: string, baseDir: string): string | null
 router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
   const requestedPath = req.params[0] || ''; // 正規表現でキャプチャしたパス
   const jdkBaseDir = path.join(RESOURCES_BASE, 'jdk');
-  
+
   const filePath = validateFilePath(requestedPath, jdkBaseDir);
-  
+
   if (!filePath) {
     res.status(404).json({
       success: false,
@@ -63,19 +63,19 @@ router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
     });
     return;
   }
-  
+
   // ファイル情報を取得
   const stat = fs.statSync(filePath);
   const fileName = path.basename(filePath);
-  
+
   // ファイルサイズをヘッダーに追加
   res.setHeader('Content-Length', stat.size);
   res.setHeader('Content-Type', 'application/octet-stream');
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  
+
   // ファイルをストリーミング配信
   const fileStream = fs.createReadStream(filePath);
-  
+
   fileStream.on('error', (error) => {
     console.error('File streaming error:', error);
     if (!res.headersSent) {
@@ -89,7 +89,7 @@ router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
       });
     }
   });
-  
+
   fileStream.pipe(res);
 });
 
@@ -103,9 +103,9 @@ router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
 router.get(/^\/servers\/(.+)$/, (req: Request, res: Response): void => {
   const requestedPath = req.params[0] || '';
   const serversBaseDir = path.join(RESOURCES_BASE, 'servers');
-  
+
   const filePath = validateFilePath(requestedPath, serversBaseDir);
-  
+
   if (!filePath) {
     res.status(404).json({
       success: false,
@@ -117,16 +117,16 @@ router.get(/^\/servers\/(.+)$/, (req: Request, res: Response): void => {
     });
     return;
   }
-  
+
   const stat = fs.statSync(filePath);
   const fileName = path.basename(filePath);
-  
+
   res.setHeader('Content-Length', stat.size);
   res.setHeader('Content-Type', 'application/java-archive');
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-  
+
   const fileStream = fs.createReadStream(filePath);
-  
+
   fileStream.on('error', (error) => {
     console.error('File streaming error:', error);
     if (!res.headersSent) {
@@ -140,7 +140,7 @@ router.get(/^\/servers\/(.+)$/, (req: Request, res: Response): void => {
       });
     }
   });
-  
+
   fileStream.pipe(res);
 });
 
@@ -151,7 +151,7 @@ router.get(/^\/servers\/(.+)$/, (req: Request, res: Response): void => {
 router.get('/list/jdk', (req: Request, res: Response): void => {
   try {
     const jdkBaseDir = path.join(RESOURCES_BASE, 'jdk');
-    
+
     if (!fs.existsSync(jdkBaseDir)) {
       res.status(200).json({
         success: true,
@@ -161,10 +161,10 @@ router.get('/list/jdk', (req: Request, res: Response): void => {
       });
       return;
     }
-    
+
     // 再帰的にファイル一覧を取得
     const files = getFileList(jdkBaseDir, jdkBaseDir);
-    
+
     res.status(200).json({
       success: true,
       data: files,
@@ -191,7 +191,7 @@ router.get('/list/jdk', (req: Request, res: Response): void => {
 router.get('/list/servers', (req: Request, res: Response): void => {
   try {
     const serversBaseDir = path.join(RESOURCES_BASE, 'servers');
-    
+
     if (!fs.existsSync(serversBaseDir)) {
       res.status(200).json({
         success: true,
@@ -201,9 +201,9 @@ router.get('/list/servers', (req: Request, res: Response): void => {
       });
       return;
     }
-    
+
     const files = getFileList(serversBaseDir, serversBaseDir);
-    
+
     res.status(200).json({
       success: true,
       data: files,
@@ -232,14 +232,14 @@ function getFileList(dir: string, baseDir: string): Array<{
   name: string;
 }> {
   const files: Array<{ path: string; size: number; name: string }> = [];
-  
+
   function traverse(currentPath: string) {
     const items = fs.readdirSync(currentPath);
-    
+
     for (const item of items) {
       const fullPath = path.join(currentPath, item);
       const stat = fs.statSync(fullPath);
-      
+
       if (stat.isDirectory()) {
         traverse(fullPath);
       } else if (stat.isFile()) {
@@ -253,7 +253,7 @@ function getFileList(dir: string, baseDir: string): Array<{
       }
     }
   }
-  
+
   traverse(dir);
   return files;
 }

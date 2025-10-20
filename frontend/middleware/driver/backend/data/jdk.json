@@ -4,15 +4,15 @@
     "downloads": [
       {
         "os": "windows",
-        "downloadUrl": "https://example.com/jdk/8/jdk-8-windows-x64.zip"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/8/windows/jdk-8u351-windows-x64.zip"
       },
       {
         "os": "linux",
-        "downloadUrl": "https://example.com/jdk/8/jdk-8-linux-x64.tar.gz"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/8/linux/jdk-8u351-linux-x64.tar.gz"
       },
       {
         "os": "macos",
-        "downloadUrl": "https://example.com/jdk/8/jdk-8-macos-x64.dmg"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/8/macos/jdk-8u351-macos-x64.dmg"
       }
     ],
     "vendor": "AdoptOpenJDK",
@@ -23,15 +23,15 @@
     "downloads": [
       {
         "os": "windows",
-        "downloadUrl": "https://example.com/jdk/11/jdk-11-windows-x64.zip"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/windows/jdk-11.0.17-windows-x64.zip"
       },
       {
         "os": "linux",
-        "downloadUrl": "https://example.com/jdk/11/jdk-11-linux-x64.tar.gz"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/linux/jdk-11.0.17-linux-x64.tar.gz"
       },
       {
         "os": "macos",
-        "downloadUrl": "https://example.com/jdk/11/jdk-11-macos-x64.dmg"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/macos/jdk-11.0.17-macos-x64.dmg"
       }
     ],
     "vendor": "AdoptOpenJDK",
@@ -42,15 +42,15 @@
     "downloads": [
       {
         "os": "windows",
-        "downloadUrl": "https://example.com/jdk/17/jdk-17-windows-x64.zip"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/windows/jdk-17.0.5-windows-x64.zip"
       },
       {
         "os": "linux",
-        "downloadUrl": "https://example.com/jdk/17/jdk-17-linux-x64.tar.gz"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/linux/jdk-17.0.5-linux-x64.tar.gz"
       },
       {
         "os": "macos",
-        "downloadUrl": "https://example.com/jdk/17/jdk-17-macos-x64.dmg"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/macos/jdk-17.0.5-macos-x64.dmg"
       }
     ],
     "vendor": "Eclipse Temurin",
@@ -61,15 +61,15 @@
     "downloads": [
       {
         "os": "windows",
-        "downloadUrl": "https://example.com/jdk/21/jdk-21-windows-x64.zip"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/windows/jdk-21.0.1-windows-x64.zip"
       },
       {
         "os": "linux",
-        "downloadUrl": "https://example.com/jdk/21/jdk-21-linux-x64.tar.gz"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/linux/jdk-21.0.1-linux-x64.tar.gz"
       },
       {
         "os": "macos",
-        "downloadUrl": "https://example.com/jdk/21/jdk-21-macos-x64.dmg"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/macos/jdk-21.0.1-macos-x64.dmg"
       }
     ],
     "vendor": "Eclipse Temurin",

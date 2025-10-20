@@ -127,6 +127,95 @@ curl http://localhost:3000/api/v1/jdk | jq '.'
 
 ---
 
+## 📦 アセット配布 (ファイルダウンロード)
+
+このAPIサーバーは、`resources/` ディレクトリに格納された物理ファイル（JDKのzipアーカイブやMinecraftサーバーのjarファイルなど）を直接ダウンロードさせる機能も提供します。
+
+### APIエンドポイント
+
+#### ファイルのダウンロード
+
+```http
+# JDKファイルのダウンロード
+GET /api/assets/jdk/{version}/{os}/{filename}
+
+# サーバーソフトウェアのダウンロード
+GET /api/assets/servers/{type}/{version}/{filename}
+```
+
+**レスポンス:**
+リクエストされたファイルがストリーミング形式で返却されます。ブラウザはダウンロードを開始します。
+
+**cURLでのダウンロード例:**
+```bash
+# JDKをダウンロード
+curl -O http://localhost:3000/api/assets/jdk/17/windows/jdk-17-windows-x64.zip
+
+# サーバーjarをダウンロード
+curl -O http://localhost:3000/api/assets/servers/vanilla/1.20.1/server.jar
+```
+
+#### 利用可能なファイル一覧の取得
+
+```http
+# JDKファイルの一覧を取得
+GET /api/assets/list/jdk
+
+# サーバーファイルの一覧を取得
+GET /api/assets/list/servers
+```
+
+**レスポンス例:**
+```json
+{
+  "success": true,
+  "data": [
+    { "path": "17/windows/jdk-17-windows-x64.zip", "size": 158342985, "name": "jdk-17-windows-x64.zip" }
+  ],
+  "count": 1,
+  "timestamp": "2025-10-20T10:00:00.000Z"
+}
+```
+
+### 特徴
+- **ストリーミング配信**: 大容量ファイルでもサーバーのメモリを圧迫せずに効率的に配信します。
+- **セキュリティ**: パストラバーサル攻撃を防ぐため、`resources` ディレクトリ外へのアクセスはブロックされます。
+
+アセットのディレクトリ構造やライセンスに関する詳細は、以下のドキュメントを参照してください。
+- **Resources Directory Readme**
+
+---
+
+## 📦 データ管理 (アセット配布)
+
+このAPIサーバーは、`backend/data/` ディレクトリにあるJSONファイルから直接データを読み込みます。これにより、サーバーを再起動することなく、リアルタイムでAPIが提供する情報を更新できます。
+
+- **`servers.json`**: Minecraftサーバーソフトウェアの情報を管理します。
+- **`jdk.json`**: JDKのバージョンとダウンロード情報を管理します。
+
+### リアルタイム更新
+
+JSONファイルを編集して保存するだけで、次回のAPIリクエストから変更内容が自動的に反映されます。サーバーの再起動は一切不要です。
+
+### 編集方法
+
+JSONファイルを直接テキストエディタで編集してください。
+
+```bash
+# Minecraftサーバー情報を編集
+vim backend/data/servers.json
+
+# JDK情報を編集
+vim backend/data/jdk.json
+```
+
+編集後、ファイルを保存すれば更新は完了です。
+
+より詳細なスキーマ情報や編集方法については、以下のドキュメントを参照してください。
+- **Data Directory Readme**
+
+---
+
 ## 📁 ディレクトリ構造
 
 ```
