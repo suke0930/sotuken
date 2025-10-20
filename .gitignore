@@ -144,5 +144,5 @@ vite.config.ts.timestamp-*
 devsecret/
 
 #ダミーファイル例外
-frontend/middleware/driver/backend/resources/jdk/**
-frontend/middleware/driver/backend/resources/servers/**
+frontend/middleware/driver/Stabtest/backend/resources/jdk/**
+frontend/middleware/driver/Stabtest/backend/resources/servers/**
