@@ -142,3 +142,7 @@ vite.config.ts.timestamp-*
 .history/
 
 devsecret/
+
+#ダミーファイル例外
+frontend\middleware\driver\resources\jdk
+frontend\middleware\driver\resources\jdk
