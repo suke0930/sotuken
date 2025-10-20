@@ -1,3 +1,22 @@
+/**
+ * @file makedummy.ts
+ * @description
+ * このスクリプトは、開発やテスト用にダミーのリソースファイル群を生成します。
+ * `DirectoryStructure` に定義された構造に基づいて、指定されたサイズの
+ * JDKアーカイブやMinecraftサーバーのjarファイルを模したファイルを作成します。
+ *
+ * @usage
+ * 1. 通常の実行 (定義済みのサイズでファイルを作成):
+ *    ts-node makedummy.ts
+ *
+ * 2. ファイルサイズを一括で指定して実行:
+ *    ts-node makedummy.ts --size <size>
+ *
+ * @example
+ * // すべてのファイルを10KBで作成
+ * ts-node makedummy.ts --size 10KB
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -64,14 +83,13 @@ function createDummyFile(filePath: string, sizeInBytes: number): void {
     const fd = fs.openSync(filePath, 'w');
 
     let remainingBytes = sizeInBytes;
-    const buffer = Buffer.alloc(Math.min(chunkSize, remainingBytes), 0);
 
     while (remainingBytes > 0) {
         const writeSize = Math.min(chunkSize, remainingBytes);
+        const buffer = Buffer.alloc(writeSize, 0);
         fs.writeSync(fd, buffer, 0, writeSize);
         remainingBytes -= writeSize;
     }
-
     fs.closeSync(fd);
     console.log(`Created: ${filePath} (${formatBytes(sizeInBytes)})`);
 }
@@ -89,7 +107,7 @@ function formatBytes(bytes: number): string {
 /**
  * ディレクトリ構造に基づいてダミーファイルを作成
  */
-function createResourceFiles(baseDir: string = '.') {
+function createResourceFiles(baseDir: string = '.', overrideSize?: string) {
     const structure: DirectoryStructure = {
         jdk: {
             '8': {
@@ -187,7 +205,8 @@ function createResourceFiles(baseDir: string = '.') {
         for (const [platform, files] of Object.entries(platforms)) {
             for (const file of files) {
                 const fullPath = path.join(baseDir, 'jdk', version, platform, file.path);
-                const sizeInBytes = parseSizeToBytes(file.size);
+                const sizeStr = overrideSize ?? file.size;
+                const sizeInBytes = parseSizeToBytes(sizeStr);
                 createDummyFile(fullPath, sizeInBytes);
             }
         }
@@ -198,7 +217,8 @@ function createResourceFiles(baseDir: string = '.') {
         for (const [version, files] of Object.entries(versions)) {
             for (const file of files) {
                 const fullPath = path.join(baseDir, 'servers', serverType, version, file.path);
-                const sizeInBytes = parseSizeToBytes(file.size);
+                const sizeStr = overrideSize ?? file.size;
+                const sizeInBytes = parseSizeToBytes(sizeStr);
                 createDummyFile(fullPath, sizeInBytes);
             }
         }
@@ -209,7 +229,16 @@ function createResourceFiles(baseDir: string = '.') {
 
 // 実行
 try {
-    createResourceFiles();
+    const args = process.argv.slice(2);
+    const sizeIndex = args.indexOf('--size');
+    let overrideSize: string | undefined;
+
+    if (sizeIndex > -1 && args[sizeIndex + 1]) {
+        overrideSize = args[sizeIndex + 1];
+        console.log(`\nOverriding all file sizes to: ${overrideSize}\n`);
+    }
+
+    createResourceFiles('.', overrideSize);
 } catch (error) {
     console.error('❌ Error creating files:', error);
     process.exit(1);
