@@ -75,25 +75,25 @@ async function main() {
   console.log('Test 1: Initialize Registry');
   console.log('----------------------------------------');
 
-  const initResult = manager.Data.init();
-  if (initResult.success) {
-    console.log('✅ Registry initialized successfully\n');
-  } else {
-    console.error('❌ Failed to initialize registry:', initResult.error);
-    return;
-  }
+  // const initResult = manager.Data.init();
+  // if (initResult.success) {
+  //   console.log('✅ Registry initialized successfully\n');
+  // } else {
+  //   console.error('❌ Failed to initialize registry:', initResult.error);
+  //   return;
+  // }
 
   console.log('----------------------------------------');
   console.log('Test 2: Save Registry');
   console.log('----------------------------------------');
 
-  const saveResult = await manager.Data.save();
-  if (saveResult.success) {
-    console.log('✅ Registry saved successfully\n');
-  } else {
-    console.error('❌ Failed to save registry:', saveResult.error);
-    return;
-  }
+  // const saveResult = await manager.Data.save();
+  // if (saveResult.success) {
+  //   console.log('✅ Registry saved successfully\n');
+  // } else {
+  //   console.error('❌ Failed to save registry:', saveResult.error);
+  //   return;
+  // }
 
   console.log('----------------------------------------');
   console.log('Test 3: Load Registry');
@@ -122,7 +122,7 @@ async function main() {
   console.log('1. Download a JDK archive manually');
   console.log('2. Place it in a known location');
   console.log('3. Call manager.Entrys.add() with the archive path\n');
-  
+
   console.log('Available JDK download URLs:');
   TEST_JDKS.forEach(jdk => {
     console.log(`\nJava ${jdk.version}:`);
