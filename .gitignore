@@ -144,9 +144,10 @@ vite.config.ts.timestamp-*
 devsecret/
 
 #ダミーファイル例外
-frontend/middleware/driver/Stabtest/backend/resources/jdk/**
-frontend/middleware/driver/Stabtest/backend/resources/servers/**
+frontend/middleware/driver/Stabtest/Asset/resources/jdk/**
+frontend/middleware/driver/Stabtest/Asset/resources/servers/**
 
 # Backend download directory
 frontend/middleware/driver/Stabtest/Backend/download/**
 !frontend/middleware/driver/Stabtest/Backend/download/.gitkeep
+
