@@ -35,7 +35,7 @@ async function downloadJdk(url: string, destPath: string): Promise<void> {
   console.log(`📁 Destination: ${destPath}`);
 
   const writer = require('fs').createWriteStream(destPath);
-  
+
   const response = await axios({
     method: 'get',
     url: url,
@@ -68,13 +68,13 @@ async function main() {
   // コマンドライン引数から設定を取得
   const args = process.argv.slice(2);
   const jdkVersion = args[0] ? parseInt(args[0]) : 17;
-  
+
   console.log(`Target JDK Version: ${jdkVersion}`);
-  
+
   // テスト用のディレクトリ設定
   const baseRuntimePath = path.join(process.cwd(), 'test-runtime');
   const downloadPath = path.join(process.cwd(), 'test-downloads');
-  
+
   console.log(`Runtime Path: ${baseRuntimePath}`);
   console.log(`Download Path: ${downloadPath}\n`);
 
