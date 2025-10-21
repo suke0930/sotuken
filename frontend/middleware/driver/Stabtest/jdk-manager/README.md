@@ -290,7 +290,12 @@ GPL-2.0
 
 ## 参考資料
 
-- [仕様書.md](./仕様書.md) - 詳細な設計仕様書
+### ドキュメント
+
+- [仕様書.md](./仕様書.md) - 詳細な設計仕様書（テキスト形式）
+- [docs/architecture.md](./docs/architecture.md) - アーキテクチャドキュメント（Mermaid図）
+- [docs/api-reference.md](./docs/api-reference.md) - APIリファレンス（Mermaid図）
+- [docs/usage-examples.md](./docs/usage-examples.md) - 使用例とパターン集（Mermaid図）
 - [JDKダウンロードリンク](#jdkダウンロードリンク)
 
 ### JDKダウンロードリンク
