@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -73,7 +74,8 @@
       font-weight: 600;
     }
 
-    select, input {
+    select,
+    input {
       width: 100%;
       padding: 12px;
       border: 2px solid #ddd;
@@ -82,7 +84,8 @@
       transition: border-color 0.3s;
     }
 
-    select:focus, input:focus {
+    select:focus,
+    input:focus {
       outline: none;
       border-color: #667eea;
     }
@@ -107,6 +110,32 @@
 
     button:active {
       transform: translateY(0);
+    }
+
+    .cancel-btn {
+      padding: 6px 12px;
+      background: #ff7675;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .cancel-btn:hover {
+      background: #d63031;
+    }
+
+    .download-error-message {
+      display: none;
+      color: #d63031;
+      margin-top: 10px;
+      background: #ff767520;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
     }
 
     button:disabled {
@@ -256,6 +285,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -284,7 +314,7 @@
           </select>
         </div>
         <button id="fetchListBtn">Fetch List</button>
-        
+
         <div id="listPreview" class="data-preview" style="margin-top: 15px; display: none;">
           <!-- JSON preview will be displayed here -->
         </div>
@@ -293,7 +323,7 @@
       <!-- Download Section -->
       <div class="section">
         <h2>⬇️ Download File</h2>
-        
+
         <div id="versionSelector" style="display: none;">
           <h3 style="margin-bottom: 10px;">Select Version:</h3>
           <div id="versionButtons" class="version-selector">
@@ -301,7 +331,8 @@
           </div>
         </div>
 
-        <div id="selectedFileInfo" style="display: none; margin-top: 15px; padding: 15px; background: white; border: 2px solid #667eea; border-radius: 6px;">
+        <div id="selectedFileInfo"
+          style="display: none; margin-top: 15px; padding: 15px; background: white; border: 2px solid #667eea; border-radius: 6px;">
           <h4>Selected File:</h4>
           <p id="selectedFileName" style="margin-top: 5px; font-weight: 600;"></p>
           <p id="selectedFileUrl" style="margin-top: 5px; color: #666; font-size: 0.9rem;"></p>
@@ -324,4 +355,5 @@
 
   <script src="app.js"></script>
 </body>
+
 </html>

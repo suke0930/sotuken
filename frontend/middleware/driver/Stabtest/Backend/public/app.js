@@ -52,7 +52,7 @@ function connectWebSocket() {
   ws.onclose = () => {
     console.log('❌ WebSocket disconnected');
     updateConnectionStatus(false);
-    
+
     // 再接続を試みる
     setTimeout(connectWebSocket, 3000);
   };
@@ -99,7 +99,7 @@ function updateConnectionStatus(connected) {
 // ========================================
 async function fetchList() {
   const type = elements.listType.value;
-  
+
   if (!type) {
     alert('Please select a list type');
     return;
@@ -143,7 +143,7 @@ function displayVersionSelector(data, type) {
       const serverSection = document.createElement('div');
       serverSection.style.gridColumn = '1 / -1';
       serverSection.style.marginTop = '15px';
-      
+
       const serverTitle = document.createElement('h4');
       serverTitle.textContent = server.name;
       serverTitle.style.marginBottom = '10px';
@@ -176,7 +176,7 @@ function displayVersionSelector(data, type) {
       const jdkSection = document.createElement('div');
       jdkSection.style.gridColumn = '1 / -1';
       jdkSection.style.marginTop = '15px';
-      
+
       const jdkTitle = document.createElement('h4');
       jdkTitle.textContent = `JDK ${jdk.version} ${jdk.vendor ? `(${jdk.vendor})` : ''}`;
       jdkTitle.style.marginBottom = '10px';
@@ -226,13 +226,13 @@ function selectFile(button, fileInfo) {
 
   // Display selected file info
   elements.selectedFileInfo.style.display = 'block';
-  
+
   if (fileInfo.type === 'server') {
     elements.selectedFileName.textContent = `${fileInfo.name} ${fileInfo.version} (JDK ${fileInfo.jdk})`;
   } else if (fileInfo.type === 'jdk') {
     elements.selectedFileName.textContent = `JDK ${fileInfo.version} - ${fileInfo.os.toUpperCase()}`;
   }
-  
+
   elements.selectedFileUrl.textContent = fileInfo.url;
 }
 
@@ -304,6 +304,7 @@ function addDownloadItem(taskId, status) {
       <span>Downloaded: <strong id="downloaded-${taskId}">0 MB</strong> / <strong id="total-${taskId}">0 MB</strong></span>
       <span>Speed: <strong id="speed-${taskId}">0 KB/s</strong></span>
       <span>Remaining: <strong id="remaining-${taskId}">--</strong></span>
+      <button class="cancel-btn" data-task-id="${taskId}" style="display: none;">Cancel</button>
     </div>
   `;
 
@@ -330,6 +331,12 @@ function updateDownloadProgress(progress) {
   statusBadge.className = `download-status status-${progress.status}`;
   statusBadge.textContent = progress.status.toUpperCase();
 
+  // ダウンロード中のみキャンセルボタンを表示
+  const cancelBtn = item.querySelector('.cancel-btn');
+  if (cancelBtn) {
+    cancelBtn.style.display = progress.status === 'downloading' ? 'inline-block' : 'none';
+  }
+
   // Update info
   const downloadedMB = (progress.downloadedBytes / (1024 * 1024)).toFixed(2);
   const totalMB = (progress.totalBytes / (1024 * 1024)).toFixed(2);
@@ -340,30 +347,77 @@ function updateDownloadProgress(progress) {
   document.getElementById(`downloaded-${progress.taskId}`).textContent = `${downloadedMB} MB`;
   document.getElementById(`total-${progress.taskId}`).textContent = `${totalMB} MB`;
   document.getElementById(`speed-${progress.taskId}`).textContent = `${speedKB} KB/s`;
-  document.getElementById(`remaining-${progress.taskId}`).textContent = 
+  document.getElementById(`remaining-${progress.taskId}`).textContent =
     progress.remainingTime > 0 ? `${remainingMin}m ${remainingSec}s` : '--';
 }
 
 function handleDownloadComplete(data) {
   console.log('✅ Download completed:', data);
-  
+
   // Update status badge
   const item = activeDownloads.get(data.taskId);
   if (item) {
     const statusBadge = item.querySelector('.download-status');
     statusBadge.className = 'download-status status-completed';
     statusBadge.textContent = 'COMPLETED';
+
+    // キャンセルボタンを非表示にする
+    const cancelBtn = item.querySelector('.cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.style.display = 'none';
+    }
   }
 }
 
 function handleDownloadError(data) {
   console.error('❌ Download error:', data);
-  
+
   const item = activeDownloads.get(data.taskId);
   if (item) {
     const statusBadge = item.querySelector('.download-status');
     statusBadge.className = 'download-status status-error';
     statusBadge.textContent = 'ERROR';
+
+    // エラーメッセージを表示
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'download-error-message';
+    errorContainer.textContent = data.error || 'An unknown error occurred.';
+    errorContainer.style.display = 'block';
+    item.appendChild(errorContainer);
+
+    // キャンセルボタンを非表示にする
+    const cancelBtn = item.querySelector('.cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.style.display = 'none';
+    }
+  }
+}
+
+async function cancelDownload(taskId) {
+  console.log(`Cancelling download: ${taskId}`);
+  try {
+    const response = await fetch(`${API_BASE}/download/${taskId}`, {
+      method: 'DELETE',
+    });
+    const data = await response.json();
+    if (data.success) {
+      console.log(`Download ${taskId} cancelled successfully.`);
+      // UI update will be handled by WebSocket message (download_error or a new 'cancelled' type)
+      // For now, let's manually update the UI as a fallback.
+      const item = activeDownloads.get(taskId);
+      if (item) {
+        const statusBadge = item.querySelector('.download-status');
+        statusBadge.className = 'download-status status-error'; // Or a new 'status-cancelled'
+        statusBadge.textContent = 'CANCELLED';
+        const cancelBtn = item.querySelector('.cancel-btn');
+        if (cancelBtn) cancelBtn.style.display = 'none';
+      }
+    } else {
+      alert(`Failed to cancel download: ${data.error.message}`);
+    }
+  } catch (error) {
+    console.error('Error cancelling download:', error);
+    alert('An error occurred while trying to cancel the download.');
   }
 }
 
@@ -372,6 +426,14 @@ function handleDownloadError(data) {
 // ========================================
 elements.fetchListBtn.addEventListener('click', fetchList);
 elements.downloadBtn.addEventListener('click', startDownload);
+elements.downloadsList.addEventListener('click', (event) => {
+  if (event.target.classList.contains('cancel-btn')) {
+    const taskId = event.target.dataset.taskId;
+    if (taskId) {
+      cancelDownload(taskId);
+    }
+  }
+});
 
 // ========================================
 // Initialize
