@@ -1,3 +1,19 @@
+/* Minecraftサーバー管理機能のスクリプト（ダウンロードマネージャー統合版）
+ */
+
+// ========================================
+// Download Manager Configuration
+// ========================================
+const DOWNLOAD_API_BASE = 'http://localhost:4000/api';
+const DOWNLOAD_WS_URL = 'ws://localhost:4000';
+
+// ========================================
+// Download Manager State
+// ========================================
+let downloadWs = null;
+let currentListData = null;
+let selectedFile = null;
+let activeDownloads = new Map();
 /**
  * Minecraftサーバー管理機能のスクリプト
  */
@@ -50,6 +66,411 @@ function escapeHtml(unsafe) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+// ========================================
+// Download Manager - WebSocket Connection
+// ========================================
+function connectDownloadWebSocket() {
+    downloadWs = new WebSocket(DOWNLOAD_WS_URL);
+
+    downloadWs.onopen = () => {
+        console.log('✅ Download WebSocket connected');
+        updateDownloadConnectionStatus(true);
+    };
+
+    downloadWs.onmessage = (event) => {
+        try {
+            const message = JSON.parse(event.data);
+            handleDownloadWebSocketMessage(message);
+        } catch (error) {
+            console.error('Failed to parse WebSocket message:', error);
+        }
+    };
+
+    downloadWs.onclose = () => {
+        console.log('❌ Download WebSocket disconnected');
+        updateDownloadConnectionStatus(false);
+        setTimeout(connectDownloadWebSocket, 3000);
+    };
+
+    downloadWs.onerror = (error) => {
+        console.error('Download WebSocket error:', error);
+    };
+}
+
+function handleDownloadWebSocketMessage(message) {
+    console.log('📨 WebSocket message:', message);
+
+    switch (message.type) {
+        case 'download_progress':
+            updateDownloadProgress(message.data);
+            break;
+        case 'download_complete':
+            handleDownloadComplete(message.data);
+            break;
+        case 'download_error':
+            handleDownloadError(message.data);
+            break;
+        case 'ping':
+        case 'pong':
+            break;
+        default:
+            console.log('Unknown message type:', message.type);
+    }
+}
+
+function updateDownloadConnectionStatus(connected) {
+    const statusEl = document.getElementById('downloadConnectionStatus');
+    if (!statusEl) return;
+
+    if (connected) {
+        statusEl.className = 'connection-badge connected';
+        statusEl.innerHTML = '<i class="fas fa-check-circle"></i> 接続済み';
+    } else {
+        statusEl.className = 'connection-badge disconnected';
+        statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> 未接続';
+    }
+}
+
+// ========================================
+// Download Manager - List Fetching
+// ========================================
+async function fetchDownloadList() {
+    const typeSelect = document.getElementById('downloadListType');
+    const type = typeSelect.value;
+
+    if (!type) {
+        showError('リストタイプを選択してください');
+        return;
+    }
+
+    const fetchBtn = document.getElementById('fetchDownloadListBtn');
+    fetchBtn.disabled = true;
+    fetchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 読み込み中...';
+
+    try {
+        const response = await fetch(`${DOWNLOAD_API_BASE}/list/${type}`);
+        const data = await response.json();
+
+        if (data.success) {
+            currentListData = data.data;
+            displayDownloadListPreview(data.data);
+            displayDownloadVersionSelector(data.data, type);
+            showSuccess('リストを取得しました');
+        } else {
+            showError(`エラー: ${data.error.message}`);
+        }
+    } catch (error) {
+        console.error('Failed to fetch list:', error);
+        showError('サーバーからのリスト取得に失敗しました');
+    } finally {
+        fetchBtn.disabled = false;
+        fetchBtn.innerHTML = '<i class="fas fa-download"></i> リストを取得';
+    }
+}
+
+function displayDownloadListPreview(data) {
+    const previewEl = document.getElementById('downloadListPreview');
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+}
+
+function displayDownloadVersionSelector(data, type) {
+    const selectorEl = document.getElementById('downloadVersionSelector');
+    const buttonsEl = document.getElementById('downloadVersionButtons');
+    
+    selectorEl.style.display = 'block';
+    buttonsEl.innerHTML = '';
+
+    if (type === 'servers') {
+        data.forEach(server => {
+            const serverSection = document.createElement('div');
+            serverSection.style.marginBottom = '20px';
+
+            const serverTitle = document.createElement('h4');
+            serverTitle.textContent = server.name;
+            serverTitle.style.marginBottom = '10px';
+            serverTitle.style.color = '#667eea';
+            serverSection.appendChild(serverTitle);
+
+            const versionGrid = document.createElement('div');
+            versionGrid.className = 'download-version-grid';
+
+            server.versions.forEach(version => {
+                const btn = createDownloadVersionButton(
+                    `${version.version} (JDK ${version.jdk})`,
+                    {
+                        name: server.name,
+                        version: version.version,
+                        jdk: version.jdk,
+                        url: version.downloadUrl,
+                        type: 'server'
+                    }
+                );
+                versionGrid.appendChild(btn);
+            });
+
+            serverSection.appendChild(versionGrid);
+            buttonsEl.appendChild(serverSection);
+        });
+    } else if (type === 'jdk') {
+        data.forEach(jdk => {
+            const jdkSection = document.createElement('div');
+            jdkSection.style.marginBottom = '20px';
+
+            const jdkTitle = document.createElement('h4');
+            jdkTitle.textContent = `JDK ${jdk.version} ${jdk.vendor ? `(${jdk.vendor})` : ''}`;
+            jdkTitle.style.marginBottom = '10px';
+            jdkTitle.style.color = '#667eea';
+            jdkSection.appendChild(jdkTitle);
+
+            const osGrid = document.createElement('div');
+            osGrid.className = 'download-version-grid';
+
+            jdk.downloads.forEach(download => {
+                const btn = createDownloadVersionButton(
+                    download.os.toUpperCase(),
+                    {
+                        version: jdk.version,
+                        os: download.os,
+                        url: download.downloadUrl,
+                        vendor: jdk.vendor,
+                        type: 'jdk'
+                    }
+                );
+                osGrid.appendChild(btn);
+            });
+
+            jdkSection.appendChild(osGrid);
+            buttonsEl.appendChild(jdkSection);
+        });
+    }
+}
+
+function createDownloadVersionButton(label, fileInfo) {
+    const btn = document.createElement('button');
+    btn.className = 'download-version-btn';
+    btn.textContent = label;
+    btn.onclick = () => selectDownloadFile(btn, fileInfo);
+    return btn;
+}
+
+function selectDownloadFile(button, fileInfo) {
+    document.querySelectorAll('.download-version-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+
+    button.classList.add('selected');
+    selectedFile = fileInfo;
+
+    const fileInfoEl = document.getElementById('downloadSelectedFileInfo');
+    const fileNameEl = document.getElementById('downloadSelectedFileName');
+    const fileUrlEl = document.getElementById('downloadSelectedFileUrl');
+
+    fileInfoEl.style.display = 'block';
+
+    if (fileInfo.type === 'server') {
+        fileNameEl.textContent = `${fileInfo.name} ${fileInfo.version} (JDK ${fileInfo.jdk})`;
+    } else if (fileInfo.type === 'jdk') {
+        fileNameEl.textContent = `JDK ${fileInfo.version} - ${fileInfo.os.toUpperCase()}`;
+    }
+
+    fileUrlEl.textContent = fileInfo.url;
+}
+
+// ========================================
+// Download Manager - Download Management
+// ========================================
+async function startFileDownload() {
+    if (!selectedFile) {
+        showError('ダウンロードするファイルを選択してください');
+        return;
+    }
+
+    const downloadBtn = document.getElementById('startDownloadBtn');
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 開始中...';
+
+    try {
+        const response = await fetch(`${DOWNLOAD_API_BASE}/download`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: selectedFile.url }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            console.log('Download started:', data.data);
+            addDownloadItem(data.data.taskId, data.data.status);
+            showSuccess('ダウンロードを開始しました');
+        } else {
+            showError(`エラー: ${data.error.message}`);
+        }
+    } catch (error) {
+        console.error('Failed to start download:', error);
+        showError('ダウンロードの開始に失敗しました');
+    } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '<i class="fas fa-download"></i> ダウンロード開始';
+    }
+}
+
+function addDownloadItem(taskId, status) {
+    if (activeDownloads.has(taskId)) {
+        return;
+    }
+
+    const downloadsListEl = document.getElementById('activeDownloadsList');
+    const emptyState = downloadsListEl.querySelector('.empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
+
+    const item = document.createElement('div');
+    item.className = 'download-card';
+    item.id = `download-${taskId}`;
+    item.innerHTML = `
+        <div class="download-card-header">
+            <div class="download-filename">
+                <i class="fas fa-file-download"></i>
+                ${escapeHtml(status.filename)}
+            </div>
+            <div class="download-status-badge status-${status.status}">
+                ${status.status.toUpperCase()}
+            </div>
+        </div>
+        <div class="download-progress-container">
+            <div class="download-progress-bar" style="width: ${status.percentage}%">
+                ${status.percentage.toFixed(1)}%
+            </div>
+        </div>
+        <div class="download-info-grid">
+            <div class="download-info-item">
+                <span class="download-info-label">ダウンロード済み</span>
+                <span class="download-info-value" id="downloaded-${taskId}">0 MB / 0 MB</span>
+            </div>
+            <div class="download-info-item">
+                <span class="download-info-label">速度</span>
+                <span class="download-info-value" id="speed-${taskId}">0 KB/s</span>
+            </div>
+            <div class="download-info-item">
+                <span class="download-info-label">残り時間</span>
+                <span class="download-info-value" id="remaining-${taskId}">--</span>
+            </div>
+            <div class="download-info-item">
+                <button class="btn btn-danger btn-sm cancel-download-btn" data-task-id="${taskId}" style="display: none;">
+                    <i class="fas fa-times"></i> キャンセル
+                </button>
+            </div>
+        </div>
+    `;
+
+    downloadsListEl.prepend(item);
+    activeDownloads.set(taskId, item);
+
+    updateDownloadProgress(status);
+}
+
+function updateDownloadProgress(progress) {
+    const item = activeDownloads.get(progress.taskId);
+    if (!item) {
+        addDownloadItem(progress.taskId, progress);
+        return;
+    }
+
+    const progressBar = item.querySelector('.download-progress-bar');
+    progressBar.style.width = `${progress.percentage}%`;
+    progressBar.textContent = `${progress.percentage.toFixed(1)}%`;
+
+    const statusBadge = item.querySelector('.download-status-badge');
+    statusBadge.className = `download-status-badge status-${progress.status}`;
+    statusBadge.textContent = progress.status.toUpperCase();
+
+    const cancelBtn = item.querySelector('.cancel-download-btn');
+    if (cancelBtn) {
+        cancelBtn.style.display = progress.status === 'downloading' ? 'inline-block' : 'none';
+    }
+
+    const downloadedMB = (progress.downloadedBytes / (1024 * 1024)).toFixed(2);
+    const totalMB = (progress.totalBytes / (1024 * 1024)).toFixed(2);
+    const speedKB = (progress.speed / 1024).toFixed(2);
+    const remainingMin = Math.floor(progress.remainingTime / 60);
+    const remainingSec = Math.floor(progress.remainingTime % 60);
+
+    const downloadedEl = document.getElementById(`downloaded-${progress.taskId}`);
+    const speedEl = document.getElementById(`speed-${progress.taskId}`);
+    const remainingEl = document.getElementById(`remaining-${progress.taskId}`);
+
+    if (downloadedEl) downloadedEl.textContent = `${downloadedMB} MB / ${totalMB} MB`;
+    if (speedEl) speedEl.textContent = `${speedKB} KB/s`;
+    if (remainingEl) remainingEl.textContent = progress.remainingTime > 0 ? `${remainingMin}分 ${remainingSec}秒` : '--';
+}
+
+function handleDownloadComplete(data) {
+    console.log('✅ Download completed:', data);
+
+    const item = activeDownloads.get(data.taskId);
+    if (item) {
+        const statusBadge = item.querySelector('.download-status-badge');
+        statusBadge.className = 'download-status-badge status-completed';
+        statusBadge.textContent = '完了';
+
+        const cancelBtn = item.querySelector('.cancel-download-btn');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+    }
+
+    showSuccess('ダウンロードが完了しました');
+}
+
+function handleDownloadError(data) {
+    console.error('❌ Download error:', data);
+
+    const item = activeDownloads.get(data.taskId);
+    if (item) {
+        const statusBadge = item.querySelector('.download-status-badge');
+        statusBadge.className = 'download-status-badge status-error';
+        statusBadge.textContent = 'エラー';
+
+        const cancelBtn = item.querySelector('.cancel-download-btn');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+    }
+
+    showError(`ダウンロードエラー: ${data.error || '不明なエラー'}`);
+}
+
+async function cancelFileDownload(taskId) {
+    console.log(`Cancelling download: ${taskId}`);
+    try {
+        const response = await fetch(`${DOWNLOAD_API_BASE}/download/${taskId}`, {
+            method: 'DELETE',
+        });
+        const data = await response.json();
+        if (data.success) {
+            console.log(`Download ${taskId} cancelled successfully.`);
+            const item = activeDownloads.get(taskId);
+            if (item) {
+                const statusBadge = item.querySelector('.download-status-badge');
+                statusBadge.className = 'download-status-badge status-error';
+                statusBadge.textContent = 'キャンセル済み';
+                const cancelBtn = item.querySelector('.cancel-download-btn');
+                if (cancelBtn) cancelBtn.style.display = 'none';
+            }
+            showSuccess('ダウンロードをキャンセルしました');
+        } else {
+            showError(`キャンセル失敗: ${data.error.message}`);
+        }
+    } catch (error) {
+        console.error('Error cancelling download:', error);
+        showError('ダウンロードのキャンセル中にエラーが発生しました');
+    }
+}
+
+
 
 // --- API呼び出し ---
 
@@ -444,6 +865,7 @@ function handleFormSubmit(event) {
 function initializeApp() {
     console.log('Minecraft App Initialized');
     loadServers();
+    connectDownloadWebSocket();
 
     // イベントリスナーを一度だけ設定
     if (!window.appInitialized) {
@@ -465,6 +887,35 @@ function initializeApp() {
         // フォーム送信
         serverForm.addEventListener('submit', handleFormSubmit);
 
+        // ↓↓↓ ADD ALL OF THIS ↓↓↓
+        // Download Manager Event Listeners
+        const fetchListBtn = document.getElementById('fetchDownloadListBtn');
+        if (fetchListBtn) {
+            fetchListBtn.addEventListener('click', fetchDownloadList);
+        }
+
+        const startDownloadBtn = document.getElementById('startDownloadBtn');
+        if (startDownloadBtn) {
+            startDownloadBtn.addEventListener('click', startFileDownload);
+        }
+
+        const activeDownloadsList = document.getElementById('activeDownloadsList');
+        if (activeDownloadsList) {
+            activeDownloadsList.addEventListener('click', (event) => {
+                if (event.target.classList.contains('cancel-download-btn') || 
+                    event.target.closest('.cancel-download-btn')) {
+                    const btn = event.target.classList.contains('cancel-download-btn') 
+                        ? event.target 
+                        : event.target.closest('.cancel-download-btn');
+                    const taskId = btn.dataset.taskId;
+                    if (taskId) {
+                        cancelFileDownload(taskId);
+                    }
+                }
+            });
+        }
+        // ↑↑↑ END OF NEW CODE ↑↑↑
+
         window.appInitialized = true;
     }
 }
@@ -474,6 +925,9 @@ window.prepareEditForm = prepareEditForm;
 window.deleteServer = deleteServer;
 window.switchTab = switchTab;
 window.loadServers = loadServers;
+window.fetchDownloadList = fetchDownloadList;        // ← ADD
+window.startFileDownload = startFileDownload;        // ← ADD
+window.cancelFileDownload = cancelFileDownload;      // ← ADD
 
 // デバッグ用（開発環境のみ）
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
@@ -482,6 +936,17 @@ if (window.location.hostname === 'localhost' || window.location.hostname === '12
         showError,
         showSuccess,
         renderServersList,
-        resetForm
+        resetForm,
+        downloadWs,           // ← ADD
+        activeDownloads,      // ← ADD
+        currentListData,      // ← ADD
+        selectedFile          // ← ADD
     };
+}
+
+// 初期化実行
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
 }
