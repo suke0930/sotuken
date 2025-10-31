@@ -1,0 +1,2064 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Server Manager - Vue.js SPA</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        #app {
+            min-height: 100vh;
+        }
+
+        /* Loading Overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: white;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Auth Container */
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .auth-header h2 {
+            color: #333;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .auth-header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .auth-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 32px;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            background: white;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        select:focus {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            min-height: 50px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 14px;
+            min-height: auto;
+        }
+
+        /* Message Styles */
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+
+        .message.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+
+        .message-area {
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+        }
+
+        .message-area.error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .message-area.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+
+        /* Transitions */
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s ease;
+        }
+
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+
+        /* Main Wrapper */
+        .main-wrapper {
+            min-height: 100vh;
+            background: #f8fafc;
+        }
+
+        /* Navbar */
+        .navbar {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 0 20px;
+        }
+
+        .navbar-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 24px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .navbar-brand i {
+            color: #10b981;
+        }
+
+        .navbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .dashboard-header {
+            margin-bottom: 30px;
+        }
+
+        .dashboard-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .dashboard-subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            background: white;
+            border-radius: 16px;
+            padding: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-button.active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Content Sections */
+        .content-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Server Cards */
+        .servers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .server-card {
+            background: white;
+            border: 2px solid #f3f4f6;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .server-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+            border-color: #10b981;
+        }
+
+        .server-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .server-status.running {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .server-status.stopped {
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .server-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .server-details {
+            display: grid;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .server-detail {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .server-detail-label {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .server-detail-value {
+            color: #1f2937;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .server-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Form Layouts */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            color: #d1d5db;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            margin-bottom: 24px;
+        }
+
+        /* Download Manager Styles */
+        .connection-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .connection-badge.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .connection-badge.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .download-list-preview {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+
+        .download-list-preview pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .download-version-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .download-version-btn {
+            padding: 12px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .download-version-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .download-version-btn.selected {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .download-selected-file-card {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+        }
+
+        .download-selected-file-card h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .download-selected-file-card p {
+            margin: 8px 0;
+            color: #666;
+        }
+
+        .download-selected-file-name {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 1.05rem;
+        }
+
+        .download-selected-file-url {
+            font-size: 0.85rem;
+            color: #999;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+        }
+
+        .download-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .download-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .download-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .download-filename {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.05rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .download-status-badge {
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .download-status-badge.status-downloading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .download-status-badge.status-completed {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .download-status-badge.status-error,
+        .download-status-badge.status-cancelled {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .download-progress-container {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .download-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Inline progress (Create tab) */
+        .inline-progress-wrapper {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 2px dashed #e5e7eb;
+        }
+
+        .inline-progress-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .inline-progress-container {
+            width: 100%;
+            height: 18px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .inline-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .download-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .download-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .download-info-label {
+            font-size: 0.85rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .download-info-value {
+            font-size: 0.95rem;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .download-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .download-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .download-control-group {
+            margin-bottom: 15px;
+        }
+
+        .download-control-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .download-control-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .servers-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tab-nav {
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .tab-button {
+                width: 100%;
+            }
+
+            .download-version-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+
+            .download-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    loading: true,
+                    isAuthenticated: false,
+                    authMode: 'login',
+                    username: '',
+                    
+                    signupForm: { id: '', password: '' },
+                    loginForm: { id: '', password: '' },
+                    authMessage: '',
+                    authMessageType: 'error',
+                    
+                    activeTab: 'servers',
+                    tabs: [
+                        { id: 'servers', label: 'サーバー一覧', icon: 'fas fa-server' },
+                        { id: 'create', label: '新規作成', icon: 'fas fa-plus-circle' },
+                        { id: 'settings', label: 'システム設定', icon: 'fas fa-cogs' },
+                        { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' }
+                    ],
+                    
+                    errorMessage: '',
+                    successMessage: '',
+                    
+                    servers: [],
+                    serversLoading: false,
+                    editingServer: null,
+                    serverForm: {
+                        serverName: '',
+                        minecraftVersion: '',
+                        serverSoftware: '',
+                        jdkVersion: ''
+                    },
+                    formSubmitting: false,
+                    
+                    apiResponse: 'APIテストボタンをクリックしてください...',
+                    
+                    wsConnected: false,
+                    ws: null,
+                    downloadListType: '',
+                    downloadListData: null,
+                    fetchingList: false,
+                    selectedFile: null,
+                    startingDownload: false,
+                    activeDownloads: []
+                };
+            },
+
+            async mounted() {
+                await this.checkAuth();
+                this.connectWebSocket();
+            },
+
+            beforeUnmount() {
+                if (this.ws) {
+                    this.ws.close();
+                }
+            },
+
+            methods: {
+                async checkAuth() {
+                    try {
+                        const response = await fetch('/user/auth', {
+                            credentials: 'include'
+                        });
+                        const data = JSON.stringify(await response);
+                        
+                        if (data.ok) {
+                            this.isAuthenticated = true;
+                            this.username = data.userId;
+                            await this.loadServers();
+                        } else if (data.reason === 'no_user_registered') {
+                            this.authMode = 'signup';
+                        } else {
+                            this.authMode = 'login';
+                        }
+                    } catch (error) {
+                        console.error('Auth check failed:', error);
+                        this.authMode = 'login';
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async handleSignup() {
+                    try {
+                        console.log('Attempting signup with:', this.signupForm);
+                        
+                        const response = await fetch('http://127.0.0.1:12800/user/signup', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json','Access-Control-Allow-Origin':'*'},
+                            credentials: 'include',
+                            body: JSON.stringify({id:this.signupForm.id,password:this.signupForm.password})
+                        });
+                        
+                        console.log('Signup response status:', response.status);
+
+                        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text.substring(0, 200));
+            this.authMessage = `サーバーエラーが発生しました (Status: ${response.status})`;
+            this.authMessageType = 'error';
+            return;
+        }
+
+
+                        const data = await response.json();
+                        console.log('Signup response data:', data);
+                        
+                        if (data.ok) {
+                            this.authMessage = '登録が完了しました！';
+                            this.authMessageType = 'success';
+                            setTimeout(() => {
+                                this.isAuthenticated = true;
+                                this.username = this.signupForm.id;
+                                this.loadServers();
+                            }, 1000);
+                        } else {
+                            this.authMessage = data.message || '登録に失敗しました';
+                            this.authMessageType = 'error';
+                        }
+                    } catch (error) {
+                        console.error('Signup error:', error);
+                        this.authMessage = `エラーが発生しました: ${error.message}`;
+                        this.authMessageType = 'error';
+                    }
+                },
+
+                async handleLogin() {
+                    try {
+                        const response = await fetch('/user/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify(this.loginForm)
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.ok) {
+                            this.authMessage = 'ログインしました！';
+                            this.authMessageType = 'success';
+                            setTimeout(() => {
+                                this.isAuthenticated = true;
+                                this.username = this.loginForm.id;
+                                this.loadServers();
+                            }, 500);
+                        } else {
+                            this.authMessage = data.message || 'ログインに失敗しました';
+                            this.authMessageType = 'error';
+                        }
+                    } catch (error) {
+                        this.authMessage = 'エラーが発生しました';
+                        this.authMessageType = 'error';
+                    }
+                },
+
+                async handleLogout() {
+                    try {
+                        await fetch('/user/logout', { 
+                            method: 'POST',
+                            credentials: 'include'
+                        });
+                        this.isAuthenticated = false;
+                        this.authMode = 'login';
+                        this.servers = [];
+                        this.loginForm = { id: '', password: '' };
+                    } catch (error) {
+                        console.error('Logout failed:', error);
+                    }
+                },
+
+                async loadServers() {
+                    this.serversLoading = true;
+                    try {
+                        const response = await fetch('/api/servers', {
+                            credentials: 'include'
+                        });
+                        
+                        // Check if response is JSON
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await response.text();
+                            console.error('Non-JSON response:', text);
+                            this.showError('サーバーが予期しない形式の応答を返しました');
+                            this.serversLoading = false;
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.ok) {
+                            setTimeout(() => {
+                                this.servers = data.servers || [];
+                                this.serversLoading = false;
+                            }, 300);
+                        } else {
+                            this.showError('サーバー一覧の取得に失敗しました');
+                            this.serversLoading = false;
+                        }
+                    } catch (error) {
+                        console.error('Load servers error:', error);
+                        this.showError(`サーバー一覧の取得中にエラーが発生しました: ${error.message}`);
+                        this.serversLoading = false;
+                    }
+                },
+
+                async handleServerSubmit() {
+                    this.formSubmitting = true;
+                    
+                    try {
+                        if (this.editingServer) {
+                            await this.updateServer();
+                        } else {
+                            await this.createServer();
+                        }
+                    } finally {
+                        this.formSubmitting = false;
+                    }
+                },
+
+                async createServer() {
+                    try {
+                        console.log('Creating server with data:', this.serverForm);
+                        const response = await fetch('/api/servers/create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify(this.serverForm)
+                        });
+                        
+                        console.log('Response status:', response.status);
+                        console.log('Response headers:', response.headers);
+                        
+                        // Check if response is JSON
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await response.text();
+                            console.error('Non-JSON response from server:', text.substring(0, 200));
+                            this.showError(`サーバーが予期しない形式の応答を返しました (Status: ${response.status})`);
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Response data:', data);
+                        
+                        if (data.ok) {
+                            this.showSuccess(`🎉 "${this.serverForm.serverName}" が正常に作成されました！`);
+                            this.resetForm();
+                            await this.loadServers();
+                            setTimeout(() => this.switchTab('servers'), 1500);
+                        } else {
+                            this.showError(data.message || 'サーバーの作成に失敗しました');
+                        }
+                    } catch (error) {
+                        console.error('Server creation error:', error);
+                        this.showError(`サーバー作成中にエラーが発生しました: ${error.message}`);
+                    }
+                },
+
+                async updateServer() {
+                    try {
+                        const response = await fetch(`/api/servers/${this.editingServer.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify(this.serverForm)
+                        });
+                        
+                        // Check if response is JSON
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await response.text();
+                            console.error('Non-JSON response:', text);
+                            this.showError('サーバーが予期しない形式の応答を返しました');
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.ok) {
+                            this.showSuccess(`✅ "${this.serverForm.serverName}" の設定を更新しました！`);
+                            this.resetForm();
+                            await this.loadServers();
+                            setTimeout(() => this.switchTab('servers'), 1500);
+                        } else {
+                            this.showError(data.message || 'サーバーの更新に失敗しました');
+                        }
+                    } catch (error) {
+                        console.error('Server update error:', error);
+                        this.showError(`サーバー更新中にエラーが発生しました: ${error.message}`);
+                    }
+                },
+
+                editServer(server) {
+                    this.editingServer = server;
+                    this.serverForm = {
+                        serverName: server.serverName,
+                        minecraftVersion: server.minecraftVersion,
+                        serverSoftware: server.serverSoftware,
+                        jdkVersion: server.jdkVersion
+                    };
+                    this.switchTab('create');
+                    this.showSuccess(`${server.serverName} の編集モードに切り替えました。`);
+                },
+
+                async deleteServer(server) {
+                    const confirmMessage = `本当に "${server.serverName}" を削除しますか？\n\nこの操作は取り消せません。\n- サーバー名: ${server.serverName}\n- バージョン: ${server.minecraftVersion}\n- ソフトウェア: ${server.serverSoftware}`;
+                    
+                    if (!confirm(confirmMessage)) return;
+                    
+                    try {
+                        const response = await fetch(`/api/servers/${server.id}`, {
+                            method: 'DELETE',
+                            credentials: 'include'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.ok) {
+                            this.showSuccess(`🗑️ "${server.serverName}" を削除しました。`);
+                            await this.loadServers();
+                        } else {
+                            this.showError(data.message || 'サーバーの削除に失敗しました');
+                        }
+                    } catch (error) {
+                        this.showError('サーバー削除中にエラーが発生しました');
+                    }
+                },
+
+                resetForm() {
+                    this.editingServer = null;
+                    this.serverForm = {
+                        serverName: '',
+                        minecraftVersion: '',
+                        serverSoftware: '',
+                        jdkVersion: ''
+                    };
+                },
+
+                switchTab(tabId) {
+                    if (tabId === 'create' && this.activeTab === 'create' && this.editingServer) {
+                        this.resetForm();
+                    }
+                    this.activeTab = tabId;
+                },
+
+                async testProtectedApi() {
+                    try {
+                        const response = await fetch('/api/protected', {
+                            credentials: 'include'
+                        });
+                        const data = await response.json();
+                        this.apiResponse = JSON.stringify(data, null, 2);
+                    } catch (error) {
+                        this.apiResponse = `Error: ${error.message}`;
+                    }
+                },
+
+                connectWebSocket() {
+                    const wsUrl = 'ws://localhost:4000';
+                    this.ws = new WebSocket(wsUrl);
+
+                    this.ws.onopen = () => {
+                        console.log('✅ WebSocket connected');
+                        this.wsConnected = true;
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const message = JSON.parse(event.data);
+                            this.handleWebSocketMessage(message);
+                        } catch (error) {
+                            console.error('Failed to parse WebSocket message:', error);
+                        }
+                    };
+
+                    this.ws.onclose = () => {
+                        console.log('❌ WebSocket disconnected');
+                        this.wsConnected = false;
+                        setTimeout(() => this.connectWebSocket(), 3000);
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                    };
+                },
+
+                handleWebSocketMessage(message) {
+                    console.log('📨 WebSocket message:', message);
+
+                    switch (message.type) {
+                        case 'download_progress':
+                            this.updateDownloadProgress(message.data);
+                            break;
+                        case 'download_complete':
+                            this.handleDownloadComplete(message.data);
+                            break;
+                        case 'download_error':
+                            this.handleDownloadError(message.data);
+                            break;
+                    }
+                },
+
+                async fetchDownloadList() {
+                    if (!this.downloadListType) {
+                        this.showError('リストタイプを選択してください');
+                        return;
+                    }
+
+                    this.fetchingList = true;
+
+                    try {
+                        const response = await fetch(`http://localhost:4000/api/list/${this.downloadListType}`);
+                        const data = await response.json();
+
+                        if (data.success) {
+                            this.downloadListData = data.data;
+                            this.showSuccess('リストを取得しました');
+                        } else {
+                            this.showError(`エラー: ${data.error.message}`);
+                        }
+                    } catch (error) {
+                        console.error('Failed to fetch list:', error);
+                        this.showError('サーバーからのリスト取得に失敗しました');
+                    } finally {
+                        this.fetchingList = false;
+                    }
+                },
+
+                selectFile(fileInfo) {
+                    this.selectedFile = fileInfo;
+                },
+
+                async startDownload() {
+                    if (!this.selectedFile) {
+                        this.showError('ダウンロードするファイルを選択してください');
+                        return;
+                    }
+
+                    this.startingDownload = true;
+
+                    try {
+                        const response = await fetch('http://localhost:4000/api/download', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url: this.selectedFile.url })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            console.log('Download started:', data.data);
+                            this.addDownload(data.data.status);
+                            this.showSuccess('ダウンロードを開始しました');
+                        } else {
+                            this.showError(`エラー: ${data.error.message}`);
+                        }
+                    } catch (error) {
+                        console.error('Failed to start download:', error);
+                        this.showError('ダウンロードの開始に失敗しました');
+                    } finally {
+                        this.startingDownload = false;
+                    }
+                },
+
+                addDownload(status) {
+                    const existingIndex = this.activeDownloads.findIndex(d => d.taskId === status.taskId);
+                    if (existingIndex === -1) {
+                        this.activeDownloads.unshift(status);
+                    }
+                },
+
+                updateDownloadProgress(progress) {
+                    const index = this.activeDownloads.findIndex(d => d.taskId === progress.taskId);
+                    if (index !== -1) {
+                        this.activeDownloads[index] = progress;
+                    } else {
+                        this.addDownload(progress);
+                    }
+
+                    // Try auto-create when downloads complete
+                    this.maybeAutoCreateAfterDownloads();
+                },
+
+                handleDownloadComplete(data) {
+                    console.log('✅ Download completed:', data);
+                    const index = this.activeDownloads.findIndex(d => d.taskId === data.taskId);
+                    if (index !== -1) {
+                        this.activeDownloads[index].status = 'completed';
+                    }
+                    this.showSuccess('ダウンロードが完了しました');
+                },
+
+                handleDownloadError(data) {
+                    console.error('❌ Download error:', data);
+                    const index = this.activeDownloads.findIndex(d => d.taskId === data.taskId);
+                    if (index !== -1) {
+                        this.activeDownloads[index].status = 'error';
+                    }
+                    this.showError(`ダウンロードエラー: ${data.error || '不明なエラー'}`);
+                },
+
+                async cancelDownload(taskId) {
+                    try {
+                        const response = await fetch(`http://localhost:4000/api/download/${taskId}`, {
+                            method: 'DELETE'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            const index = this.activeDownloads.findIndex(d => d.taskId === taskId);
+                            if (index !== -1) {
+                                this.activeDownloads[index].status = 'cancelled';
+                            }
+                            this.showSuccess('ダウンロードをキャンセルしました');
+                        } else {
+                            this.showError(`キャンセル失敗: ${data.error.message}`);
+                        }
+                    } catch (error) {
+                        console.error('Error cancelling download:', error);
+                        this.showError('ダウンロードのキャンセル中にエラーが発生しました');
+                    }
+                },
+
+                showError(message) {
+                    this.errorMessage = message;
+                    setTimeout(() => {
+                        this.errorMessage = '';
+                    }, 5000);
+                },
+
+                showSuccess(message) {
+                    this.successMessage = message;
+                    setTimeout(() => {
+                        this.successMessage = '';
+                    }, 5000);
+                },
+
+                formatDate(dateString) {
+                    return new Date(dateString).toLocaleDateString('ja-JP');
+                },
+
+                formatTime(seconds) {
+                    const min = Math.floor(seconds / 60);
+                    const sec = Math.floor(seconds % 60);
+                    return `${min}分 ${sec}秒`;
+                },
+
+                // ---- Inline download helpers ----
+                async startMinecraftDownloadForSelection() {
+                    try {
+                        const list = await this.fetchList('servers');
+                        const nameMap = {
+                            vanilla: 'Vanilla',
+                            paper: 'Paper',
+                            spigot: 'Spigot',
+                            bukkit: 'Bukkit',
+                            mohist: 'Mohist',
+                            forge: 'Forge',
+                            fabric: 'Fabric'
+                        };
+                        const targetName = nameMap[this.serverForm.serverSoftware] || this.serverForm.serverSoftware;
+                        const srv = (list || []).find(s => (s.name || '').toLowerCase() === (targetName || '').toLowerCase());
+                        if (!srv) {
+                            this.showError('選択したソフトウェアのダウンロード情報が見つかりません');
+                            return;
+                        }
+                        const ver = (srv.versions || []).find(v => v.version === this.serverForm.minecraftVersion);
+                        if (!ver || !ver.downloadUrl) {
+                            this.showError('選択したMinecraftバージョンのダウンロードURLが見つかりません');
+                            return;
+                        }
+                        const taskId = await this.startDownloadByUrl(ver.downloadUrl);
+                        if (taskId) this._minecraftTaskId = taskId;
+                    } catch (e) {
+                        console.error(e);
+                        this.showError('Minecraftのダウンロード開始に失敗しました');
+                    }
+                },
+
+                async startJdkDownloadForSelection() {
+                    try {
+                        const jdkVersion = (this.serverForm.jdkVersion || '').replace('OpenJDK ', '').trim();
+                        // Try cache check endpoint (optional; ignore failures)
+                        let cached = false;
+                        try {
+                            const res = await fetch(`http://localhost:4000/api/cache/status?type=jdk&version=${encodeURIComponent(jdkVersion)}`);
+                            if (res.ok) {
+                                const body = await res.json();
+                                cached = !!(body && (body.cached || body.exists));
+                            }
+                        } catch (_) {}
+
+                        if (cached) {
+                            // No JDK download needed
+                            this._jdkTaskId = null;
+                            this.maybeAutoCreateAfterDownloads();
+                            return;
+                        }
+
+                        const list = await this.fetchList('jdk');
+                        const item = (list || []).find(j => (j.version + '').trim() === jdkVersion);
+                        if (!item) {
+                            this.showError('選択したJDKのダウンロード情報が見つかりません');
+                            return;
+                        }
+                        // Prefer Windows for current environment; fallback to first
+                        const preferred = (item.downloads || []).find(d => (d.os || '').toLowerCase() === 'windows') || (item.downloads || [])[0];
+                        if (!preferred || !preferred.downloadUrl) {
+                            this.showError('JDKダウンロードURLが見つかりません');
+                            return;
+                        }
+                        const taskId = await this.startDownloadByUrl(preferred.downloadUrl);
+                        if (taskId) this._jdkTaskId = taskId;
+                    } catch (e) {
+                        console.error(e);
+                        this.showError('JDKのダウンロード開始に失敗しました');
+                    }
+                },
+
+                async fetchList(type) {
+                    try {
+                        if (type === 'jdk') {
+                            // Prefer backend route with auth
+                            const res = await fetch('/jdk/list', { credentials: 'include' });
+                            if (res.ok) {
+                                const data = await res.json();
+                                // Accept either {success,data} or raw array
+                                if (Array.isArray(data)) return data;
+                                if (data && data.success) return data.data;
+                            }
+                            // Fallback to download service
+                            const res2 = await fetch('http://localhost:4000/api/list/jdk');
+                            const json2 = await res2.json();
+                            if (json2 && json2.success) return json2.data;
+                            throw new Error(json2 && json2.error ? json2.error.message : 'failed');
+                        }
+
+                        // Default: servers list via download service
+                        const res = await fetch(`http://localhost:4000/api/list/${type}`);
+                        const json = await res.json();
+                        if (json && json.success) return json.data;
+                        throw new Error(json && json.error ? json.error.message : 'failed');
+                    } catch (e) {
+                        throw e;
+                    }
+                },
+
+                async startDownloadByUrl(url) {
+                    try {
+                        const response = await fetch('http://localhost:4000/api/download', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ url })
+                        });
+                        const data = await response.json();
+                        if (data && data.success && data.data && data.data.status) {
+                            this.addDownload(data.data.status);
+                            return data.data.status.taskId;
+                        } else {
+                            this.showError(`ダウンロード開始に失敗: ${data && data.error ? data.error.message : '不明なエラー'}`);
+                            return null;
+                        }
+                    } catch (e) {
+                        console.error('startDownloadByUrl error', e);
+                        this.showError('ダウンロードの開始に失敗しました');
+                        return null;
+                    }
+                },
+
+                maybeAutoCreateAfterDownloads() {
+                    if (this._autoCreating) return;
+                    const mcDone = !this._minecraftTaskId || (this.minecraftTask && this.minecraftTask.status === 'completed');
+                    const jdkDone = !this._jdkTaskId || (this.jdkTask && this.jdkTask.status === 'completed');
+                    if (mcDone && jdkDone) {
+                        if (!this.serverForm.serverName || !this.serverForm.minecraftVersion || !this.serverForm.serverSoftware || !this.serverForm.jdkVersion) return;
+                        this._autoCreating = true;
+                        this.handleServerSubmit().finally(() => {
+                            // clear inline tasks after creation
+                            this._minecraftTaskId = null;
+                            this._jdkTaskId = null;
+                            this._autoCreating = false;
+                        });
+                    }
+                }
+            },
+
+            computed: {
+                minecraftTask() {
+                    return this._minecraftTaskId ? this.activeDownloads.find(d => d.taskId === this._minecraftTaskId) : null;
+                },
+                jdkTask() {
+                    return this._jdkTaskId ? this.activeDownloads.find(d => d.taskId === this._jdkTaskId) : null;
+                },
+                showMinecraftInline() {
+                    return !!(this._minecraftTaskId && this.minecraftTask && this.minecraftTask.status !== 'completed' && this.minecraftTask.status !== 'error' && this.minecraftTask.status !== 'cancelled');
+                },
+                showJdkInline() {
+                    return !!(this._jdkTaskId && this.jdkTask && this.jdkTask.status !== 'completed' && this.jdkTask.status !== 'error' && this.jdkTask.status !== 'cancelled');
+                }
+            },
+
+            created() {
+                // internal ids for inline tasks
+                this._minecraftTaskId = null;
+                this._jdkTaskId = null;
+                this._autoCreating = false;
+            },
+
+            watch: {
+                'serverForm.minecraftVersion'(val) {
+                    if (val && this.serverForm.serverSoftware) {
+                        this.startMinecraftDownloadForSelection();
+                    }
+                },
+                'serverForm.serverSoftware'(val) {
+                    if (val && this.serverForm.minecraftVersion) {
+                        this.startMinecraftDownloadForSelection();
+                    }
+                },
+                'serverForm.jdkVersion'(val) {
+                    if (val) {
+                        this.startJdkDownloadForSelection();
+                    }
+                }
+            },
+
+            template: `
+                <div v-if="loading" id="loading-overlay">
+                    <div class="loading-spinner"></div>
+                    <p>読み込み中...</p>
+                </div>
+
+                <div v-else-if="!isAuthenticated">
+                    <section v-if="authMode === 'signup'" class="auth-container">
+                        <div class="auth-card">
+                            <div class="auth-icon">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div class="auth-header">
+                                <h2>ユーザー登録</h2>
+                                <p>このアプリケーションを使用するために、管理ユーザーを1名登録してください。</p>
+                            </div>
+                            <form @submit.prevent="handleSignup">
+                                <div class="form-group">
+                                    <label for="signup-id">ユーザーID</label>
+                                    <input 
+                                        type="text" 
+                                        id="signup-id" 
+                                        v-model="signupForm.id" 
+                                        required
+                                        placeholder="ユーザーIDを入力"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="signup-password">パスワード</label>
+                                    <input 
+                                        type="password" 
+                                        id="signup-password" 
+                                        v-model="signupForm.password" 
+                                        required
+                                        placeholder="パスワードを入力"
+                                    >
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-check-circle"></i>
+                                    登録して開始
+                                </button>
+                                <div v-if="authMessage" :class="['message', authMessageType]">
+                                    {{ authMessage }}
+                                </div>
+                                <p style="text-align: center; margin-top: 20px; color: #666;">
+                                    既にアカウントをお持ちの方は 
+                                    <a href="#" @click.prevent="authMode = 'login'" style="color: #10b981; font-weight: 600; text-decoration: none;">
+                                        こちらからログイン
+                                    </a>
+                                </p>
+                            </form>
+                        </div>
+                    </section>
+
+                    <section v-else class="auth-container">
+                        <div class="auth-card">
+                            <div class="auth-icon">
+                                <i class="fas fa-sign-in-alt"></i>
+                            </div>
+                            <div class="auth-header">
+                                <h2>ログイン</h2>
+                                <p>アカウント情報を入力してください</p>
+                            </div>
+                            <form @submit.prevent="handleLogin">
+                                <div class="form-group">
+                                    <label for="login-id">ユーザーID</label>
+                                    <input 
+                                        type="text" 
+                                        id="login-id" 
+                                        v-model="loginForm.id" 
+                                        required
+                                        placeholder="ユーザーIDを入力"
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="login-password">パスワード</label>
+                                    <input 
+                                        type="password" 
+                                        id="login-password" 
+                                        v-model="loginForm.password" 
+                                        required
+                                        placeholder="パスワードを入力"
+                                    >
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-sign-in-alt"></i>
+                                    ログイン
+                                </button>
+                                <div v-if="authMessage" :class="['message', authMessageType]">
+                                    {{ authMessage }}
+                                </div>
+                                <p style="text-align: center; margin-top: 20px; color: #666;">
+                                    アカウントをお持ちでない方は 
+                                    <a href="#" @click.prevent="authMode = 'signup'" style="color: #10b981; font-weight: 600; text-decoration: none;">
+                                        こちらから新規登録
+                                    </a>
+                                </p>
+                            </form>
+                        </div>
+                    </section>
+                </div>
+
+                <main v-else class="main-wrapper">
+                    <nav class="navbar">
+                        <div class="navbar-content">
+                            <div class="navbar-brand">
+                                <i class="fas fa-cubes"></i>
+                                Minecraft Server Manager
+                            </div>
+                            <div class="navbar-actions">
+                                <div class="user-menu">
+                                    <div class="user-avatar">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <span>{{ username || '管理者' }}</span>
+                                </div>
+                                <button @click="handleLogout" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    ログアウト
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    <div class="dashboard">
+                        <div class="dashboard-header">
+                            <h1 class="dashboard-title">サーバー管理ダッシュボード</h1>
+                            <p class="dashboard-subtitle">Minecraftサーバーの作成、管理、監視を行います</p>
+                        </div>
+
+                        <transition name="fade">
+                            <div v-if="errorMessage" class="message-area error">
+                                {{ errorMessage }}
+                            </div>
+                        </transition>
+                        <transition name="fade">
+                            <div v-if="successMessage" class="message-area success">
+                                {{ successMessage }}
+                            </div>
+                        </transition>
+
+                        <div class="tab-nav">
+                            <button 
+                                v-for="tab in tabs" 
+                                :key="tab.id"
+                                :class="['tab-button', { active: activeTab === tab.id }]"
+                                @click="switchTab(tab.id)"
+                            >
+                                <i :class="tab.icon"></i>
+                                {{ tab.label }}
+                            </button>
+                        </div>
+
+                        <div v-show="activeTab === 'servers'" class="content-section active">
+                            <div class="section-title">
+                                <i class="fas fa-server"></i>
+                                Minecraftサーバー一覧
+                            </div>
+                            
+                            <div v-if="serversLoading" class="empty-state">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #667eea;"></i>
+                                <h3>サーバー一覧を読み込み中...</h3>
+                                <p>少々お待ちください</p>
+                            </div>
+
+                            <div v-else-if="servers.length === 0" class="empty-state">
+                                <i class="fas fa-server"></i>
+                                <h3>サーバーが登録されていません</h3>
+                                <p>「新規作成」タブから最初のMinecraftサーバーを追加してください。</p>
+                                <button class="btn btn-primary" @click="switchTab('create')">
+                                    <i class="fas fa-plus-circle"></i>
+                                    サーバーを作成する
+                                </button>
+                            </div>
+
+                            <div v-else class="servers-grid">
+                                <div 
+                                    v-for="server in servers" 
+                                    :key="server.id"
+                                    class="server-card"
+                                >
+                                    <div :class="['server-status', server.isRunning ? 'running' : 'stopped']">
+                                        {{ server.isRunning ? '🟢 稼働中' : '🔴 停止中' }}
+                                    </div>
+                                    
+                                    <div class="server-name">
+                                        <i class="fas fa-cube" style="color: #667eea; margin-right: 8px;"></i>
+                                        {{ server.serverName }}
+                                    </div>
+                                    
+                                    <div class="server-details">
+                                        <div class="server-detail">
+                                            <span class="server-detail-label">
+                                                <i class="fas fa-code-branch"></i> バージョン
+                                            </span>
+                                            <span class="server-detail-value">{{ server.minecraftVersion }}</span>
+                                        </div>
+                                        <div class="server-detail">
+                                            <span class="server-detail-label">
+                                                <i class="fas fa-cogs"></i> ソフトウェア
+                                            </span>
+                                            <span class="server-detail-value">{{ server.serverSoftware }}</span>
+                                        </div>
+                                        <div class="server-detail">
+                                            <span class="server-detail-label">
+                                                <i class="fas fa-coffee"></i> JDK
+                                            </span>
+                                            <span class="server-detail-value">{{ server.jdkVersion }}</span>
+                                        </div>
+                                        <div class="server-detail">
+                                            <span class="server-detail-label">
+                                                <i class="fas fa-calendar-alt"></i> 作成日
+                                            </span>
+                                            <span class="server-detail-value">{{ formatDate(server.createdAt) }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="server-actions">
+                                        <button class="btn btn-secondary btn-sm" @click="editServer(server)">
+                                            <i class="fas fa-edit"></i>
+                                            編集
+                                        </button>
+                                        <button class="btn btn-danger btn-sm" @click="deleteServer(server)">
+                                            <i class="fas fa-trash-alt"></i>
+                                            削除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-show="activeTab === 'create'" class="content-section active">
+                            <div class="section-title">
+                                <i class="fas fa-plus-circle"></i>
+                                <span>{{ editingServer ? \`"\${editingServer.serverName}" を編集\` : '新しいMinecraftサーバーを作成' }}</span>
+                            </div>
+                            
+                            <form @submit.prevent="handleServerSubmit">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="serverName">
+                                            <i class="fas fa-tag"></i>
+                                            サーバー名
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            id="serverName" 
+                                            v-model="serverForm.serverName" 
+                                            required
+                                            placeholder="例: My Minecraft Server"
+                                        >
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="minecraftVersion">
+                                            <i class="fas fa-code-branch"></i>
+                                            Minecraftバージョン
+                                        </label>
+                                        <select id="minecraftVersion" v-model="serverForm.minecraftVersion" required>
+                                            <option value="">バージョンを選択してください</option>
+                                            <option value="1.20.4">1.20.4 (最新)</option>
+                                            <option value="1.20.1">1.20.1</option>
+                                            <option value="1.19.4">1.19.4</option>
+                                            <option value="1.19.2">1.19.2</option>
+                                            <option value="1.18.2">1.18.2</option>
+                                            <option value="1.17.1">1.17.1</option>
+                                            <option value="1.16.5">1.16.5</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="serverSoftware">
+                                            <i class="fas fa-cogs"></i>
+                                            サーバーソフトウェア
+                                        </label>
+                                        <select id="serverSoftware" v-model="serverForm.serverSoftware" required>
+                                            <option value="">ソフトウェアを選択してください</option>
+                                            <option value="vanilla">Vanilla (公式)</option>
+                                            <option value="paper">Paper (推奨)</option>
+                                            <option value="spigot">Spigot</option>
+                                            <option value="bukkit">Bukkit</option>
+                                            <option value="mohist">Mohist (Mod + Plugin)</option>
+                                            <option value="forge">Forge (Mod)</option>
+                                            <option value="fabric">Fabric (軽量Mod)</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="jdkVersion">
+                                            <i class="fas fa-coffee"></i>
+                                            JDKバージョン
+                                        </label>
+                                        <select id="jdkVersion" v-model="serverForm.jdkVersion" required>
+                                            <option value="">JDKを選択してください</option>
+                                            <option value="OpenJDK 21">OpenJDK 21 (最新)</option>
+                                            <option value="OpenJDK 17">OpenJDK 17 (LTS)</option>
+                                            <option value="OpenJDK 11">OpenJDK 11 (LTS)</option>
+                                            <option value="OpenJDK 8">OpenJDK 8 (レガシー)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" :class="['btn', editingServer ? 'btn-secondary' : 'btn-primary']" :disabled="formSubmitting">
+                                    <i :class="formSubmitting ? 'fas fa-spinner fa-spin' : (editingServer ? 'fas fa-save' : 'fas fa-rocket')"></i>
+                                    {{ formSubmitting ? (editingServer ? '更新中...' : '作成中...') : (editingServer ? 'サーバーを更新' : 'サーバーを作成') }}
+                                </button>
+
+                                <div v-if="showMinecraftInline || showJdkInline" class="inline-progress-wrapper">
+                                    <div v-if="showMinecraftInline">
+                                        <div class="inline-progress-title">
+                                            <i class="fas fa-cube" style="color:#10b981;"></i>
+                                            Minecraft をダウンロード中
+                                        </div>
+                                        <div class="inline-progress-container">
+                                            <div class="inline-progress-bar" :style="{ width: (minecraftTask?.percentage || 0) + '%' }">
+                                                {{ (minecraftTask?.percentage || 0).toFixed(1) }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-if="showJdkInline">
+                                        <div class="inline-progress-title">
+                                            <i class="fas fa-coffee" style="color:#10b981;"></i>
+                                            JDK をダウンロード中
+                                        </div>
+                                        <div class="inline-progress-container">
+                                            <div class="inline-progress-bar" :style="{ width: (jdkTask?.percentage || 0) + '%' }">
+                                                {{ (jdkTask?.percentage || 0).toFixed(1) }}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div v-show="activeTab === 'settings'" class="content-section active">
+                            <div class="section-title">
+                                <i class="fas fa-cogs"></i>
+                                システム設定
+                            </div>
+                            
+                            <div style="background: #f8fafc; padding: 24px; border-radius: 16px; margin-bottom: 24px;">
+                                <h4 style="color: #374151; margin-bottom: 16px; font-size: 18px;">
+                                    <i class="fas fa-shield-alt" style="color: #10b981;"></i>
+                                    保護されたAPI テスト
+                                </h4>
+                                <p style="color: #6b7280; margin-bottom: 20px; line-height: 1.6;">
+                                    ログイン状態でのみアクセス可能なAPIエンドポイントをテストします。<br>
+                                    認証システムが正常に動作していることを確認できます。
+                                </p>
+                                <button @click="testProtectedApi" class="btn btn-success">
+                                    <i class="fas fa-flask"></i>
+                                    /api/protected をテスト
+                                </button>
+                            </div>
+                            
+                            <div style="background: white; border: 2px solid #e5e7eb; border-radius: 16px; padding: 20px;">
+                                <h5 style="color: #374151; margin-bottom: 12px;">
+                                    <i class="fas fa-terminal" style="color: #6366f1;"></i>
+                                    APIレスポンス
+                                </h5>
+                                <pre style="
+                                    background: #1f2937; 
+                                    color: #e5e7eb; 
+                                    padding: 20px; 
+                                    border-radius: 12px; 
+                                    font-family: 'Monaco', 'Consolas', monospace;
+                                    font-size: 14px;
+                                    line-height: 1.5;
+                                    white-space: pre-wrap; 
+                                    word-wrap: break-word; 
+                                    min-height: 60px;
+                                    overflow-x: auto;
+                                ">{{ apiResponse }}</pre>
+                            </div>
+                        </div>
+
+                        <div v-show="activeTab === 'downloads'" class="content-section active">
+                            <h2>
+                                <i class="fas fa-cloud-download-alt"></i>
+                                ダウンロード管理
+                            </h2>
+                            
+                            <div class="download-section">
+                                <h3><i class="fas fa-plug"></i> 接続状態</h3>
+                                <div :class="['connection-badge', wsConnected ? 'connected' : 'disconnected']">
+                                    <i :class="wsConnected ? 'fas fa-check-circle' : 'fas fa-exclamation-circle'"></i>
+                                    {{ wsConnected ? '接続済み' : '未接続' }}
+                                </div>
+                                <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">
+                                    WebSocketサーバー (localhost:4000) への接続状態を表示しています。
+                                </p>
+                            </div>
+
+                            <div class="download-section">
+                                <h3><i class="fas fa-list"></i> リスト取得</h3>
+                                <div class="download-control-group">
+                                    <label for="downloadListType">
+                                        <i class="fas fa-filter"></i>
+                                        リストタイプを選択:
+                                    </label>
+                                    <select id="downloadListType" v-model="downloadListType">
+                                        <option value="">-- タイプを選択 --</option>
+                                        <option value="servers">サーバーソフトウェア</option>
+                                        <option value="jdk">JDK</option>
+                                    </select>
+                                </div>
+                                <button @click="fetchDownloadList" class="btn btn-primary" :disabled="!downloadListType || fetchingList">
+                                    <i :class="fetchingList ? 'fas fa-spinner fa-spin' : 'fas fa-download'"></i>
+                                    {{ fetchingList ? '読み込み中...' : 'リストを取得' }}
+                                </button>
+
+                                <div v-if="downloadListData" class="download-list-preview">
+                                    <pre>{{ JSON.stringify(downloadListData, null, 2) }}</pre>
+                                </div>
+                            </div>
+
+                            <div v-if="downloadListData" class="download-section">
+                                <h3><i class="fas fa-code-branch"></i> バージョン選択</h3>
+                                <div v-if="downloadListType === 'servers'">
+                                    <div v-for="server in downloadListData" :key="server.name" style="margin-bottom: 20px;">
+                                        <h4 style="margin-bottom: 10px; color: #667eea;">{{ server.name }}</h4>
+                                        <div class="download-version-grid">
+                                            <button
+                                                v-for="version in server.versions"
+                                                :key="version.version"
+                                                :class="['download-version-btn', { selected: selectedFile && selectedFile.url === version.downloadUrl }]"
+                                                @click="selectFile({ name: server.name, version: version.version, jdk: version.jdk, url: version.downloadUrl, type: 'server' })"
+                                            >
+                                                {{ version.version }} (JDK {{ version.jdk }})
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else-if="downloadListType === 'jdk'">
+                                    <div v-for="jdk in downloadListData" :key="jdk.version" style="margin-bottom: 20px;">
+                                        <h4 style="margin-bottom: 10px; color: #667eea;">JDK {{ jdk.version }} {{ jdk.vendor ? \`(\${jdk.vendor})\` : '' }}</h4>
+                                        <div class="download-version-grid">
+                                            <button
+                                                v-for="download in jdk.downloads"
+                                                :key="download.os"
+                                                :class="['download-version-btn', { selected: selectedFile && selectedFile.url === download.downloadUrl }]"
+                                                @click="selectFile({ version: jdk.version, os: download.os, url: download.downloadUrl, vendor: jdk.vendor, type: 'jdk' })"
+                                            >
+                                                {{ download.os.toUpperCase() }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="selectedFile" class="download-section">
+                                <h3><i class="fas fa-check-circle"></i> 選択されたファイル</h3>
+                                <div class="download-selected-file-card">
+                                    <h4>ファイル情報:</h4>
+                                    <p class="download-selected-file-name">
+                                        <template v-if="selectedFile.type === 'server'">
+                                            {{ selectedFile.name }} {{ selectedFile.version }} (JDK {{ selectedFile.jdk }})
+                                        </template>
+                                        <template v-else>
+                                            JDK {{ selectedFile.version }} - {{ selectedFile.os.toUpperCase() }}
+                                        </template>
+                                    </p>
+                                    <p class="download-selected-file-url">{{ selectedFile.url }}</p>
+                                    <button @click="startDownload" class="btn btn-primary" style="margin-top: 15px;" :disabled="startingDownload">
+                                        <i :class="startingDownload ? 'fas fa-spinner fa-spin' : 'fas fa-download'"></i>
+                                        {{ startingDownload ? 'ダウンロード開始中...' : 'ダウンロード開始' }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="download-section">
+                                <h3><i class="fas fa-tasks"></i> アクティブなダウンロード</h3>
+                                <div v-if="activeDownloads.length === 0" class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <h3>ダウンロードがありません</h3>
+                                    <p>上記からファイルを選択してダウンロードを開始してください。</p>
+                                </div>
+                                <div v-else>
+                                    <div v-for="download in activeDownloads" :key="download.taskId" class="download-card">
+                                        <div class="download-card-header">
+                                            <div class="download-filename">
+                                                <i class="fas fa-file-download"></i>
+                                                {{ download.filename }}
+                                            </div>
+                                            <div :class="['download-status-badge', \`status-\${download.status}\`]">
+                                                {{ download.status.toUpperCase() }}
+                                            </div>
+                                        </div>
+                                        <div class="download-progress-container">
+                                            <div class="download-progress-bar" :style="{ width: download.percentage + '%' }">
+                                                {{ download.percentage.toFixed(1) }}%
+                                            </div>
+                                        </div>
+                                        <div class="download-info-grid">
+                                            <div class="download-info-item">
+                                                <span class="download-info-label">ダウンロード済み</span>
+                                                <span class="download-info-value">
+                                                    {{ (download.downloadedBytes / (1024 * 1024)).toFixed(2) }} MB / {{ (download.totalBytes / (1024 * 1024)).toFixed(2) }} MB
+                                                </span>
+                                            </div>
+                                            <div class="download-info-item">
+                                                <span class="download-info-label">速度</span>
+                                                <span class="download-info-value">{{ (download.speed / 1024).toFixed(2) }} KB/s</span>
+                                            </div>
+                                            <div class="download-info-item">
+                                                <span class="download-info-label">残り時間</span>
+                                                <span class="download-info-value">
+                                                    {{ download.remainingTime > 0 ? formatTime(download.remainingTime) : '--' }}
+                                                </span>
+                                            </div>
+                                            <div class="download-info-item">
+                                                <button 
+                                                    v-if="download.status === 'downloading'" 
+                                                    @click="cancelDownload(download.taskId)"
+                                                    class="btn btn-danger btn-sm cancel-download-btn"
+                                                >
+                                                    <i class="fas fa-times"></i> キャンセル
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            `
+        }).mount('#app');
+    </script>
+</body>
+</html>
