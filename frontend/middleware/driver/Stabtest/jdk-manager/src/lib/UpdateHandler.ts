@@ -73,7 +73,7 @@ export class UpdateHandler {
     }
 
     const id = this.entry.getId();
-    const jdkPath = this.entry.getPath();
+    const jdkPath = this.entry.getRuntimePath();
     const backupPath = path.join(this.baseRuntimePath, 'backup', id);
     const tempPath = path.join(this.baseRuntimePath, 'temp', id);
 

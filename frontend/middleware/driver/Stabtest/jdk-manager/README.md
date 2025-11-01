@@ -29,6 +29,7 @@ npm install
 
 ```typescript
 import { JdkManager } from 'jdk-manager';
+import { spawn } from 'child_process';
 
 // JdkManagerを初期化
 const manager = new JdkManager('/path/to/runtime', {
@@ -62,8 +63,16 @@ if (jdk17Result.success) {
   // ランタイムをロック
   const lockId = entry.useRuntime('Minecraft 1.20.1');
   
-  // 使用後にアンロック
-  entry.unUseRuntime(lockId);
+  // Java実行ファイルのフルパスを取得
+  const javaPath = entry.getExecutableFilePath();
+  
+  // Javaプロセスを起動
+  const process = spawn(javaPath, ['-Xmx2G', '-jar', 'server.jar']);
+  
+  process.on('close', () => {
+    // 使用後にアンロック
+    entry.unUseRuntime(lockId);
+  });
 }
 
 // ファイル整合性チェック
@@ -227,8 +236,11 @@ JDKエントリの管理を担当します。
 - `getUpdate(availableJdks, onSave)` - アップデートハンドラを取得
 
 ゲッターメソッド:
-- `getId()`, `getName()`, `getStructName()`, `getMajorVersion()`, 
-- `getPath()`, `getVerificationStatus()`, `getOS()`, `getInstalledAt()`
+- `getId()`, `getName()`, `getStructName()`, `getMajorVersion()`
+- `getRuntimePath()` - JDKルートディレクトリパス
+- `getExecutableFilePath()` - **java実行ファイルのフルパス（推奨）**
+- `getVerificationStatus()`, `getOS()`, `getInstalledAt()`
+- `getChecksums()`, `getLocks()`
 
 ### UpdateHandler
 
