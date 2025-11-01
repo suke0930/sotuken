@@ -266,7 +266,7 @@ class EntryManager {
         const corruptedFiles: string[] = [];
 
         for (const fileChecksum of instance.checksums) {
-          const fullPath = path.join(entry.getPath(), fileChecksum.path);
+          const fullPath = path.join(entry.getRuntimePath(), fileChecksum.path);
           if (!fileExists(fullPath)) {
             missingFiles.push(fileChecksum.path);
           } else {
@@ -563,7 +563,7 @@ class EntryManager {
     }
 
     try {
-      const jdkPath = entry.getPath();
+      const jdkPath = entry.getRuntimePath();
 
       if (this.manager.getDryRun()) {
         this.manager.getLogger()?.info(`[DRY RUN] Would remove JDK ${id} at ${jdkPath}`);

@@ -44,6 +44,43 @@ mindmap
 
 システム全体のアーキテクチャを図解したドキュメント。
 
+## 🆕 JDKEntry API詳細ドキュメント
+
+**ファイル**: [JDKEntry-API.md](./JDKEntry-API.md)
+
+JDKEntryクラスの全メソッドを詳細に説明したドキュメント。
+
+### 📋 内容
+
+- **メソッド詳細**
+  - ランタイムロック管理（useRuntime, unUseRuntime, isLocked）
+  - ファイル整合性検証（checkFileHealth）
+  - アップデート管理（getUpdate）
+  
+- **ゲッターメソッド**
+  - 基本情報（getId, getName, getStructName, getMajorVersion）
+  - **パス情報（getRuntimePath, getExecutableFilePath）** ⭐
+  - ステータス情報（getVerificationStatus, getOS, getInstalledAt）
+  
+- **実践的な使用例**
+  - 完全なMinecraftサーバー起動フロー
+  - child_process.spawn()での使用例
+  - エラーハンドリング
+
+### 🎯 対象読者
+
+- 開発者（JDKEntryを直接使用する人）
+- Java実行環境を扱う実装担当者
+- Minecraftランチャー統合担当者
+
+---
+
+## 1️⃣ Architecture Documentation
+
+**ファイル**: [architecture.md](./architecture.md)
+
+システム全体のアーキテクチャを図解したドキュメント。
+
 ### 📋 内容
 
 - **システムアーキテクチャ概要**
