@@ -36,7 +36,7 @@ graph TB
 
 ```mermaid
 flowchart LR
-    Input[["baseRuntimePath: string<br/>options?: {<br/>  logger?: Logger,<br/>  dryRun?: boolean<br/>}"]] --> Constructor[new JdkManager]
+    Input[["baseRuntimePath: string<必ずフルパス><br/>options?: {<br/>  logger?: Logger,<br/>  dryRun?: boolean<br/>}"]] --> Constructor[new JdkManager]
     Constructor --> Output[["JdkManager<br/>インスタンス"]]
     
     style Input fill:#e3f2fd
