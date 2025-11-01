@@ -304,7 +304,6 @@ function addDownloadItem(taskId, status) {
       <span>Downloaded: <strong id="downloaded-${taskId}">0 MB</strong> / <strong id="total-${taskId}">0 MB</strong></span>
       <span>Speed: <strong id="speed-${taskId}">0 KB/s</strong></span>
       <span>Remaining: <strong id="remaining-${taskId}">--</strong></span>
-      <button class="cancel-btn" data-task-id="${taskId}" style="display: none;">Cancel</button>
     </div>
   `;
 
@@ -331,12 +330,6 @@ function updateDownloadProgress(progress) {
   statusBadge.className = `download-status status-${progress.status}`;
   statusBadge.textContent = progress.status.toUpperCase();
 
-  // ダウンロード中のみキャンセルボタンを表示
-  const cancelBtn = item.querySelector('.cancel-btn');
-  if (cancelBtn) {
-    cancelBtn.style.display = progress.status === 'downloading' ? 'inline-block' : 'none';
-  }
-
   // Update info
   const downloadedMB = (progress.downloadedBytes / (1024 * 1024)).toFixed(2);
   const totalMB = (progress.totalBytes / (1024 * 1024)).toFixed(2);
@@ -360,12 +353,6 @@ function handleDownloadComplete(data) {
     const statusBadge = item.querySelector('.download-status');
     statusBadge.className = 'download-status status-completed';
     statusBadge.textContent = 'COMPLETED';
-
-    // キャンセルボタンを非表示にする
-    const cancelBtn = item.querySelector('.cancel-btn');
-    if (cancelBtn) {
-      cancelBtn.style.display = 'none';
-    }
   }
 }
 
@@ -384,40 +371,6 @@ function handleDownloadError(data) {
     errorContainer.textContent = data.error || 'An unknown error occurred.';
     errorContainer.style.display = 'block';
     item.appendChild(errorContainer);
-
-    // キャンセルボタンを非表示にする
-    const cancelBtn = item.querySelector('.cancel-btn');
-    if (cancelBtn) {
-      cancelBtn.style.display = 'none';
-    }
-  }
-}
-
-async function cancelDownload(taskId) {
-  console.log(`Cancelling download: ${taskId}`);
-  try {
-    const response = await fetch(`${API_BASE}/download/${taskId}`, {
-      method: 'DELETE',
-    });
-    const data = await response.json();
-    if (data.success) {
-      console.log(`Download ${taskId} cancelled successfully.`);
-      // UI update will be handled by WebSocket message (download_error or a new 'cancelled' type)
-      // For now, let's manually update the UI as a fallback.
-      const item = activeDownloads.get(taskId);
-      if (item) {
-        const statusBadge = item.querySelector('.download-status');
-        statusBadge.className = 'download-status status-error'; // Or a new 'status-cancelled'
-        statusBadge.textContent = 'CANCELLED';
-        const cancelBtn = item.querySelector('.cancel-btn');
-        if (cancelBtn) cancelBtn.style.display = 'none';
-      }
-    } else {
-      alert(`Failed to cancel download: ${data.error.message}`);
-    }
-  } catch (error) {
-    console.error('Error cancelling download:', error);
-    alert('An error occurred while trying to cancel the download.');
   }
 }
 
@@ -426,14 +379,6 @@ async function cancelDownload(taskId) {
 // ========================================
 elements.fetchListBtn.addEventListener('click', fetchList);
 elements.downloadBtn.addEventListener('click', startDownload);
-elements.downloadsList.addEventListener('click', (event) => {
-  if (event.target.classList.contains('cancel-btn')) {
-    const taskId = event.target.dataset.taskId;
-    if (taskId) {
-      cancelDownload(taskId);
-    }
-  }
-});
 
 // ========================================
 // Initialize
