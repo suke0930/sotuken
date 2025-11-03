@@ -9,7 +9,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import pino, { Logger } from 'pino';
-import type { JdkManager } from '../../jdk-manager/src/lib/JdkManager';
+import type { JdkManager } from '../../../jdk-manager/src/lib/JdkManager';
 import { ServerValidator } from './ServerValidator';
 import { ServerPropertiesManager } from './ServerPropertiesManager';
 import { ServerInstanceWrapper } from './ServerInstanceWrapper';
@@ -95,17 +95,15 @@ export class ServerManager {
 
     // 設定ファイルの読み込みまたは作成
     if (require('fs').existsSync(manager.configPath)) {
+      // 既存の設定ファイルを読み込み
+      await manager.loadAndValidateConfig();
+    } else {
+      // 設定ファイルが存在しない場合は作成
       const configDir = path.dirname(manager.configPath);
-      const dirExists = require('fs').existsSync(configDir);
+      await fs.mkdir(configDir, { recursive: true });
       
-      if (!dirExists) {
-        throw new Error(`Config directory does not exist: ${configDir}`);
-      }
-
       manager.config = manager.createDefaultConfig();
       await manager.saveConfig();
-    } else {
-      await manager.loadAndValidateConfig();
     }
 
     // Wrapper生成
@@ -384,7 +382,7 @@ export class ServerManager {
 
     this.logger.info('Instance removed successfully', { uuid });
 
-    return { success: true };
+    return { success: true, data: undefined };
   }
 
   /**
@@ -410,7 +408,7 @@ export class ServerManager {
     // バリデーション
     const validation = await this.validator.validateUpdateInstance(params);
     if (!validation.valid) {
-      return { success: false, error: validation.error };
+      return { success: false, error: validation.error || 'Validation failed' };
     }
 
     // 警告ログ
@@ -489,7 +487,7 @@ export class ServerManager {
 
       this.logger.info('Instance updated successfully', { uuid: params.uuid });
 
-      return { success: true };
+      return { success: true, data: undefined };
 
     } catch (error) {
       this.logger.error('Failed to update instance', error);
@@ -512,7 +510,7 @@ export class ServerManager {
     // バリデーション
     const validation = this.validator.validateServerStart(uuid);
     if (!validation.valid) {
-      return { success: false, error: validation.error };
+      return { success: false, error: validation.error || 'Validation failed' };
     }
 
     try {
@@ -521,7 +519,7 @@ export class ServerManager {
       // 稼働時間追跡開始
       this.startUptimeTracking(uuid);
 
-      return { success: true };
+      return { success: true, data: undefined };
     } catch (error) {
       this.logger.error('Failed to start server', error);
       return {
@@ -551,7 +549,7 @@ export class ServerManager {
       await this.stopUptimeTracking(uuid);
 
       // タイムアウトしても success: true を返す
-      return { success: true };
+      return { success: true, data: undefined };
     } catch (error) {
       this.logger.error('Failed to stop server', error);
       return {
@@ -572,7 +570,7 @@ export class ServerManager {
 
     try {
       await wrapper.restart(timeout);
-      return { success: true };
+      return { success: true, data: undefined };
     } catch (error) {
       this.logger.error('Failed to restart server', error);
       return {

@@ -7,7 +7,7 @@
 
 import * as os from 'os';
 import type { Logger } from 'pino';
-import type { JdkManager } from '../../jdk-manager/src/lib/JdkManager';
+import type { JdkManager } from '../../../jdk-manager/src/lib/JdkManager';
 import type { ServerManager } from './ServerManager';
 import { ValidationResult, ValidationResultHelper } from '../types/validation';
 import { AddInstanceParams, UpdateInstanceParams } from '../types/params';

@@ -73,7 +73,9 @@ describe('ServerValidator', () => {
     });
 
     it('should fail for duplicate name', () => {
-      serverManager.getInstanceByName.mockReturnValue({ name: 'existing-server', uuid: 'uuid-1' });
+      serverManager.getAllInstances.mockReturnValue([
+        { name: 'existing-server', uuid: 'uuid-1' } as any
+      ]);
       
       const result = validator.validateName('existing-server');
       expect(result.valid).toBe(false);
@@ -81,7 +83,9 @@ describe('ServerValidator', () => {
     });
 
     it('should pass for duplicate name with exclude UUID', () => {
-      serverManager.getInstanceByName.mockReturnValue({ name: 'existing-server', uuid: 'uuid-1' });
+      serverManager.getAllInstances.mockReturnValue([
+        { name: 'existing-server', uuid: 'uuid-1' } as any
+      ]);
       
       const result = validator.validateName('existing-server', 'uuid-1');
       expect(result.valid).toBe(true);
