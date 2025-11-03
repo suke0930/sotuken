@@ -60,6 +60,14 @@ describe('ServerManager Integration Tests', () => {
   });
 
   afterEach(async () => {
+    // ロガーとリソースをクリーンアップ
+    if (manager) {
+      await manager.dispose();
+    }
+
+    // 少し待機してファイルハンドルが完全に閉じられるのを待つ
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // 設定ファイルを削除
     try {
       await fs.unlink(configPath);
