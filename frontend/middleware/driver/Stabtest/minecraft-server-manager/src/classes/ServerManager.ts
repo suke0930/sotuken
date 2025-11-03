@@ -769,4 +769,43 @@ export class ServerManager {
       }
     }
   }
+
+  /**
+   * リソースを解放（テスト用）
+   * ロガーのストリームをクローズし、全てのインターバルをクリア
+   */
+  public async dispose(): Promise<void> {
+    // 全ての稼働時間追跡を停止
+    for (const [uuid] of this.instances) {
+      await this.stopUptimeTracking(uuid);
+    }
+
+    // Pinoロガーのストリームをフラッシュしてクローズ
+    const logger = this.logger as any;
+    if (logger) {
+      // フラッシュ
+      if (typeof logger.flush === 'function') {
+        await new Promise<void>((resolve) => {
+          logger.flush(() => {
+            resolve();
+          });
+        });
+      }
+
+      // 子プロセス（transport worker）を終了
+      const stream = logger[Symbol.for('pino.stream')];
+      if (stream && typeof stream.end === 'function') {
+        await new Promise<void>((resolve) => {
+          stream.end(() => {
+            resolve();
+          });
+        });
+      }
+
+      // thread-stream の場合は flushSync と end を呼ぶ
+      if (stream && typeof stream.flushSync === 'function') {
+        stream.flushSync();
+      }
+    }
+  }
 }

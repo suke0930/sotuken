@@ -54,6 +54,7 @@ export function loadTestEnv(): TestEnv {
 
 /**
  * テスト用ディレクトリをクリーンアップ
+ * ファイルハンドルが開いている場合に備えてリトライロジック付き
  */
 export async function cleanupTestDirs(testEnv: TestEnv): Promise<void> {
   const dirs = [
@@ -64,7 +65,23 @@ export async function cleanupTestDirs(testEnv: TestEnv): Promise<void> {
 
   for (const dir of dirs) {
     if (fs.existsSync(dir)) {
-      await fs.promises.rm(dir, { recursive: true, force: true });
+      // リトライロジック（最大3回、各100ms待機）
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          await fs.promises.rm(dir, { recursive: true, force: true });
+          break; // 成功したらループを抜ける
+        } catch (error: any) {
+          retries--;
+          if (retries === 0) {
+            // 最後の試行でも失敗した場合は警告を出して続行
+            console.warn(`Warning: Failed to remove directory ${dir}: ${error.message}`);
+          } else {
+            // リトライ前に少し待機
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+      }
     }
   }
 }
