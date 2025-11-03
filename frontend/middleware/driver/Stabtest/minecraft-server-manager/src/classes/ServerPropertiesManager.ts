@@ -27,8 +27,7 @@ export class ServerPropertiesManager {
    */
   public exists(): boolean {
     try {
-      require('fs').existsSync(this.filePath);
-      return true;
+      return require('fs').existsSync(this.filePath);
     } catch {
       return false;
     }

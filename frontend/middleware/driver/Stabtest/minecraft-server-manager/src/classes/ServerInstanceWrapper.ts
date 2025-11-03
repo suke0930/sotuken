@@ -8,8 +8,8 @@
 import * as path from 'path';
 import { EventEmitter } from 'events';
 import type { Logger } from 'pino';
-import type { JdkManager } from '../../jdk-manager/src/lib/JdkManager';
-import type { JDKEntry } from '../../jdk-manager/src/lib/JDKEntry';
+import type { JdkManager } from '../../../jdk-manager/src/lib/JdkManager';
+import type { JDKEntry } from '../../../jdk-manager/src/lib/JDKEntry';
 import { ProcessExecutor } from './ProcessExecutor';
 import { ServerInstance, RuntimeState } from '../types/server-schema';
 import { NotifyFunction, InstanceEvent } from '../types/callbacks';

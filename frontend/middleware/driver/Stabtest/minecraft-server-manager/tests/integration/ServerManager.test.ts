@@ -175,7 +175,9 @@ describe('ServerManager Integration Tests', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('already exists');
+      if (!result.success) {
+        expect(result.error).toContain('already exists');
+      }
     });
 
     it('should fail for invalid JDK version', async () => {
@@ -188,7 +190,9 @@ describe('ServerManager Integration Tests', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('not installed');
+      if (!result.success) {
+        expect(result.error).toContain('not installed');
+      }
     });
   });
 
@@ -230,7 +234,9 @@ describe('ServerManager Integration Tests', () => {
     it('should fail for non-existent instance', async () => {
       const result = await manager.removeInstance('non-existent-uuid');
       expect(result.success).toBe(false);
-      expect(result.error).toContain('not found');
+      if (!result.success) {
+        expect(result.error).toContain('not found');
+      }
     });
   });
 
