@@ -14,7 +14,7 @@ describe('ServerPropertiesManager', () => {
   let testPropsPath: string;
 
   beforeAll(async () => {
-    await cleanupTestDirs(testEnv);
+    await cleanupTestDirs(testEnv, { skipLogs: true });
     await createTestDirs(testEnv);
   });
 
@@ -31,7 +31,7 @@ describe('ServerPropertiesManager', () => {
   });
 
   afterAll(async () => {
-    await cleanupTestDirs(testEnv);
+    await cleanupTestDirs(testEnv, { skipLogs: true });
   });
 
   describe('create()', () => {
