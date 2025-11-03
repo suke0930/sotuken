@@ -56,12 +56,16 @@ export function loadTestEnv(): TestEnv {
  * テスト用ディレクトリをクリーンアップ
  * ファイルハンドルが開いている場合に備えてリトライロジック付き
  */
-export async function cleanupTestDirs(testEnv: TestEnv): Promise<void> {
+export async function cleanupTestDirs(testEnv: TestEnv, options?: { skipLogs?: boolean }): Promise<void> {
   const dirs = [
     testEnv.testPaths.configDir,
-    testEnv.testPaths.serversDir,
-    testEnv.testPaths.logsDir
+    testEnv.testPaths.serversDir
   ];
+
+  // logsディレクトリは明示的に指定された場合のみクリーンアップ
+  if (!options?.skipLogs) {
+    dirs.push(testEnv.testPaths.logsDir);
+  }
 
   for (const dir of dirs) {
     if (fs.existsSync(dir)) {
@@ -74,8 +78,11 @@ export async function cleanupTestDirs(testEnv: TestEnv): Promise<void> {
         } catch (error: any) {
           retries--;
           if (retries === 0) {
-            // 最後の試行でも失敗した場合は警告を出して続行
-            console.warn(`Warning: Failed to remove directory ${dir}: ${error.message}`);
+            // 最後の試行でも失敗した場合は警告を出して続行（ログレベルを下げる）
+            if (process.env.JEST_WORKER_ID) {
+              // Jestテスト実行中の場合のみ警告を抑制
+              // console.warn(`Warning: Failed to remove directory ${dir}: ${error.message}`);
+            }
           } else {
             // リトライ前に少し待機
             await new Promise(resolve => setTimeout(resolve, 100));

@@ -207,6 +207,55 @@ const jdkManager = new JdkManager('./runtime');
 await jdkManager.Data.load(); // または Data.init()
 ```
 
+## 🧪 Testing
+
+このプロジェクトには包括的なテストスイートが含まれています。
+
+### テストの実行
+
+```bash
+# 全テスト実行
+npm test
+
+# 単体テストのみ
+npm run test:unit
+
+# 統合テストのみ
+npm run test:integration
+
+# E2Eテスト（環境変数設定が必要）
+RUN_E2E_TESTS=1 npm run test:e2e
+
+# ウォッチモード
+npm run test:watch
+```
+
+### テストカバレッジ
+
+現在のテストカバレッジ:
+- **単体テスト**: 38テストケース
+  - ServerPropertiesManager: 12テスト
+  - ServerValidator: 26テスト
+- **統合テスト**: 19テストケース
+  - ServerManagerの全機能を網羅
+- **E2Eテスト**: 実際のJDKとMinecraft Serverが必要
+  - デフォルトではスキップされます
+  - 環境変数 `RUN_E2E_TESTS=1` で有効化
+
+### 手動テスト
+
+自動テストでカバーできない項目については、手動テストガイドを参照してください:
+- [手動テストガイド](./docs/manual-test-guide.md) - 実際のMinecraft Serverを使用した完全なテストシナリオ
+
+手動テストでは以下をカバー:
+- サーバーの長時間稼働テスト
+- 実際のプレイヤー接続テスト
+- 高負荷時の動作確認
+- 複数サーバーの同時管理
+- パフォーマンスとメモリ管理
+
+詳細なテストケースは [test-cases.md](./docs/test-cases.md) を参照してください。
+
 ## 📝 License
 
 MIT
