@@ -108,12 +108,11 @@ describe('ServerManager Integration Tests', () => {
         note: 'Test server',
         software: { name: 'Paper', version: '1.20.1' },
         jdkVersion: 17,
-        serverBinaryFilePath: mockJarPath,
+        serverBinaryFilePath: testEnv.minecraftServer.getJarPath('Paper'), // Paperを一旦利用
         port: 25565,
         maxMemory: 2048,
         minMemory: 1024
       });
-
       expect(result.success).toBe(true);
       expect(result.uuid).toBeDefined();
 
