@@ -213,6 +213,12 @@ export class ServerManager {
       case 'crashed':
         this.callbacks.onServerCrashed?.(event.uuid, new Error('Server crashed'));
         break;
+      case 'autoRestarted': {
+        const wrapper = this.instances.get(event.uuid);
+        const count = wrapper?.getRuntimeState().consecutiveRestartCount || 0;
+        this.callbacks.onAutoRestarted?.(event.uuid, count);
+        break;
+      }
       case 'autoRestartLimitReached':
         this.callbacks.onAutoRestartLimitReached?.(event.uuid);
         break;

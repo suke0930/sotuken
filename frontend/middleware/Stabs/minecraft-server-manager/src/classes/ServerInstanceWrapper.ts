@@ -302,11 +302,12 @@ export class ServerInstanceWrapper extends EventEmitter {
       this.data.status = 'crashed';
       this.cleanup();
       
+      // ✅ クラッシュは常に通知（自動再起動の有無に関わらず）
+      this.reportEvent('crashed');
+      
       // 自動再起動判定
       if (this.data.autoRestart.enabled) {
         this.attemptAutoRestart();
-      } else {
-        this.reportEvent('crashed');
       }
     }
   }
@@ -360,9 +361,12 @@ export class ServerInstanceWrapper extends EventEmitter {
     // 再起動実行
     try {
       await this.start();
+      // ✅ 自動再起動成功を通知
+      this.reportEvent('autoRestarted');
     } catch (error) {
       this.logger.error('Auto restart failed', error);
-      this.reportEvent('crashed');
+      // 再起動失敗はcrashedイベントとして扱う
+      // （既にクラッシュは通知済みだが、再起動失敗も重要な情報）
     }
   }
 
