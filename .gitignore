@@ -150,6 +150,7 @@ frontend/middleware/driver/Stabtest/Asset/resources/servers/**
 # Backend download directory
 frontend/middleware/driver/Stabtest/Backend/download/**
 !frontend/middleware/driver/Stabtest/Backend/download/.gitkeep
+frontend/middleware/Stabs/minecraft-server-manager/tmp/**
 
-frontend/middleware/driver/Stabtest/minecraft-server-manager/tmp/**
-
+backend/Asset/resources/jdk/**
+backend/Asset/resources/servers/**
