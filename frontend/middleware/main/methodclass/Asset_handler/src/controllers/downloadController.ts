@@ -5,7 +5,7 @@ import { ApiResponse } from '../types';
 import * as path from 'path';
 
 // ダウンロード先ディレクトリ
-const DOWNLOAD_DIR = path.join(__dirname, '../../download');
+const DOWNLOAD_DIR = path.join(__dirname, './temp/download');//tempはあることを前提としよう
 
 // WebSocketマネージャー（後で注入される）
 let wsManager: WebSocketManager | null = null;
@@ -27,7 +27,7 @@ export function setWebSocketManager(manager: WebSocketManager): void {
  */
 export const startDownload = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { url, filename } = req.body;
+    const { url } = req.body;
 
     if (!url) {
       res.status(400).json({
@@ -99,7 +99,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
     res.status(200).json(apiResponse);
   } catch (error: any) {
     console.error('❌ Failed to start download:', error.message);
-    
+
     res.status(500).json({
       success: false,
       error: {
@@ -141,7 +141,7 @@ export const getDownloadStatus = (req: Request, res: Response): void => {
     res.status(200).json(apiResponse);
   } catch (error: any) {
     console.error('❌ Failed to get download status:', error.message);
-    
+
     res.status(500).json({
       success: false,
       error: {
@@ -170,7 +170,7 @@ export const getActiveDownloads = (req: Request, res: Response): void => {
     res.status(200).json(apiResponse);
   } catch (error: any) {
     console.error('❌ Failed to get active downloads:', error.message);
-    
+
     res.status(500).json({
       success: false,
       error: {
@@ -218,7 +218,7 @@ export const cancelDownload = (req: Request, res: Response): void => {
     res.status(200).json(apiResponse);
   } catch (error: any) {
     console.error('❌ Failed to cancel download:', error.message);
-    
+
     res.status(500).json({
       success: false,
       error: {

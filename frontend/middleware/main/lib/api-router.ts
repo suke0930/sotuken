@@ -3,6 +3,7 @@ import path from 'path';
 import { DevUserManager } from './dev-user-manager';
 import { MinecraftServerManager } from './minecraft-server-manager';
 import { SESSION_NAME } from './constants';
+import { AssetServerAPP } from '../methodclass/Asset_handler/src/app';
 
 /**
  * APIエンドポイントのルーティングを管理するクラス
@@ -166,6 +167,7 @@ export class SampleApiRouter {
 
 /**
  * Minecraftサーバー管理APIのルーティングを行うクラス
+ * 後でゴテゴテに機能を追加する予定
  */
 export class MinecraftServerRouter {
     public readonly router: express.Router;
@@ -215,4 +217,17 @@ export class MinecraftServerRouter {
         if (!success) return res.status(404).json({ ok: false, message: "サーバーが見つからないか、削除権限がありません。" });
         res.status(200).json({ ok: true, message: "サーバーを削除しました。" });
     };
+}
+
+
+/**
+ * アセットのProxyAPIエンドポイントのルーティングを行うクラス
+ */
+export class AssetManager {
+    public readonly router: express.Router;
+
+    constructor(private authMiddleware: express.RequestHandler) {
+        this.router = express.Router();
+        new AssetServerAPP(this.router, this.authMiddleware, "http://localhost:3000");
+    }
 }
