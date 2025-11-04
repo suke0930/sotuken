@@ -4,7 +4,7 @@ import { SESSION_SECRET } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
-import { ApiRouter, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
+import { ApiRouter, AssetManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
 
 /**
  * アプリケーションのエントリーポイント
@@ -33,6 +33,9 @@ async function main(port: number): Promise<void> {
     const mcServerRouter = new MinecraftServerRouter(middlewareManager.authMiddleware);
     app.use('/api/servers', mcServerRouter.router);
 
+    // 4.3 Assetproxyのセットアップ
+    const assetProxy = new AssetManager(middlewareManager.authMiddleware);
+    app.use('/api/assets', assetProxy.router);
     // 5. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
 
