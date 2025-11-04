@@ -1,0 +1,158 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    line-height: 1.6;
+}
+
+.auth-container {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 3rem;
+    border-radius: 20px;
+    border: 1px solid rgba(16, 185, 129, 0.1);
+    width: 100%;
+    max-width: 400px;
+    transition: all 0.4s ease;
+}
+
+.auth-container:hover {
+    border-color: rgba(16, 185, 129, 0.2);
+    transform: translateY(-2px);
+}
+
+.form-title {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    color: #1f2937;
+    font-size: 1.75rem;
+    font-weight: 300;
+    letter-spacing: -0.5px;
+}
+
+.form-group {
+    margin-bottom: 1.75rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.75rem;
+    color: #6b7280;
+    font-weight: 400;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 1rem;
+    border: none;
+    border-bottom: 2px solid #e5e7eb;
+    background: transparent;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    outline: none;
+    font-weight: 300;
+}
+
+.form-input:focus {
+    border-bottom-color: #10b981;
+    background: rgba(16, 185, 129, 0.02);
+}
+
+.form-input::placeholder {
+    color: #9ca3af;
+    font-weight: 300;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 1rem;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 2rem 0 1.5rem 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.submit-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+}
+
+.toggle-section {
+    text-align: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.toggle-text {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    font-weight: 300;
+}
+
+.toggle-btn {
+    background: transparent;
+    border: 1px solid #10b981;
+    color: #10b981;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 300;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.toggle-btn:hover {
+    background: #10b981;
+    color: white;
+}
+
+.fade-enter-active, .fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+    opacity: 0;
+}
+
+@media (max-width: 480px) {
+    .auth-container {
+        margin: 1rem;
+        padding: 2rem 1.5rem;
+    }
+    
+    .form-title {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+}

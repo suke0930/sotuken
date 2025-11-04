@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backend Proxy - Download Manager</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 1.1rem;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .section {
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #667eea;
+    }
+
+    .section h2 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.5rem;
+    }
+
+    .control-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 600;
+    }
+
+    select,
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    select:focus,
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .download-error-message {
+      display: none;
+      color: #d63031;
+      margin-top: 10px;
+      background: #ff767520;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .data-preview {
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      padding: 15px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+    }
+
+    .download-item {
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 15px;
+    }
+
+    .download-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .download-filename {
+      font-weight: 600;
+      color: #333;
+      font-size: 1.1rem;
+    }
+
+    .download-status {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .status-downloading {
+      background: #ffeaa7;
+      color: #d63031;
+    }
+
+    .status-completed {
+      background: #55efc4;
+      color: #00b894;
+    }
+
+    .status-error {
+      background: #ff7675;
+      color: #d63031;
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 30px;
+      background: #e0e0e0;
+      border-radius: 15px;
+      overflow: hidden;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
+    .download-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #666;
+    }
+
+    .connection-status {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+    }
+
+    .connected {
+      background: #55efc4;
+      color: #00b894;
+    }
+
+    .disconnected {
+      background: #ff7675;
+      color: #d63031;
+    }
+
+    .version-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .version-button {
+      padding: 10px;
+      background: white;
+      border: 2px solid #667eea;
+      color: #667eea;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .version-button:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .version-button.selected {
+      background: #667eea;
+      color: white;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🚀 Backend Proxy Server</h1>
+      <p>Asset Server Download Manager with Real-time Progress</p>
+    </div>
+
+    <div class="content">
+      <!-- WebSocket Connection Status -->
+      <div class="section">
+        <h2>🔌 Connection Status</h2>
+        <div id="connectionStatus" class="connection-status disconnected">
+          ⚠️ Disconnected
+        </div>
+      </div>
+
+      <!-- List Request Section -->
+      <div class="section">
+        <h2>📋 List Request</h2>
+        <div class="control-group">
+          <label for="listType">Select List Type:</label>
+          <select id="listType">
+            <option value="">-- Select Type --</option>
+            <option value="servers">Servers</option>
+            <option value="jdk">JDK</option>
+          </select>
+        </div>
+        <button id="fetchListBtn">Fetch List</button>
+
+        <div id="listPreview" class="data-preview" style="margin-top: 15px; display: none;">
+          <!-- JSON preview will be displayed here -->
+        </div>
+      </div>
+
+      <!-- Download Section -->
+      <div class="section">
+        <h2>⬇️ Download File</h2>
+
+        <div id="versionSelector" style="display: none;">
+          <h3 style="margin-bottom: 10px;">Select Version:</h3>
+          <div id="versionButtons" class="version-selector">
+            <!-- Version buttons will be dynamically added -->
+          </div>
+        </div>
+
+        <div id="selectedFileInfo"
+          style="display: none; margin-top: 15px; padding: 15px; background: white; border: 2px solid #667eea; border-radius: 6px;">
+          <h4>Selected File:</h4>
+          <p id="selectedFileName" style="margin-top: 5px; font-weight: 600;"></p>
+          <p id="selectedFileUrl" style="margin-top: 5px; color: #666; font-size: 0.9rem;"></p>
+          <button id="downloadBtn" style="margin-top: 10px;">Start Download</button>
+        </div>
+      </div>
+
+      <!-- Active Downloads Section -->
+      <div class="section">
+        <h2>📦 Active Downloads</h2>
+        <div id="downloadsList">
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <p>No active downloads</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
