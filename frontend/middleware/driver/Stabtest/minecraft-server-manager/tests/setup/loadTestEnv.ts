@@ -15,8 +15,14 @@ export interface TestEnv {
     };
   };
   minecraftServer: {
+    /** Vanilla (Mojang公式) サーバーのjarファイルへのパス */
     vanillaJar: string;
+    /** PaperMCサーバーのjarファイルへのパス */
     paperJar: string;
+    /**
+     * サーバーソフトウェア名に応じてjarファイルのパスを取得
+     */
+    getJarPath(software: 'Paper' | 'Vanilla'): string;
   };
   testPaths: {
     configDir: string;
@@ -30,6 +36,9 @@ export function loadTestEnv(): TestEnv {
   const content = fs.readFileSync(envPath, 'utf-8');
   const env = JSON.parse(content);
 
+  const resolvedVanillaJar = path.resolve(env.minecraftServer.vanillaJar);
+  const resolvedPaperJar = path.resolve(env.minecraftServer.paperJar);
+
   // 相対パスを絶対パスに変換
   return {
     jdkManager: {
@@ -41,8 +50,11 @@ export function loadTestEnv(): TestEnv {
       }
     },
     minecraftServer: {
-      vanillaJar: path.resolve(env.minecraftServer.vanillaJar),
-      paperJar: path.resolve(env.minecraftServer.paperJar)
+      vanillaJar: resolvedVanillaJar,
+      paperJar: resolvedPaperJar,
+      getJarPath(software: 'Paper' | 'Vanilla'): string {
+        return software === 'Paper' ? resolvedPaperJar : resolvedVanillaJar;
+      }
     },
     testPaths: {
       configDir: path.resolve(env.testPaths.configDir),
