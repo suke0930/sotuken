@@ -89,6 +89,16 @@ frontend/middleware/driver/
 - `GET /demo` - 認証必須デモページ（認証ミドルウェア使用）
 - `GET /api/protected` - 認証必須APIの例
 
+### Asset系
+- `GET /api/assets/list/servers` - Minecraft サーバーJarリスト
+- `GET /api/assets/list/jdk` - JDKBinaryリスト
+- `GET /api/assets/health` - Asset Serverのヘルスチェック
+
+### Download系
+- `GET /api/assets/download` - ダウンロード開始
+- `GET /api/assets/downloads` - ダウンロード一覧
+- `/download/:taskId`については`frontend\middleware\main\methodclass\Asset_handler\src\app.ts`を参照
+
 ## 💡 主な改善点
 
 ### 従来の実装との比較
