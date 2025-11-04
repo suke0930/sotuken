@@ -12,6 +12,7 @@ export type InstanceEventType =
   | 'started'
   | 'stopped'
   | 'crashed'
+  | 'autoRestarted'
   | 'autoRestartLimitReached'
   | 'stopTimeout'
   | 'forcedKill';
@@ -38,6 +39,7 @@ export interface ServerCallbacks {
   onServerStarted?: (uuid: string) => void;
   onServerStopped?: (uuid: string, exitCode: number) => void;
   onServerCrashed?: (uuid: string, error: Error) => void;
+  onAutoRestarted?: (uuid: string, consecutiveCount: number) => void;
   onAutoRestartLimitReached?: (uuid: string) => void;
   onStopTimeout?: (uuid: string, message: string) => void;
   onForcedKill?: (uuid: string) => void;

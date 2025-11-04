@@ -108,7 +108,7 @@ describe('ServerManager Integration Tests', () => {
         note: 'Test server',
         software: { name: 'Paper', version: '1.20.1' },
         jdkVersion: 17,
-        serverBinaryFilePath: testEnv.minecraftServer.getJarPath('Paper'), // Paperを一旦利用
+        serverBinaryFilePath: mockJarPath, // Use mock jar created in beforeAll
         port: 25565,
         maxMemory: 2048,
         minMemory: 1024
