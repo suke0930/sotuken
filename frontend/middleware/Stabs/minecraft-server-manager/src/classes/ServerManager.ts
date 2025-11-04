@@ -24,6 +24,7 @@ import { AddInstanceParams, UpdateInstanceParams } from '../types/params';
 import { VoidResult, AddInstanceResult } from '../types/result';
 import { ServerManagerErrors, DefaultValues } from '../constants/errors';
 
+
 /**
  * サーバーマネージャークラス
  */
@@ -33,11 +34,11 @@ export class ServerManager {
   private logPath: string;
   private readonly jdkManager: JdkManager;
   private readonly callbacks?: ServerCallbacks;
-  
+
   private config!: ServerManagerConfig;
   private logger!: Logger;
   private validator!: ServerValidator;
-  
+
   private instances: Map<string, ServerInstanceWrapper> = new Map();
   private uptimeIntervals: Map<string, NodeJS.Timeout> = new Map();
 
@@ -101,7 +102,7 @@ export class ServerManager {
       // 設定ファイルが存在しない場合は作成
       const configDir = path.dirname(manager.configPath);
       await fs.mkdir(configDir, { recursive: true });
-      
+
       manager.config = manager.createDefaultConfig();
       await manager.saveConfig();
     }
@@ -147,7 +148,7 @@ export class ServerManager {
 
       // Zodバリデーション
       this.config = ServerManagerConfigSchema.parse(parsed);
-      
+
       this.logger.info('Configuration loaded', {
         version: this.config.configVersion,
         instances: this.config.instances.length
@@ -168,7 +169,7 @@ export class ServerManager {
 
       const content = JSON.stringify(this.config, null, 2);
       await fs.writeFile(this.configPath, content, 'utf-8');
-      
+
       this.logger.debug('Configuration saved', {
         path: this.configPath
       });
@@ -284,10 +285,10 @@ export class ServerManager {
         });
       } catch (error) {
         this.logger.error('Failed to create server.properties', error);
-        
+
         // ロールバック: ディレクトリごと削除
         await fs.rm(serverDir, { recursive: true, force: true });
-        
+
         return {
           success: false,
           error: 'Failed to create server.properties'
@@ -381,7 +382,7 @@ export class ServerManager {
     // ディレクトリ削除成功後にのみレジストリ更新
     this.instances.delete(uuid);
     this.uptimeIntervals.delete(uuid);
-    
+
     // 設定から削除
     this.config.instances = this.config.instances.filter(inst => inst.uuid !== uuid);
     await this.saveConfig();
@@ -431,13 +432,13 @@ export class ServerManager {
       if (params.updates.name !== undefined) {
         const oldDir = path.join(this.serversBasePath, currentName);
         const newDir = path.join(this.serversBasePath, params.updates.name);
-        
+
         await fs.rename(oldDir, newDir);
         this.logger.info(`Renamed directory: ${oldDir} -> ${newDir}`);
-        
+
         currentName = params.updates.name;
         data.name = params.updates.name;
-        
+
         // jarPathも更新
         data.launchConfig.jarPath = path.join(newDir, 'server.jar');
       }
@@ -521,7 +522,7 @@ export class ServerManager {
 
     try {
       await wrapper.start();
-      
+
       // 稼働時間追跡開始
       this.startUptimeTracking(uuid);
 
@@ -550,7 +551,7 @@ export class ServerManager {
 
     try {
       await wrapper.stop(timeout);
-      
+
       // 稼働時間追跡停止
       await this.stopUptimeTracking(uuid);
 
