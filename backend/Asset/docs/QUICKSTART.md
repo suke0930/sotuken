@@ -30,7 +30,7 @@ npm run api
 
 サンドボックス環境では以下のURLで外部からアクセス可能です:
 
-**ベースURL**: `https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai`
+**ベースURL**: `https://localhost:3000`
 
 ### エンドポイント一覧
 
@@ -48,26 +48,26 @@ npm run api
 
 ```bash
 # ヘルスチェック
-curl https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/health
+curl https://localhost:3000/health
 
 # サーバー情報取得
-curl https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/api/v1/servers
+curl https://localhost:3000/api/v1/servers
 
 # JDK情報取得
-curl https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/api/v1/jdk
+curl https://localhost:3000/api/v1/jdk
 ```
 
 ### ブラウザでアクセス
 
-- ヘルスチェック: https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/health
-- サーバー情報: https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/api/v1/servers
-- JDK情報: https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/api/v1/jdk
+- ヘルスチェック: https://localhost:3000/health
+- サーバー情報: https://localhost:3000/api/v1/servers
+- JDK情報: https://localhost:3000/api/v1/jdk
 
 ### JavaScript (Fetch API)
 
 ```javascript
 // サーバー情報を取得
-fetch('https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/api/v1/servers')
+fetch('https://localhost:3000/api/v1/servers')
   .then(response => response.json())
   .then(data => {
     console.log('サーバー数:', data.data.length);
@@ -75,7 +75,7 @@ fetch('https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/api/v1/serv
   });
 
 // JDK情報を取得
-fetch('https://3000-i0e8icoitrsz8wh48c45b-b9b802c4.sandbox.novita.ai/api/v1/jdk')
+fetch('https://localhost:3000/api/v1/jdk')
   .then(response => response.json())
   .then(data => {
     console.log('JDKバージョン:', data.data.map(j => j.version));

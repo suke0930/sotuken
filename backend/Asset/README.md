@@ -4,23 +4,77 @@ Minecraft サーバーと JDK の情報を提供する REST API サーバー。
 
 ## 🚀 クイックスタート
 
-### サーバーの起動
+### 前提条件
 
 ```bash
-# プロジェクトルートから実行
-npm run api
+# 依存関係のインストール
+cd backend/Asset
+npm install
 
-# または直接実行
-npx ts-node backend/server.ts
+# JDK_JSON_Genelatorの依存関係もインストール
+cd JDK_JSON_Genelator
+npm install
+cd ..
 ```
+
+### サーバーの起動
+
+#### 本番モード（通常起動）
+
+```bash
+npm start
+```
+
+既存のJDKデータを使用し、自動ダウンロードは実行されません。
+
+#### 開発モード（JDK自動セットアップ付き）
+
+```bash
+npm run dev
+```
+
+サーバー起動時に以下の処理が自動実行されます：
+1. JDK_JSON_Generatorを実行して最新JDK情報を取得
+2. data/jdk.jsonを最新情報で自動更新
+3. 不足しているJDKバイナリを自動ダウンロード
+
+#### テストモード（JDK自動セットアップ付き）
+
+```bash
+npm run test
+# または
+npx ts-node server.ts --test
+```
+
+開発モードと同様に、JDKの自動セットアップが実行されます。
 
 サーバーが起動すると、以下のようなメッセージが表示されます:
 
 ```
+========================================
+🚀 Starting JDK Auto Setup
+========================================
+
+🔄 Running JDK_JSON_Generator...
+✅ JDK_JSON_Generator completed successfully
+
+🔄 Converting latest-jdks.json to jdk.json format...
+✅ Updated data/jdk.json
+🔄 Checking and downloading JDK binaries...
+
+📦 Processing JDK 21...
+   ⬇️  Downloading windows/OpenJDK21U-jdk_x64_windows_hotspot_21.0.9_10.zip...
+   ✅ Download completed
+
+========================================
+✅ JDK Auto Setup Completed Successfully
+========================================
+
 🚀 Server is running on port 3000
 📡 Health check: http://localhost:3000/health
 🎮 Minecraft Servers API: http://localhost:3000/api/v1/servers
 ☕ JDK API: http://localhost:3000/api/v1/jdk
+🔧 Mode: DEVELOPMENT (JDK auto-setup enabled)
 ```
 
 ---
@@ -186,6 +240,85 @@ GET /api/assets/list/servers
 
 ---
 
+## 🤖 JDK自動セットアップ機能
+
+このサーバーには、JDKの情報を自動的に取得し、バイナリファイルをダウンロードする機能が組み込まれています。
+
+### 機能概要
+
+1. **JDK情報の自動取得**
+   - Eclipse Temurin GitHub APIから最新のJDK情報を取得
+   - JDK 8, 11, 17, 21（すべてLTSバージョン）に対応
+
+2. **data/jdk.jsonの自動更新**
+   - 取得した最新情報をAPIサーバーのフォーマットに変換
+   - localhost URLを使用した二次配布URL形式で保存
+
+3. **JDKバイナリの自動ダウンロード**
+   - resources/jdk/{version}/{os}/ ディレクトリに自動配置
+   - 既存ファイルはスキップ（再ダウンロード不要）
+   - Windows (.zip)、Linux (.tar.gz)、macOS (.tar.gz) に対応
+
+### 動作モード
+
+| モード | 起動コマンド | JDK自動セットアップ | 用途 |
+|--------|--------------|---------------------|------|
+| 本番モード | `npm start` | ❌ 無効 | 本番環境での運用 |
+| 開発モード | `npm run dev` | ✅ 有効 | 開発・テスト環境 |
+| テストモード | `npm run test` | ✅ 有効 | 自動テスト実行時 |
+
+### 自動セットアップの流れ
+
+```
+サーバー起動
+    ↓
+[dev/testモードの場合]
+    ↓
+1. JDK_JSON_Generatorを実行
+   → GitHub APIから最新JDK情報を取得
+   → JDK_JSON_Genelator/latest-jdks.json に保存
+    ↓
+2. フォーマット変換
+   → latest-jdks.json を読み込み
+   → data/jdk.json 形式に変換
+   → localhost URLで二次配布URLを生成
+    ↓
+3. バイナリダウンロード
+   → 各JDKバージョンのバイナリをチェック
+   → 存在しないファイルのみダウンロード
+   → resources/jdk/ 配下に配置
+    ↓
+サーバー起動完了
+```
+
+### ディレクトリ構造（自動生成）
+
+```
+backend/Asset/
+├── JDK_JSON_Genelator/
+│   └── latest-jdks.json          # GitHub APIから取得した生データ
+├── data/
+│   └── jdk.json                  # 自動更新されるJDK情報（API用）
+└── resources/
+    └── jdk/
+        ├── 8/
+        │   ├── windows/
+        │   │   └── OpenJDK8U-jdk_x64_windows_hotspot_*.zip
+        │   └── linux/
+        │       └── OpenJDK8U-jdk_x64_linux_hotspot_*.tar.gz
+        ├── 11/
+        ├── 17/
+        └── 21/
+```
+
+### 注意事項
+
+- 初回起動時は全JDKバイナリのダウンロードが行われるため、時間がかかります（合計約1-2GB）
+- ダウンロード済みのファイルは再ダウンロードされません
+- ネットワーク接続が必要です
+
+---
+
 ## 📦 データ管理 (アセット配布)
 
 このAPIサーバーは、`backend/data/` ディレクトリにあるJSONファイルから直接データを読み込みます。これにより、サーバーを再起動することなく、リアルタイムでAPIが提供する情報を更新できます。
@@ -219,27 +352,52 @@ vim backend/data/jdk.json
 ## 📁 ディレクトリ構造
 
 ```
-backend/
-├── app.ts                  # Express アプリケーション設定
-├── server.ts               # サーバー起動エントリーポイント
+backend/Asset/
+├── app.ts                       # Express アプリケーション設定
+├── server.ts                    # サーバー起動エントリーポイント
+├── package.json                 # プロジェクト設定とスクリプト
+├── tsconfig.json                # TypeScript設定
+│
 ├── routes/
-│   ├── index.ts           # ルートの統合
-│   ├── servers.ts         # サーバー情報ルート
-│   └── jdk.ts             # JDK情報ルート
+│   ├── index.ts                # ルートの統合
+│   ├── servers.ts              # サーバー情報ルート
+│   ├── jdk.ts                  # JDK情報ルート
+│   └── assets.ts               # アセット配信ルート
+│
 ├── controllers/
-│   ├── serversController.ts  # サーバー情報コントローラー
-│   └── jdkController.ts      # JDK情報コントローラー
+│   ├── serversController.ts    # サーバー情報コントローラー
+│   └── jdkController.ts        # JDK情報コントローラー
+│
 ├── types/
-│   ├── server.types.ts    # サーバー型定義
-│   └── jdk.types.ts       # JDK型定義
+│   ├── server.types.ts         # サーバー型定義
+│   └── jdk.types.ts            # JDK型定義
+│
 ├── lib/
-│   ├── sampleData.ts      # サーバーサンプルデータ
-│   └── jdkSampleData.ts   # JDKサンプルデータ
+│   ├── sampleData.ts           # サーバーヘルパー関数
+│   ├── jdkSampleData.ts        # JDKヘルパー関数
+│   ├── dataLoader.ts           # JSONデータローダー
+│   └── jdkSetup.ts            # 🆕 JDK自動セットアップ機能
+│
+├── data/                        # JSONデータファイル（リアルタイム編集可能）
+│   ├── servers.json            # Minecraftサーバー情報
+│   └── jdk.json                # JDK情報（自動更新可能）
+│
+├── resources/                   # ファイル配信ディレクトリ
+│   ├── jdk/                    # JDKバイナリ（自動ダウンロード）
+│   └── servers/                # サーバーJARファイル
+│
+├── JDK_JSON_Genelator/         # 🆕 JDK情報自動取得ツール
+│   ├── main.js                 # GitHub API取得スクリプト
+│   ├── latest-jdks.json        # 最新JDK情報（自動生成）
+│   └── package.json            # 依存関係（axios）
+│
 └── docs/
-    ├── API.md             # サーバーAPI仕様
-    ├── SCHEMA.md          # サーバースキーマ
-    ├── JDK_API.md         # JDK API仕様
-    └── JDK_SCHEMA.md      # JDKスキーマ
+    ├── API.md                  # サーバーAPI仕様
+    ├── SCHEMA.md               # サーバースキーマ
+    ├── JDK_API.md              # JDK API仕様
+    ├── JDK_SCHEMA.md           # JDKスキーマ
+    ├── ASSETS_API.md           # アセット配信API仕様
+    └── QUICKSTART.md           # クイックスタートガイド
 ```
 
 ---
@@ -289,6 +447,10 @@ npm run build
 
 ## 📝 今後の拡張
 
+- [x] **JDK自動セットアップ機能** ✅ 実装済み
+  - [x] GitHub APIからの自動取得
+  - [x] data/jdk.jsonの自動更新
+  - [x] JDKバイナリの自動ダウンロード
 - [ ] 特定のサーバーソフトウェア取得エンドポイント
 - [ ] 特定のJDKバージョン取得エンドポイント
 - [ ] クエリパラメータによるフィルタリング
@@ -302,9 +464,10 @@ npm run build
 
 ## ⚠️ 注意事項
 
-1. **サンプルデータ**: 現在使用しているダウンロードURLはサンプルです
+1. **JDK自動ダウンロード**: 開発/テストモードでは初回起動時に約1-2GBのJDKバイナリがダウンロードされます
 2. **開発環境**: この設定は開発環境用です。本番環境では追加のセキュリティ対策が必要です
 3. **CORS**: 本番環境では適切なオリジン制限を設定してください
+4. **GitHub API制限**: JDK_JSON_Generatorは GitHub API を使用します。API制限に注意してください
 
 ---
 

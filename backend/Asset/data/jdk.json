@@ -1,40 +1,21 @@
 [
   {
-    "version": "8",
+    "version": "21",
     "downloads": [
       {
         "os": "windows",
-        "downloadUrl": "https://mmatechnical.com/Download/Download-Test-File/(MMA)-1GB.zip"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/windows/OpenJDK21U-jdk_x64_windows_hotspot_21.0.9_10.zip"
       },
       {
         "os": "linux",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/8/linux/jdk-8u351-linux-x64.tar.gz"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/linux/OpenJDK21U-jdk_x64_linux_hotspot_21.0.9_10.tar.gz"
       },
       {
         "os": "macos",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/8/macos/jdk-8u351-macos-x64.dmg"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/macos/OpenJDK21U-jdk_x64_mac_hotspot_21.0.9_10.tar.gz"
       }
     ],
-    "vendor": "AdoptOpenJDK",
-    "isLTS": true
-  },
-  {
-    "version": "11",
-    "downloads": [
-      {
-        "os": "windows",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/windows/jdk-11.0.17-windows-x64.zip"
-      },
-      {
-        "os": "linux",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/linux/jdk-11.0.17-linux-x64.tar.gz"
-      },
-      {
-        "os": "macos",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/macos/jdk-11.0.17-macos-x64.dmg"
-      }
-    ],
-    "vendor": "AdoptOpenJDK",
+    "vendor": "Eclipse Temurin",
     "isLTS": true
   },
   {
@@ -42,34 +23,41 @@
     "downloads": [
       {
         "os": "windows",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/windows/jdk-17.0.5-windows-x64.zip"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/windows/OpenJDK17U-jdk_x64_windows_hotspot_17.0.17_10.zip"
       },
       {
         "os": "linux",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/linux/jdk-17.0.5-linux-x64.tar.gz"
-      },
-      {
-        "os": "macos",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/macos/jdk-17.0.5-macos-x64.dmg"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/17/linux/OpenJDK17U-jdk_x64_linux_hotspot_17.0.17_10.tar.gz"
       }
     ],
     "vendor": "Eclipse Temurin",
     "isLTS": true
   },
   {
-    "version": "21",
+    "version": "11",
     "downloads": [
       {
         "os": "windows",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/windows/jdk-21.0.1-windows-x64.zip"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/windows/OpenJDK11U-jdk_x64_windows_hotspot_11.0.29_7.zip"
       },
       {
         "os": "linux",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/linux/jdk-21.0.1-linux-x64.tar.gz"
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/11/linux/OpenJDK11U-jdk_x64_linux_hotspot_11.0.29_7.tar.gz"
+      }
+    ],
+    "vendor": "Eclipse Temurin",
+    "isLTS": true
+  },
+  {
+    "version": "8",
+    "downloads": [
+      {
+        "os": "windows",
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/8/windows/OpenJDK8U-jdk_x64_windows_hotspot_8u472b08.zip"
       },
       {
-        "os": "macos",
-        "downloadUrl": "http://localhost:3000/api/assets/jdk/21/macos/jdk-21.0.1-macos-x64.dmg"
+        "os": "linux",
+        "downloadUrl": "http://localhost:3000/api/assets/jdk/8/linux/OpenJDK8U-jdk_x64_linux_hotspot_8u472b08.tar.gz"
       }
     ],
     "vendor": "Eclipse Temurin",
