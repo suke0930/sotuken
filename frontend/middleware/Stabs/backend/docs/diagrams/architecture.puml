@@ -1,0 +1,151 @@
+@startuml System Architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+
+title システムアーキテクチャ図
+
+cloud "Internet" {
+}
+
+node "Client Device" {
+  [Web Browser] as browser
+  
+  frame "Frontend (HTML/JS)" {
+    component [UI Components] as ui
+    component [WebSocket Client] as wsclient
+    component [API Client] as apiclient
+  }
+}
+
+node "Backend Proxy Server\n(Node.js + Express + WebSocket)" {
+  
+  frame "HTTP Layer" {
+    component [Express App] as express
+    component [CORS Middleware] as cors
+    component [Router] as router
+  }
+  
+  frame "WebSocket Layer" {
+    component [WebSocket Server] as wsserver
+    component [WebSocketManager] as wsmanager
+  }
+  
+  frame "Controllers" {
+    component [ProxyController] as proxyctrl
+    component [DownloadController] as dlctrl
+  }
+  
+  frame "Business Logic" {
+    component [DownloadTask] as dltask
+  }
+  
+  folder "Download Directory" as dldir
+}
+
+node "Asset Server\n(File Distribution)" {
+  
+  frame "Asset APIs" {
+    component [Server List API] as serverapi
+    component [JDK List API] as jdkapi
+    component [File Download API] as fileapi
+  }
+  
+  folder "Resources" {
+    database "JDK Files" as jdkfiles
+    database "Server Files" as serverfiles
+  }
+}
+
+' Client connections
+browser --> ui
+ui --> wsclient
+ui --> apiclient
+
+' HTTP connections
+apiclient -down-> express : HTTP Request
+express --> cors
+cors --> router
+router --> proxyctrl : List Requests
+router --> dlctrl : Download Requests
+
+' WebSocket connections
+wsclient -down-> wsserver : WebSocket
+wsserver --> wsmanager
+wsmanager <-up- dlctrl : Progress Updates
+
+' Backend to Asset Server
+proxyctrl -right-> serverapi : Proxy
+proxyctrl --> jdkapi : Proxy
+dlctrl --> fileapi : Download
+dltask <-- dlctrl : Create & Manage
+
+' Asset Server connections
+serverapi --> serverfiles : Read
+jdkapi --> jdkfiles : Read
+fileapi --> serverfiles : Stream
+fileapi --> jdkfiles : Stream
+
+' Download storage
+dltask --> dldir : Save Files
+
+' Notes
+note right of browser
+  ユーザーインターフェース
+  
+  機能：
+  - リストタイプ選択
+  - バージョン選択
+  - ダウンロード開始
+  - プログレス表示
+end note
+
+note bottom of wsmanager
+  WebSocket通信管理
+  
+  配信内容：
+  - download_progress
+  - download_complete
+  - download_error
+  - ping/pong (keep-alive)
+end note
+
+note bottom of dltask
+  ダウンロードタスク
+  
+  機能：
+  - Axiosストリーミング
+  - 速度計算
+  - 進捗管理
+  - コールバック実行
+end note
+
+note right of proxyctrl
+  Assetサーバープロキシ
+  
+  理由：
+  - CORS対策
+  - Assetサーバーのブラックボックス化
+  - 統一的なエラーハンドリング
+end note
+
+note left of fileapi
+  ファイル配信API
+  
+  特徴：
+  - ストリーミング配信
+  - Content-Lengthヘッダー
+  - Content-Dispositionヘッダー
+  - メモリ効率的
+end note
+
+' Relationship types
+legend right
+  |= 線の種類 |= 意味 |
+  | ──> | HTTP通信 |
+  | ═══> | WebSocket通信 |
+  | ─ ─> | 依存関係 |
+  | ──▷ | データフロー |
+endlegend
+
+@enduml
