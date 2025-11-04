@@ -22,7 +22,11 @@ static async initialize(
 - `serversBasePath`: サーバーディレクトリのベースパス
 - `logPath`: ログファイルのパス
 - `jdkManager`: 初期化済みのJDKManagerインスタンス
-- `callbacks`: イベントコールバック（オプション）
+- `callbacks`: イベントコールバック（オプション）(ここマジで重要)
+
+### イベントコールバックの詳細
+Crashとか受け取りたかったらこれを使わなくてはならない
+
 
 ### Instance Management
 
