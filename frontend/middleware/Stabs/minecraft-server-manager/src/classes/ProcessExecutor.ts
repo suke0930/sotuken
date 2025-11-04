@@ -5,7 +5,7 @@
  * ServerManager/Wrapperの概念に依存しない汎用的なプロセス実行クラス
  * @version 1.0.0
  */
-
+import iconv from 'iconv-lite';
 import { spawn, ChildProcess } from 'child_process';
 import { createInterface, Interface as ReadlineInterface } from 'readline';
 import type { Logger } from 'pino';
@@ -32,7 +32,7 @@ export class ProcessExecutor {
   private workingDir: string;
   private stdoutReader: ReadlineInterface | null = null;
   private stderrReader: ReadlineInterface | null = null;
-  
+
   // コールバック
   private onStdout?: (line: string) => void;
   private onStderr?: (line: string) => void;
@@ -73,7 +73,8 @@ export class ProcessExecutor {
     }
 
     // 引数の構築
-    const processArgs = [...args, '-jar', jarPath];
+    const args2 = args.filter(arg => arg !== '');
+    const processArgs = [...args2, '-jar', jarPath, "--nogui"];//NOGUI埋め込み
 
     this.logger.info('Starting process', {
       javaPath,
@@ -84,6 +85,8 @@ export class ProcessExecutor {
 
     try {
       // プロセス起動
+      console.log(jarPath);
+      console.log(processArgs);
       this.process = spawn(javaPath, processArgs, {
         cwd: this.workingDir,
         stdio: ['pipe', 'pipe', 'pipe']
@@ -109,38 +112,48 @@ export class ProcessExecutor {
     }
   }
 
-  /**
-   * 標準入出力のハンドラーをセットアップ
-   */
   private setupOutputHandlers(): void {
     if (!this.process || !this.process.stdout || !this.process.stderr) {
       return;
     }
 
-    // 標準出力を行単位で処理
-    this.stdoutReader = createInterface({
-      input: this.process.stdout,
-      crlfDelay: Infinity
-    });
+    // --- stdout ---
+    let stdoutBuffer = Buffer.alloc(0);
+    this.process.stdout.on('data', (chunk: Buffer) => {
+      stdoutBuffer = Buffer.concat([stdoutBuffer, chunk]);
 
-    this.stdoutReader.on('line', (line: string) => {
-      if (this.onStdout) {
-        this.onStdout(line);
+      // 改行ごとに分割（Shift-JIS対応）
+      let lines = iconv.decode(stdoutBuffer, 'shift_jis').split(/\r?\n/);
+      // 最後が改行で終わっていない場合は残しておく
+      if (!stdoutBuffer.toString().endsWith('\n')) {
+        stdoutBuffer = Buffer.from(lines.pop() ?? '', 'utf8');
+      } else {
+        stdoutBuffer = Buffer.alloc(0);
+      }
+
+      for (const line of lines) {
+        if (this.onStdout) this.onStdout(line);
       }
     });
 
-    // 標準エラー出力を行単位で処理
-    this.stderrReader = createInterface({
-      input: this.process.stderr,
-      crlfDelay: Infinity
-    });
+    // --- stderr ---
+    let stderrBuffer = Buffer.alloc(0);
+    this.process.stderr.on('data', (chunk: Buffer) => {
+      stderrBuffer = Buffer.concat([stderrBuffer, chunk]);
 
-    this.stderrReader.on('line', (line: string) => {
-      if (this.onStderr) {
-        this.onStderr(line);
+      let lines = iconv.decode(stderrBuffer, 'shift_jis').split(/\r?\n/);
+      if (!stderrBuffer.toString().endsWith('\n')) {
+        stderrBuffer = Buffer.from(lines.pop() ?? '', 'utf8');
+      } else {
+        stderrBuffer = Buffer.alloc(0);
+      }
+
+      for (const line of lines) {
+        if (this.onStderr) this.onStderr(line);
       }
     });
   }
+
 
   /**
    * イベントハンドラーをセットアップ
@@ -151,22 +164,22 @@ export class ProcessExecutor {
     // 終了イベント
     this.process.on('exit', (code: number | null) => {
       this.logger.info('Process exited', { exitCode: code });
-      
+
       if (this.onExit) {
         this.onExit(code);
       }
-      
+
       this.cleanup();
     });
 
     // エラーイベント
     this.process.on('error', (error: Error) => {
       this.logger.error('Process error', error);
-      
+
       if (this.onError) {
         this.onError(error);
       }
-      
+
       this.cleanup();
     });
   }
@@ -196,12 +209,12 @@ export class ProcessExecutor {
       return true;
     } else {
       this.logger.warn('Process did not stop within timeout');
-      
+
       // タイムアウトコールバック
       if (this.onStopTimeout) {
         this.onStopTimeout();
       }
-      
+
       return false;
     }
   }
@@ -240,7 +253,7 @@ export class ProcessExecutor {
     }
 
     this.logger.warn('Force killing process', { pid: this.process.pid });
-    
+
     try {
       this.process.kill('SIGKILL');
     } catch (error) {

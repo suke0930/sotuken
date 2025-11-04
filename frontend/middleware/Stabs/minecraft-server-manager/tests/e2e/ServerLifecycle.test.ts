@@ -23,7 +23,7 @@ describe('Server Lifecycle E2E Tests', () => {
   // E2Eテストのスキップフラグ
   // 実際のJDKとMinecraft jarが用意できた環境でのみ実行
   const skipE2E = process.env.RUN_E2E_TESTS !== 'true';
-  console.log(skipE2E);
+
 
   beforeAll(async () => {
     if (skipE2E) {
