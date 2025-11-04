@@ -214,7 +214,7 @@ await jdkManager.Data.load(); // または Data.init()
 ### テストの実行
 
 ```bash
-# 全テスト実行
+# 全テスト実行　test.envのpapermcを検証に利用
 npm test
 
 # 単体テストのみ
@@ -223,7 +223,7 @@ npm run test:unit
 # 統合テストのみ
 npm run test:integration
 
-# E2Eテスト（環境変数設定が必要）
+# E2Eテスト（環境変数設定が必要）test.envのpapermcを検証に利用
 RUN_E2E_TESTS=1 npm run test:e2e
 
 # ウォッチモード
