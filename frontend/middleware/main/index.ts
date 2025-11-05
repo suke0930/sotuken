@@ -1,15 +1,18 @@
 import express from 'express';
+import https from 'https';
+import http from 'http';
 import expressWs from 'express-ws';
 import './lib/types'; // 型定義をグローバルに適用
-import { SESSION_SECRET } from './lib/constants';
+import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
 import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
+import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
 import path from 'path';
 //ダウンロードパス
-const Downloadtemppath: string = path.join(__dirname + './temp/download');
-export { Downloadtemppath };
+const DOWNLOAD_TEMP_PATH: string = path.join(__dirname, 'temp', 'download');
+export { DOWNLOAD_TEMP_PATH };
 /**
  * アプリケーションのエントリーポイント
  */
@@ -18,37 +21,45 @@ async function main(port: number): Promise<void> {
     await DevUserManager.initialize();
     await MinecraftServerManager.initialize();
 
-    // 2. Expressアプリケーションのインスタンス化
+    // 2. SSL証明書の初期化
+    const sslOptions = await SSLCertificateManager.initialize(port);
+
+    // 3. Expressアプリケーションのインスタンス化
     const app = express();
 
-    // 2.1 WebSocketサーバーの初期化（ミドルウェア設定の前に実行）
-    const wsInstance = expressWs(app);
+    // 4. HTTPSまたはHTTPサーバーを作成
+    const server = sslOptions//暗黙のif(sslOptions)
+        ? https.createServer(sslOptions, app)//true
+        : http.createServer(app);//false(null)(つまりSSL無効時のフォールバック)
+
+    // 5. WebSocketサーバーの初期化（ミドルウェア設定の前に実行）
+    const wsInstance = expressWs(app, server);
     console.log('✅ express-ws initialized');
 
-    // 3. ミドルウェアのセットアップ
-    const middlewareManager = new MiddlewareManager(app);
+    // 6. ミドルウェアのセットアップ
+    const middlewareManager = new MiddlewareManager(app, !!sslOptions);
     middlewareManager.configure();
 
-    // 4. ルーティングのセットアップ
+    // 7. ルーティングのセットアップ
     const apiRouter = new ApiRouter(app, middlewareManager.authMiddleware);
     apiRouter.configureRoutes();
 
 
 
-    // 4.1. 【雛形】サンプルAPIルーターのセットアップ
+    // 7.1. 【雛形】サンプルAPIルーターのセットアップ
     const sampleApiRouter = new SampleApiRouter(middlewareManager.authMiddleware);
     app.use('/api/sample', sampleApiRouter.router); // `/api/sample` プレフィックスでマウント
 
-    // 4.2. Minecraftサーバー管理APIルーターのセットアップ
+    // 7.2. Minecraftサーバー管理APIルーターのセットアップ
     const mcServerRouter = new MinecraftServerRouter(middlewareManager.authMiddleware);
     app.use('/api/servers', mcServerRouter.router);
 
-    // 4.3 Assetproxyのセットアップ
+    // 7.3 Assetproxyのセットアップ
     const assetProxy = new AssetManager(middlewareManager.authMiddleware);
     app.use('/api/assets', assetProxy.router);
 
-    // 4.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
-    new DownloadManager(middlewareManager, wsInstance, path.join(__dirname + "/temp/download"), "/ws");
+    // 7.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
+    new DownloadManager(middlewareManager, wsInstance, DOWNLOAD_TEMP_PATH, "/ws");
 
 
 
@@ -57,23 +68,34 @@ async function main(port: number): Promise<void> {
 
 
 
-    // 5. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
+    // 8. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
 
-    // 6. サーバーの起動
-    app.listen(port, '0.0.0.0', () => {
+    // 9. サーバーの起動
+    server.listen(port, '0.0.0.0', () => {
+        const protocol = sslOptions ? 'https' : 'http';
+        const wsProtocol = sslOptions ? 'wss' : 'ws';
+
         console.log(`=== Front Driver Server Started ===`);
+        console.log(`Protocol: ${protocol.toUpperCase()}`);
         console.log(`Port: ${port}`);
-        console.log(`URL: http://127.0.0.1:${port}/`);
-        console.log(`Sample API: http://127.0.0.1:${port}/api/sample/public-info`);
+        console.log(`URL: ${protocol}://127.0.0.1:${port}/`);
+        console.log(`Sample API: ${protocol}://127.0.0.1:${port}/api/sample/public-info`);
+        console.log(`WebSocket: ${wsProtocol}://127.0.0.1:${port}/ws`);
         console.log(`Session Secret: ${SESSION_SECRET.substring(0, 10)}...`);
         console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+
+        if (!sslOptions) {
+            console.log(`⚠️  WARNING: Running in HTTP mode (SSL certificate generation failed)`);
+            console.log(`   This is insecure for production use!`);
+        }
+
         console.log(`=====================================`);
     });
 }
 
-// サーバー起動（ポート12800で開始）
-main(12800).catch((error) => {
+// サーバー起動
+main(DEFAULT_SERVER_PORT).catch((error) => {
     console.error("Failed to start server:", error);
     process.exit(1);
 });
