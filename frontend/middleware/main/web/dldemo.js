@@ -1,8 +1,14 @@
 // ========================================
 // Configuration
 // ========================================
-const API_BASE = 'http://localhost:12800/api/assets';
-const WS_URL = 'ws://localhost:12800/ws';
+// プロトコルを動的に判定（HTTPSの場合はWSSを使用）
+const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const API_BASE = `${protocol}//${window.location.host}/api/assets`;
+const WS_URL = `${wsProtocol}//${window.location.host}/ws`;
+
+console.log('🔗 API Base:', API_BASE);
+console.log('🔗 WebSocket URL:', WS_URL);
 
 // ========================================
 // State Management

@@ -10,8 +10,11 @@ import { SESSION_NAME, SESSION_SECRET } from './constants';
 export class MiddlewareManager {
     // セッションミドルウェアへの参照を保持
     public sessionMiddleware!: express.RequestHandler;
+    private sslEnabled: boolean;
 
-    constructor(private app: express.Express) { }
+    constructor(private app: express.Express, sslEnabled: boolean = false) {
+        this.sslEnabled = sslEnabled;
+    }
 
     /**
      * すべてのミドルウェアをセットアップする
@@ -44,7 +47,7 @@ export class MiddlewareManager {
             resave: false,
             saveUninitialized: false,
             cookie: {
-                secure: false,
+                secure: this.sslEnabled,  // HTTPS有効時はsecureフラグをtrueに
                 httpOnly: true,
                 maxAge: 24 * 60 * 60 * 1000,
                 sameSite: 'lax'
@@ -53,6 +56,12 @@ export class MiddlewareManager {
 
         // アプリケーションに適用
         this.app.use(this.sessionMiddleware);
+
+        if (this.sslEnabled) {
+            console.log('✅ Secure cookies enabled (HTTPS)');
+        } else {
+            console.log('⚠️  Secure cookies disabled (HTTP fallback)');
+        }
     }
 
     /**
