@@ -24,10 +24,6 @@ export class NetworkUtils {
         if (addr.family === 'IPv4') {
           ips.push(addr.address);
         }
-        // IPv6アドレスも追加
-        if (addr.family === 'IPv6') {
-          ips.push(addr.address);
-        }
       }
     }
 
@@ -42,7 +38,6 @@ export class NetworkUtils {
     const sans: string[] = [
       'localhost',
       '127.0.0.1',
-      '::1'
     ];
 
     // ホスト名を追加
