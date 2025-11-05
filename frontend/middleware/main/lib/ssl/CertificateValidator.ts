@@ -1,6 +1,5 @@
 import * as forge from 'node-forge';
 import * as fs from 'fs';
-import * as os from 'os';
 import {
   SSL_KEY_FILE,
   SSL_CERT_FILE,
@@ -8,6 +7,7 @@ import {
   CERT_RENEWAL_THRESHOLD_DAYS
 } from '../constants';
 import { CertificateInfo } from './CertificateGenerator';
+import { NetworkUtils } from './NetworkUtils';
 
 /**
  * SSL証明書の検証を管理するクラス
@@ -35,32 +35,6 @@ export class CertificateValidator {
       console.error('Failed to load certificate info:', error);
       return null;
     }
-  }
-
-  /**
-   * ローカルIPアドレスを取得（CertificateGeneratorと同じロジック）
-   */
-  private static getLocalIPs(): string[] {
-    const interfaces = os.networkInterfaces();
-    const ips: string[] = [];
-
-    for (const name of Object.keys(interfaces)) {
-      const iface = interfaces[name];
-      if (!iface) continue;
-
-      for (const addr of iface) {
-        if (addr.internal) continue;
-
-        if (addr.family === 'IPv4') {
-          ips.push(addr.address);
-        }
-        if (addr.family === 'IPv6') {
-          ips.push(addr.address);
-        }
-      }
-    }
-
-    return ips;
   }
 
   /**
@@ -107,7 +81,7 @@ export class CertificateValidator {
       return true;
     }
 
-    const currentIPs = this.getLocalIPs();
+    const currentIPs = NetworkUtils.getLocalIPs();
     const certSANs = certInfo.subjectAltNames;
 
     // 現在のIPが証明書のSANに含まれているかチェック

@@ -1,6 +1,5 @@
 import * as forge from 'node-forge';
 import * as fs from 'fs';
-import * as os from 'os';
 import {
   SSL_KEY_FILE,
   SSL_CERT_FILE,
@@ -8,6 +7,7 @@ import {
   SSL_CERT_DIR,
   CERT_VALIDITY_DAYS
 } from '../constants';
+import { NetworkUtils } from './NetworkUtils';
 
 /**
  * 証明書情報のメタデータ
@@ -26,57 +26,6 @@ export interface CertificateInfo {
  * 自己署名SSL証明書の生成を管理するクラス
  */
 export class CertificateGenerator {
-  /**
-   * ローカルIPアドレスを取得
-   */
-  private static getLocalIPs(): string[] {
-    const interfaces = os.networkInterfaces();
-    const ips: string[] = [];
-
-    for (const name of Object.keys(interfaces)) {
-      const iface = interfaces[name];
-      if (!iface) continue;
-
-      for (const addr of iface) {
-        // 内部アドレス（loopback）を除外
-        if (addr.internal) continue;
-
-        // IPv4アドレスを追加
-        if (addr.family === 'IPv4') {
-          ips.push(addr.address);
-        }
-        // IPv6アドレスも追加
-        if (addr.family === 'IPv6') {
-          ips.push(addr.address);
-        }
-      }
-    }
-
-    return ips;
-  }
-
-  /**
-   * Subject Alternative Names（SAN）を構築
-   */
-  private static buildSubjectAltNames(): string[] {
-    const sans: string[] = [
-      'localhost',
-      '127.0.0.1',
-      '::1'
-    ];
-
-    // ホスト名を追加
-    const hostname = os.hostname();
-    sans.push(hostname);
-    sans.push(`${hostname}.local`);
-
-    // ローカルIPアドレスを追加
-    const localIPs = this.getLocalIPs();
-    sans.push(...localIPs);
-
-    // 重複を削除
-    return [...new Set(sans)];
-  }
 
   /**
    * 自己署名証明書を生成
@@ -91,7 +40,7 @@ export class CertificateGenerator {
       }
 
       // SANを構築
-      const subjectAltNames = this.buildSubjectAltNames();
+      const subjectAltNames = NetworkUtils.buildSubjectAltNames();
       const commonName = 'localhost';
       const organization = 'FrontDriver Development';
 
