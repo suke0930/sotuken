@@ -1,4 +1,5 @@
 import express from 'express';
+import expressWs from 'express-ws';
 import './lib/types'; // 型定義をグローバルに適用
 import { SESSION_SECRET } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
@@ -19,7 +20,10 @@ async function main(port: number): Promise<void> {
 
     // 2. Expressアプリケーションのインスタンス化
     const app = express();
-    // 2.1 websocketサーバーの作成
+
+    // 2.1 WebSocketサーバーの初期化（ミドルウェア設定の前に実行）
+    const wsInstance = expressWs(app);
+    console.log('✅ express-ws initialized');
 
     // 3. ミドルウェアのセットアップ
     const middlewareManager = new MiddlewareManager(app);
@@ -43,8 +47,8 @@ async function main(port: number): Promise<void> {
     const assetProxy = new AssetManager(middlewareManager.authMiddleware);
     app.use('/api/assets', assetProxy.router);
 
-    // 4.4 WebSocketマネージャーのセットアップ
-    new DownloadManager(middlewareManager, app, path.join(__dirname + "/temp/download"), "/ws");
+    // 4.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
+    new DownloadManager(middlewareManager, wsInstance, path.join(__dirname + "/temp/download"), "/ws");
 
 
 

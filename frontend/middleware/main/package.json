@@ -28,6 +28,7 @@
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "connect-mongo": "^5.1.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
@@ -36,5 +37,8 @@
     "typescript": "^5.9.2",
     "uuid": "^13.0.0",
     "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10"
   }
 }

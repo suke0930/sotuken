@@ -1,15 +1,16 @@
 import express from 'express';
 import session from 'express-session';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { SESSION_NAME, SESSION_SECRET } from './constants';
 
 /**
  * ミドルウェアのセットアップと管理を行うクラス
  */
-/**
- * ミドルウェアのセットアップと管理を行うクラス
- */
 export class MiddlewareManager {
+    // セッションミドルウェアへの参照を保持
+    public sessionMiddleware!: express.RequestHandler;
+
     constructor(private app: express.Express) { }
 
     /**
@@ -17,6 +18,9 @@ export class MiddlewareManager {
      */
     public configure() {
         this.app.use(express.json());
+        // Cookie ParserをSessionの前に追加（WebSocketでもCookieを正しく解析するため）
+        this.app.use(cookieParser(SESSION_SECRET));
+        console.log('✅ Cookie parser middleware configured');
         this.setupSession();
         this.setupStaticFiles();
         this.setupSecurityHeaders();
@@ -33,7 +37,8 @@ export class MiddlewareManager {
      * express-sessionミドルウェアをセットアップする
      */
     private setupSession() {
-        this.app.use(session({
+        // セッションミドルウェアを作成して保持
+        this.sessionMiddleware = session({
             name: SESSION_NAME,
             secret: SESSION_SECRET,
             resave: false,
@@ -44,7 +49,10 @@ export class MiddlewareManager {
                 maxAge: 24 * 60 * 60 * 1000,
                 sameSite: 'lax'
             },
-        }));
+        });
+
+        // アプリケーションに適用
+        this.app.use(this.sessionMiddleware);
     }
 
     /**
@@ -84,8 +92,11 @@ export class MiddlewareManager {
      */
     public checkWebSocketAuth(req: express.Request): { authenticated: boolean; userId?: string } {
         if (req.session?.userId) {
+            console.log('✅ WebSocket authentication successful for user:', req.session.userId);
             return { authenticated: true, userId: req.session.userId };
         }
+
+        console.log('❌ WebSocket authentication failed - No valid session');
         return { authenticated: false };
     }
 

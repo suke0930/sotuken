@@ -75,7 +75,7 @@ router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
   const fileStream = fs.createReadStream(filePath);
 
   // 帯域制限を設定（例: 1MB/秒 = 1024 * 1024 バイト/秒）
-  const throttle = new Throttle({ rate: 1024 * 10240 });
+  const throttle = new Throttle({ rate: 1024 * 20240 });
 
   fileStream.on('error', (error) => {
     console.error('File streaming error:', error);
