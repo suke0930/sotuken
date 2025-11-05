@@ -3,8 +3,11 @@ import path from 'path';
 import { DevUserManager } from './dev-user-manager';
 import { MinecraftServerManager } from './minecraft-server-manager';
 import { SESSION_NAME } from './constants';
-import { AssetServerAPP } from '../methodclass/Asset_handler/src/app';
-
+import { AssetServerAPP, } from './Asset_handler/src/app';
+import expressWs from 'express-ws';
+import { WebSocketManager } from './Asset_handler/src/lib/WebSocketManager';
+import { setWebSocketManager } from './Asset_handler/src/controllers/downloadController';
+import { MiddlewareManager } from './middleware-manager';
 /**
  * APIエンドポイントのルーティングを管理するクラス
  */
@@ -231,3 +234,28 @@ export class AssetManager {
         new AssetServerAPP(this.router, this.authMiddleware, "http://localhost:3000");
     }
 }
+
+
+/**
+ * DownloadAPIエンドポイントのルーティングを行うクラス
+ */
+export class DownloadManager {
+    public readonly router: express.Router;
+    private wsServer: expressWs.Instance;
+    private basepath: string;
+    private download_dir: string
+    private authMiddleware: MiddlewareManager;
+    constructor(authMiddleware: MiddlewareManager, app: express.Express, download_dir: string, basepath: string,) {
+        this.basepath = basepath;
+        this.download_dir = download_dir;
+        this.router = express.Router();
+        this.wsServer = expressWs(app);
+        this.authMiddleware = authMiddleware;
+        this.configureRoutes();
+    }
+    private configureRoutes() {
+        const WsManager = new WebSocketManager(this.wsServer, this.basepath, this.authMiddleware);
+        setWebSocketManager(WsManager, this.download_dir);
+    }
+}
+

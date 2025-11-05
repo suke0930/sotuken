@@ -6,6 +6,9 @@ import { SESSION_NAME, SESSION_SECRET } from './constants';
 /**
  * ミドルウェアのセットアップと管理を行うクラス
  */
+/**
+ * ミドルウェアのセットアップと管理を行うクラス
+ */
 export class MiddlewareManager {
     constructor(private app: express.Express) { }
 
@@ -69,11 +72,22 @@ export class MiddlewareManager {
      */
     public authMiddleware: express.RequestHandler = (req, res, next) => {
         if (req.session?.userId) {
-            req.userId = req.session.userId; // 後続の処理で使えるようにリクエストオブジェクトに格納
+            req.userId = req.session.userId;
             return next();
         }
         return res.status(401).json({ ok: false, reason: "unauthorized", message: "ログインが必要です" });
     };
+
+    /**
+     * WebSocket用の認証チェック
+     * セッションからuserIdを取得して返す
+     */
+    public checkWebSocketAuth(req: express.Request): { authenticated: boolean; userId?: string } {
+        if (req.session?.userId) {
+            return { authenticated: true, userId: req.session.userId };
+        }
+        return { authenticated: false };
+    }
 
     /**
      * グローバルなエラーハンドリングミドルウェア
@@ -82,4 +96,4 @@ export class MiddlewareManager {
         console.error('Unhandled error:', error);
         res.status(500).json({ ok: false, reason: "internal_server_error", message: "予期しないエラーが発生しました" });
     };
-}
+}   

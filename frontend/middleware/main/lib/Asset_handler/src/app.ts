@@ -1,7 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { getAssetFilesList, getJDKList, getServersList } from './controllers/proxyController';
-import { startDownload, getDownloadStatus, getActiveDownloads, cancelDownload } from './controllers/downloadController';
+import { startDownload, getDownloadStatus, getActiveDownloads, cancelDownload, setWebSocketManager } from './controllers/downloadController';
+import { WebSocketManager } from './lib/WebSocketManager';
 // ========================================
 // Middleware
 // ========================================
@@ -112,4 +113,5 @@ export class AssetServerAPP {
     });
   }
 }
+
 

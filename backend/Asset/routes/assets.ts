@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
+import { Throttle } from 'stream-throttle';
 
 const router = Router();
 
@@ -47,7 +48,7 @@ function validateFilePath(requestedPath: string, baseDir: string): string | null
  * 例: GET /assets/jdk/8/windows/jdk-8u351-windows-x64.zip
  */
 router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
-  const requestedPath = req.params[0] || ''; // 正規表現でキャプチャしたパス
+  const requestedPath = req.params[0] || '';
   const jdkBaseDir = path.join(RESOURCES_BASE, 'jdk');
 
   const filePath = validateFilePath(requestedPath, jdkBaseDir);
@@ -64,17 +65,17 @@ router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
     return;
   }
 
-  // ファイル情報を取得
   const stat = fs.statSync(filePath);
   const fileName = path.basename(filePath);
 
-  // ファイルサイズをヘッダーに追加
   res.setHeader('Content-Length', stat.size);
   res.setHeader('Content-Type', 'application/octet-stream');
   res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 
-  // ファイルをストリーミング配信
   const fileStream = fs.createReadStream(filePath);
+
+  // 帯域制限を設定（例: 1MB/秒 = 1024 * 1024 バイト/秒）
+  const throttle = new Throttle({ rate: 1024 * 10240 });
 
   fileStream.on('error', (error) => {
     console.error('File streaming error:', error);
@@ -90,7 +91,8 @@ router.get(/^\/jdk\/(.+)$/, (req: Request, res: Response): void => {
     }
   });
 
-  fileStream.pipe(res);
+  // throttleを経由してレスポンスに送信
+  fileStream.pipe(throttle).pipe(res);
 });
 
 /**
