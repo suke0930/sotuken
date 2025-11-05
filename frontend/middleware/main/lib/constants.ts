@@ -20,3 +20,6 @@ export const CERT_RENEWAL_THRESHOLD_DAYS = 10;  // 更新する日数（有効�
 // セッション設定
 export const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
 export const SESSION_NAME = 'frontdriver-session';
+
+// サーバー設定
+export const DEFAULT_SERVER_PORT = 12800;

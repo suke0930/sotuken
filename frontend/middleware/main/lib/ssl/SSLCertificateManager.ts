@@ -1,9 +1,9 @@
 import * as fs from 'fs';
 import * as https from 'https';
-import * as os from 'os';
-import { SSL_KEY_FILE, SSL_CERT_FILE } from '../constants';
+import { SSL_KEY_FILE, SSL_CERT_FILE, DEFAULT_SERVER_PORT } from '../constants';
 import { CertificateGenerator } from './CertificateGenerator';
 import { CertificateValidator } from './CertificateValidator';
+import { SSLCertificateDisplay } from './SSLCertificateDisplay';
 
 /**
  * SSL/TLS証明書の管理を統括するクラス
@@ -11,10 +11,11 @@ import { CertificateValidator } from './CertificateValidator';
 export class SSLCertificateManager {
   /**
    * SSL証明書を初期化し、HTTPSサーバーオプションを返す
+   * @param port サーバーポート番号（表示用）
    * @param maxRetries 証明書生成の最大リトライ回数
    * @returns HTTPSサーバーオプション、失敗時はnull
    */
-  public static async initialize(maxRetries: number = 3): Promise<https.ServerOptions | null> {
+  public static async initialize(port: number = DEFAULT_SERVER_PORT, maxRetries: number = 3): Promise<https.ServerOptions | null> {
     console.log('🔒 SSL Certificate Manager initializing...');
 
     try {
@@ -56,8 +57,8 @@ export class SSLCertificateManager {
         return null;
       }
 
-      this.displayCertificateInfo();
-      this.displayAccessURLs();
+      SSLCertificateDisplay.displayCertificateInfo();
+      SSLCertificateDisplay.displayAccessURLs(port, 'https');
 
       return sslOptions;
 
@@ -84,83 +85,6 @@ export class SSLCertificateManager {
       console.error('Failed to read certificate files:', error);
       return null;
     }
-  }
-
-  /**
-   * 証明書情報を表示
-   */
-  private static displayCertificateInfo(): void {
-    try {
-      const certInfoPath = require('../constants').SSL_INFO_FILE;
-      const certInfo = JSON.parse(fs.readFileSync(certInfoPath, 'utf-8'));
-
-      console.log('📋 Certificate Information:');
-      console.log(`  - Common Name: ${certInfo.commonName}`);
-      console.log(`  - Organization: ${certInfo.organization}`);
-      console.log(`  - Key Algorithm: ${certInfo.keyAlgorithm}`);
-      console.log(`  - Valid From: ${certInfo.generatedAt}`);
-      console.log(`  - Valid Until: ${certInfo.expiresAt}`);
-      console.log(`  - Subject Alternative Names (${certInfo.subjectAltNames.length}):`);
-      certInfo.subjectAltNames.forEach((san: string) => {
-        console.log(`    - ${san}`);
-      });
-    } catch (error) {
-      // 情報表示に失敗しても続行
-      console.log('  (Certificate info display failed)');
-    }
-  }
-
-  /**
-   * アクセス可能なURLを表示
-   */
-  private static displayAccessURLs(): void {
-    const hostname = os.hostname();
-    const localIPs = this.getLocalIPs();
-
-    console.log('🔒 HTTPS Server will be accessible at:');
-    console.log(`  - https://localhost:12800`);
-    console.log(`  - https://127.0.0.1:12800`);
-
-    if (localIPs.length > 0) {
-      console.log(`  - https://${hostname}.local:12800 (mDNS)`);
-      localIPs.forEach(ip => {
-        console.log(`  - https://${ip}:12800 (LAN)`);
-      });
-    }
-
-    console.log('🔐 WSS (Secure WebSocket) enabled at:');
-    console.log(`  - wss://localhost:12800/ws`);
-    if (localIPs.length > 0) {
-      localIPs.forEach(ip => {
-        console.log(`  - wss://${ip}:12800/ws (LAN)`);
-      });
-    }
-
-    console.log('');
-    console.log('⚠️  Note: Self-signed certificate will show browser warnings');
-    console.log('   Click "Advanced" → "Proceed to localhost" to accept');
-  }
-
-  /**
-   * ローカルIPアドレスを取得
-   */
-  private static getLocalIPs(): string[] {
-    const interfaces = os.networkInterfaces();
-    const ips: string[] = [];
-
-    for (const name of Object.keys(interfaces)) {
-      const iface = interfaces[name];
-      if (!iface) continue;
-
-      for (const addr of iface) {
-        if (addr.internal) continue;
-        if (addr.family === 'IPv4') {
-          ips.push(addr.address);
-        }
-      }
-    }
-
-    return ips;
   }
 
   /**

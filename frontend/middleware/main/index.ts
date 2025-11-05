@@ -3,7 +3,7 @@ import https from 'https';
 import http from 'http';
 import expressWs from 'express-ws';
 import './lib/types'; // 型定義をグローバルに適用
-import { SESSION_SECRET } from './lib/constants';
+import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
@@ -11,8 +11,8 @@ import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, Sample
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
 import path from 'path';
 //ダウンロードパス
-const Downloadtemppath: string = path.join(__dirname + './temp/download');
-export { Downloadtemppath };
+const DOWNLOAD_TEMP_PATH: string = path.join(__dirname, 'temp', 'download');
+export { DOWNLOAD_TEMP_PATH };
 /**
  * アプリケーションのエントリーポイント
  */
@@ -22,7 +22,7 @@ async function main(port: number): Promise<void> {
     await MinecraftServerManager.initialize();
 
     // 2. SSL証明書の初期化
-    const sslOptions = await SSLCertificateManager.initialize();
+    const sslOptions = await SSLCertificateManager.initialize(port);
 
     // 3. Expressアプリケーションのインスタンス化
     const app = express();
@@ -40,26 +40,26 @@ async function main(port: number): Promise<void> {
     const middlewareManager = new MiddlewareManager(app, !!sslOptions);
     middlewareManager.configure();
 
-    // 4. ルーティングのセットアップ
+    // 7. ルーティングのセットアップ
     const apiRouter = new ApiRouter(app, middlewareManager.authMiddleware);
     apiRouter.configureRoutes();
 
 
 
-    // 4.1. 【雛形】サンプルAPIルーターのセットアップ
+    // 7.1. 【雛形】サンプルAPIルーターのセットアップ
     const sampleApiRouter = new SampleApiRouter(middlewareManager.authMiddleware);
     app.use('/api/sample', sampleApiRouter.router); // `/api/sample` プレフィックスでマウント
 
-    // 4.2. Minecraftサーバー管理APIルーターのセットアップ
+    // 7.2. Minecraftサーバー管理APIルーターのセットアップ
     const mcServerRouter = new MinecraftServerRouter(middlewareManager.authMiddleware);
     app.use('/api/servers', mcServerRouter.router);
 
-    // 4.3 Assetproxyのセットアップ
+    // 7.3 Assetproxyのセットアップ
     const assetProxy = new AssetManager(middlewareManager.authMiddleware);
     app.use('/api/assets', assetProxy.router);
 
-    // 4.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
-    new DownloadManager(middlewareManager, wsInstance, path.join(__dirname + "/temp/download"), "/ws");
+    // 7.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
+    new DownloadManager(middlewareManager, wsInstance, DOWNLOAD_TEMP_PATH, "/ws");
 
 
 
@@ -68,10 +68,10 @@ async function main(port: number): Promise<void> {
 
 
 
-    // 7. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
+    // 8. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
 
-    // 8. サーバーの起動
+    // 9. サーバーの起動
     server.listen(port, '0.0.0.0', () => {
         const protocol = sslOptions ? 'https' : 'http';
         const wsProtocol = sslOptions ? 'wss' : 'ws';
@@ -94,8 +94,8 @@ async function main(port: number): Promise<void> {
     });
 }
 
-// サーバー起動（ポート12800で開始）
-main(12800).catch((error) => {
+// サーバー起動
+main(DEFAULT_SERVER_PORT).catch((error) => {
     console.error("Failed to start server:", error);
     process.exit(1);
 });
