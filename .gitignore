@@ -154,3 +154,6 @@ frontend/middleware/Stabs/minecraft-server-manager/tmp/**
 
 backend/Asset/resources/jdk/**
 backend/Asset/resources/servers/**
+
+./.claude/**
+frontend/middleware/main/temp/**
