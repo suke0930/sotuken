@@ -244,17 +244,20 @@ export class DownloadManager {
     private wsServer: expressWs.Instance;
     private basepath: string;
     private download_dir: string
-    private authMiddleware: MiddlewareManager;
-    constructor(authMiddleware: MiddlewareManager, app: express.Express, download_dir: string, basepath: string,) {
+    private middlewareManager: MiddlewareManager;
+
+    constructor(middlewareManager: MiddlewareManager, wsInstance: expressWs.Instance, download_dir: string, basepath: string) {
         this.basepath = basepath;
         this.download_dir = download_dir;
         this.router = express.Router();
-        this.wsServer = expressWs(app);
-        this.authMiddleware = authMiddleware;
+        this.wsServer = wsInstance; // 外部から渡されたインスタンスを使用
+        this.middlewareManager = middlewareManager;
+        console.log('✅ DownloadManager initialized with existing wsInstance');
         this.configureRoutes();
     }
+
     private configureRoutes() {
-        const WsManager = new WebSocketManager(this.wsServer, this.basepath, this.authMiddleware);
+        const WsManager = new WebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
         setWebSocketManager(WsManager, this.download_dir);
     }
 }

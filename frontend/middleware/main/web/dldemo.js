@@ -33,6 +33,10 @@ const elements = {
 // WebSocket Connection
 // ========================================
 function connectWebSocket() {
+  // デバッグ: 現在のCookieを確認
+  console.log('🍪 Current cookies:', document.cookie);
+  console.log('🔗 Connecting to WebSocket:', WS_URL);
+
   ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
@@ -49,11 +53,27 @@ function connectWebSocket() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (event) => {
     console.log('❌ WebSocket disconnected');
+    console.log('Close code:', event.code, 'Reason:', event.reason);
     updateConnectionStatus(false);
 
-    // 再接続を試みる
+    // 認証エラー(1008)の場合は特別な処理
+    if (event.code === 1008) {
+      console.error('🔒 Authentication failed - Please login');
+      // ユーザーに通知（必要に応じてUIで表示）
+      alert('WebSocket接続の認証に失敗しました。ページを更新してログインしてください。');
+      return; // 再接続しない
+    }
+
+    // セッションエラー(1011)の場合
+    if (event.code === 1011) {
+      console.error('⚠️ Session processing failed');
+      alert('セッション処理中にエラーが発生しました。ページを更新してください。');
+      return; // 再接続しない
+    }
+
+    // その他の切断の場合は再接続を試みる
     setTimeout(connectWebSocket, 3000);
   };
 

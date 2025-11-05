@@ -56,17 +56,31 @@ export class WebSocketManager {
    */
   private setupWebSocketRoute(): void {
     this.expressWsInstance.app.ws(this.basepath, (ws: WebSocket, req: ExpressRequest) => {
-      // WebSocket接続内で認証チェック
-      const authResult = this.middlewareManager.checkWebSocketAuth(req);
+      console.log('🔌 WebSocket connection attempt from:', req.headers.origin);
 
-      if (!authResult.authenticated || !authResult.userId) {
-        ws.close(1008, 'Authentication failed');
-        console.log('❌ WebSocket authentication failed');
-        return;
-      }
+      // セッションミドルウェアを明示的に実行
+      // express-wsのアップグレード時にミドルウェアチェーンが正しく実行されない場合があるため
+      this.middlewareManager.sessionMiddleware(req, {} as any, (err?: any) => {
+        if (err) {
+          console.error('❌ Session middleware error:', err);
+          // エラーメッセージを送信してから切断
+          this.sendErrorAndClose(ws, 1011, 'Session processing failed', 'セッション処理中にエラーが発生しました');
+          return;
+        }
 
-      console.log('✅ WebSocket client connected - User:', authResult.userId);
-      this.handleConnection(ws, authResult.userId);
+        // WebSocket接続内で認証チェック
+        const authResult = this.middlewareManager.checkWebSocketAuth(req);
+
+        if (!authResult.authenticated || !authResult.userId) {
+          console.log('❌ WebSocket authentication failed - closing connection');
+          // 認証失敗メッセージを送信してから切断
+          this.sendErrorAndClose(ws, 1008, 'Authentication failed', '認証に失敗しました。ログインしてください。');
+          return;
+        }
+
+        console.log('✅ WebSocket client connected - User:', authResult.userId);
+        this.handleConnection(ws, authResult.userId);
+      });
     });
 
     console.log(`✅ WebSocket endpoint setup at: ${this.basepath}`);
@@ -167,6 +181,30 @@ export class WebSocketManager {
   private sendToClient(ws: WebSocket, message: WSMessage): void {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
+    }
+  }
+
+  /**
+   * エラーメッセージを送信してから接続をクローズ
+   */
+  private sendErrorAndClose(ws: WebSocket, code: number, reason: string, userMessage: string): void {
+    try {
+      // エラーメッセージを送信（接続が確立されている場合のみ）
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+        const errorMessage: WSMessage = {
+          type: 'download_error',
+          data: { error: userMessage, reason },
+          timestamp: new Date().toISOString(),
+        };
+        ws.send(JSON.stringify(errorMessage));
+      }
+    } catch (error) {
+      console.error('Failed to send error message:', error);
+    } finally {
+      // メッセージ送信後、少し待ってから切断
+      setTimeout(() => {
+        ws.close(code, reason);
+      }, 100);
     }
   }
 
