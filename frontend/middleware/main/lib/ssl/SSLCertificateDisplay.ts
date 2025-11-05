@@ -43,22 +43,9 @@ export class SSLCertificateDisplay {
 
     console.log(`🔒 ${protocol.toUpperCase()} Server will be accessible at:`);
     console.log(`  - ${protocol}://localhost:${port}`);
-    console.log(`  - ${protocol}://127.0.0.1:${port}`);
-
-    if (localIPs.length > 0) {
-      console.log(`  - ${protocol}://${hostname}.local:${port} (mDNS)`);
-      localIPs.forEach(ip => {
-        console.log(`  - ${protocol}://${ip}:${port} (LAN)`);
-      });
-    }
 
     console.log(`🔐 ${wsProtocol.toUpperCase()} (${protocol === 'https' ? 'Secure ' : ''}WebSocket) enabled at:`);
-    console.log(`  - ${wsProtocol}://localhost:${port}/ws`);
-    if (localIPs.length > 0) {
-      localIPs.forEach(ip => {
-        console.log(`  - ${wsProtocol}://${ip}:${port}/ws (LAN)`);
-      });
-    }
+
 
     if (protocol === 'https') {
       console.log('');

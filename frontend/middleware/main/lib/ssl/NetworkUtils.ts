@@ -6,7 +6,7 @@ import * as os from 'os';
 export class NetworkUtils {
   /**
    * ローカルIPアドレスを取得
-   * @returns IPv4およびIPv6アドレスの配列
+   * @returns IPv4の配列
    */
   public static getLocalIPs(): string[] {
     const interfaces = os.networkInterfaces();
