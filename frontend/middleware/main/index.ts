@@ -4,8 +4,11 @@ import { SESSION_SECRET } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
-import { ApiRouter, AssetManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
-
+import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
+import path from 'path';
+//ダウンロードパス
+const Downloadtemppath: string = path.join(__dirname + './temp/download');
+export { Downloadtemppath };
 /**
  * アプリケーションのエントリーポイント
  */
@@ -16,6 +19,7 @@ async function main(port: number): Promise<void> {
 
     // 2. Expressアプリケーションのインスタンス化
     const app = express();
+    // 2.1 websocketサーバーの作成
 
     // 3. ミドルウェアのセットアップ
     const middlewareManager = new MiddlewareManager(app);
@@ -24,6 +28,8 @@ async function main(port: number): Promise<void> {
     // 4. ルーティングのセットアップ
     const apiRouter = new ApiRouter(app, middlewareManager.authMiddleware);
     apiRouter.configureRoutes();
+
+
 
     // 4.1. 【雛形】サンプルAPIルーターのセットアップ
     const sampleApiRouter = new SampleApiRouter(middlewareManager.authMiddleware);
@@ -36,6 +42,17 @@ async function main(port: number): Promise<void> {
     // 4.3 Assetproxyのセットアップ
     const assetProxy = new AssetManager(middlewareManager.authMiddleware);
     app.use('/api/assets', assetProxy.router);
+
+    // 4.4 WebSocketマネージャーのセットアップ
+    new DownloadManager(middlewareManager, app, path.join(__dirname + "/temp/download"), "/ws");
+
+
+
+
+
+
+
+
     // 5. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
 

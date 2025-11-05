@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
+import express from 'express';
 import { DownloadTask } from '../lib/DownloadTask';
 import { WebSocketManager } from '../lib/WebSocketManager';
 import { ApiResponse } from '../types';
 import * as path from 'path';
+import expressWs from 'express-ws';
 
 // ダウンロード先ディレクトリ
-const DOWNLOAD_DIR = path.join(__dirname, './temp/download');//tempはあることを前提としよう
+let DOWNLOAD_DIR = "";//あとで定数化するゔぇ
 
 // WebSocketマネージャー（後で注入される）
 let wsManager: WebSocketManager | null = null;
@@ -16,7 +18,8 @@ const activeTasks = new Map<string, DownloadTask>();
 /**
  * WebSocketマネージャーを設定
  */
-export function setWebSocketManager(manager: WebSocketManager): void {
+export function setWebSocketManager(manager: WebSocketManager, download_dir: string): void {
+  DOWNLOAD_DIR = download_dir;
   wsManager = manager;
 }
 

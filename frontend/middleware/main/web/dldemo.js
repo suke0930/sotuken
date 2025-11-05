@@ -1,8 +1,8 @@
 // ========================================
 // Configuration
 // ========================================
-const API_BASE = 'http://localhost:4000/api';
-const WS_URL = 'ws://localhost:4000';
+const API_BASE = 'http://localhost:12800/api/assets';
+const WS_URL = 'ws://localhost:12800/ws';
 
 // ========================================
 // State Management
