@@ -5,7 +5,9 @@ import {
   SSL_CERT_FILE,
   SSL_INFO_FILE,
   SSL_CERT_DIR,
-  CERT_VALIDITY_DAYS
+  CERT_VALIDITY_DAYS,
+  commonName,
+  organization
 } from '../constants';
 import { NetworkUtils } from './NetworkUtils';
 
@@ -41,16 +43,12 @@ export class CertificateGenerator {
 
       // SANを構築
       const subjectAltNames = NetworkUtils.buildSubjectAltNames();
-      const commonName = 'localhost';
-      const organization = 'FrontDriver Development';
+
 
       console.log('  - Common Name:', commonName);
       console.log('  - Organization:', organization);
       console.log('  - Validity:', CERT_VALIDITY_DAYS, 'days');
       console.log('  - Key Algorithm: RSA 4096 (Ed25519 equivalent security)');
-      console.log('  - Subject Alternative Names:');
-      subjectAltNames.forEach(san => console.log(`    - ${san}`));
-
       // RSA 4096bit鍵ペアを生成（Ed25519と同等のセキュリティ強度）
       console.log('  ⏳ Generating RSA 4096-bit key pair (this may take a moment)...');
       const keys = forge.pki.rsa.generateKeyPair(4096);
