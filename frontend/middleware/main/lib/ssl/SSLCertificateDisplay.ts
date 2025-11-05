@@ -22,9 +22,6 @@ export class SSLCertificateDisplay {
       console.log(`  - Valid From: ${certInfo.generatedAt}`);
       console.log(`  - Valid Until: ${certInfo.expiresAt}`);
       console.log(`  - Subject Alternative Names (${certInfo.subjectAltNames.length}):`);
-      certInfo.subjectAltNames.forEach((san: string) => {
-        console.log(`    - ${san}`);
-      });
     } catch (error) {
       // 情報表示に失敗しても続行
       console.warn('⚠️  Failed to display certificate info:', error);
