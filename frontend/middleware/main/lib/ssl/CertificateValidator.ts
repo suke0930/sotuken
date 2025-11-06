@@ -57,7 +57,7 @@ export class CertificateValidator {
     log.info({
       expiresAt: certInfo.expiresAt,
       daysRemaining: daysUntilExpiry
-    }, '📋 Certificate Status');
+    }, ' Certificate Status');
 
     // 有効期限切れ
     if (now > expiresAt) {
@@ -143,7 +143,7 @@ export class CertificateValidator {
    * @returns 証明書が有効で使用可能ならtrue
    */
   public static validate(): boolean {
-    log.info('🔍 Validating SSL certificate...');
+    log.info(' Validating SSL certificate...');
 
     // ファイル存在チェック
     if (!this.filesExist()) {
