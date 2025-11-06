@@ -54,20 +54,13 @@ export class AssetServerAPP {
      * サーバーリスト取得
      * GET /api/list/servers
      */
-    app.get('/list/servers', getServersList);
+    app.get('/list/servers', this.authmiddleware, getServersList);
 
     /**
      * JDKリスト取得
      * GET /api/list/jdk
      */
-    app.get('/list/jdk', getJDKList);
-
-    /**
-     * Assetファイルリスト取得
-     * GET /api/list/assets/:type
-     * :type = 'jdk' | 'servers'
-     */
-    app.get('/list/assets/:type', getAssetFilesList);
+    app.get('/list/jdk', this.authmiddleware, getJDKList);
 
     // ========================================
     // Download Routes
@@ -78,25 +71,25 @@ export class AssetServerAPP {
      * POST /api/download
      * Body: { url: string, filename?: string }
      */
-    app.post('/download', startDownload);
+    app.post('/download', this.authmiddleware, startDownload);
 
     /**
      * ダウンロードステータス取得
      * GET /api/download/:taskId
      */
-    app.get('/download/:taskId', getDownloadStatus);
+    app.get('/download/:taskId', this.authmiddleware, getDownloadStatus);
 
     /**
      * アクティブなダウンロード一覧取得
      * GET /api/downloads
      */
-    app.get('/downloads', getActiveDownloads);
+    app.get('/downloads', this.authmiddleware, getActiveDownloads);
 
     /**
      * ダウンロードキャンセル
      * DELETE /api/download/:taskId
      */
-    app.delete('/download/:taskId', cancelDownload);
+    app.delete('/download/:taskId', this.authmiddleware, cancelDownload);
 
     // Global error handler
     app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
