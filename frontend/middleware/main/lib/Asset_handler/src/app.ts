@@ -100,7 +100,7 @@ export class AssetServerAPP {
 
     // Global error handler
     app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-      console.error('❌ Unhandled error:', err);
+      console.error('Unhandled error:', err);
 
       res.status(500).json({
         success: false,
