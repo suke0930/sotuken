@@ -9,7 +9,10 @@ import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
 import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
+import { createModuleLogger } from './lib/logger';
 import path from 'path';
+
+const log = createModuleLogger('main');
 //ダウンロードパス
 const DOWNLOAD_TEMP_PATH: string = path.join(__dirname, 'temp', 'download');
 export { DOWNLOAD_TEMP_PATH };
@@ -34,7 +37,7 @@ async function main(port: number): Promise<void> {
 
     // 5. WebSocketサーバーの初期化（ミドルウェア設定の前に実行）
     const wsInstance = expressWs(app, server);
-    console.log('✅ express-ws initialized');
+    log.info('✅ express-ws initialized');
 
     // 6. ミドルウェアのセットアップ
     const middlewareManager = new MiddlewareManager(app, !!sslOptions);
@@ -76,26 +79,31 @@ async function main(port: number): Promise<void> {
         const protocol = sslOptions ? 'https' : 'http';
         const wsProtocol = sslOptions ? 'wss' : 'ws';
 
-        console.log(`=== Front Driver Server Started ===`);
-        console.log(`Protocol: ${protocol.toUpperCase()}`);
-        console.log(`Port: ${port}`);
-        console.log(`URL: ${protocol}://127.0.0.1:${port}/`);
-        console.log(`Sample API: ${protocol}://127.0.0.1:${port}/api/sample/public-info`);
-        console.log(`WebSocket: ${wsProtocol}://127.0.0.1:${port}/ws`);
-        console.log(`Session Secret: ${SESSION_SECRET.substring(0, 10)}...`);
-        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        log.info({
+            event: 'server_started',
+            protocol: protocol.toUpperCase(),
+            port,
+            endpoints: {
+                main: `${protocol}://127.0.0.1:${port}/`,
+                sampleApi: `${protocol}://127.0.0.1:${port}/api/sample/public-info`,
+                webSocket: `${wsProtocol}://127.0.0.1:${port}/ws`
+            },
+            sessionSecret: SESSION_SECRET.substring(0, 10) + '...',
+            environment: process.env.NODE_ENV || 'development',
+            sslEnabled: !!sslOptions
+        }, '🚀 Front Driver Server Started');
 
         if (!sslOptions) {
-            console.log(`⚠️  WARNING: Running in HTTP mode (SSL certificate generation failed)`);
-            console.log(`   This is insecure for production use!`);
+            log.warn({
+                event: 'ssl_disabled',
+                reason: 'certificate_generation_failed'
+            }, '⚠️  WARNING: Running in HTTP mode - insecure for production');
         }
-
-        console.log(`=====================================`);
     });
 }
 
 // サーバー起動
 main(DEFAULT_SERVER_PORT).catch((error) => {
-    console.error("Failed to start server:", error);
+    log.error({ err: error }, "Failed to start server");
     process.exit(1);
 });
