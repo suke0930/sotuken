@@ -7,7 +7,7 @@ import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
-import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
+import { ApiRouter, AssetManagerRouter, DownloadManager, JdkmanagerRoute, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('main');
@@ -70,7 +70,7 @@ async function main(port: number): Promise<void> {
     app.use('/api/servers', mcServerRouter.router);
 
     // 7.3 Assetproxyのセットアップ
-    const assetProxy = new AssetManager(middlewareManager.authMiddleware);
+    const assetProxy = new AssetManagerRouter(middlewareManager.authMiddleware);
     app.use('/api/assets', assetProxy.router);
 
     // 7.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
@@ -78,6 +78,10 @@ async function main(port: number): Promise<void> {
 
     //8 JDKmanagerのセットアップ
     const JDKmanager = new JDKManagerAPP(new JdkManager(UserDataPath.Javadir));
+    //ルーティングセットアップ
+    const JDKrouter = new JdkmanagerRoute(middlewareManager.authMiddleware, JDKmanager);
+    app.use('/api/jdk', JDKrouter.router);
+
     // 8. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
 
