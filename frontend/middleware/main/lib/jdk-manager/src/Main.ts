@@ -5,13 +5,15 @@
  * @version 1.0.0
  */
 
-import e from 'express';
+import express from 'express';
+
 import { JdkManager } from './lib/JdkManager';
 import pino from 'pino';
 import { createModuleLogger } from '../../logger';
 import { CrashThisapp } from '../../CrashAPP';
 import { machine } from 'os';
 import { log } from 'console';
+import { publicDecrypt } from 'crypto';
 
 export { JdkManager } from './lib/JdkManager';
 export { JDKEntry } from './lib/JDKEntry';
@@ -28,6 +30,9 @@ export class JDKManagerAPP {
         this.app = app;
         this.setup();
     };
+    /**
+     * 初回ロード処理のメイン
+     */
     async setup() {
         /**
          * 初期化を試みる
@@ -92,4 +97,9 @@ export class JDKManagerAPP {
         }
 
     }
+
+    public installlist: express.RequestHandler = async (req, res) => {
+
+        res.json({ ok: true, servers });
+    };
 }

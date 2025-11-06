@@ -9,6 +9,7 @@ import { WebSocketManager } from './Asset_handler/src/lib/WebSocketManager';
 import { setWebSocketManager } from './Asset_handler/src/controllers/downloadController';
 import { MiddlewareManager } from './middleware-manager';
 import { createModuleLogger } from './logger';
+import { JDKManagerAPP } from './jdk-manager/src/Main';
 
 const log = createModuleLogger('auth');
 /**
@@ -21,7 +22,8 @@ export class ApiRouter {
     ) { }
 
     /**
-     * すべてのAPIエンドポイントをセットアップする
+     * APIエンドポイントをセットアップを行う
+     * ラッパーもあるため要注意
      */
     public configureRoutes() {
         // 認証状態に関わらずトップページは表示する
@@ -232,10 +234,12 @@ export class MinecraftServerRouter {
 
 /**
  * アセットのProxyAPIエンドポイントのルーティングを行うクラス
+ * ただのラッパーだなぁ
+ * これだとルーティングが一望できない...
+ * ただコードの量的に可読性が著しく落ちるのでこのままで行く
  */
-export class AssetManager {
+export class AssetManagerRouter {
     public readonly router: express.Router;
-
     constructor(private authMiddleware: express.RequestHandler) {
         this.router = express.Router();
         new AssetServerAPP(this.router, this.authMiddleware, "http://localhost:3000");
@@ -268,4 +272,22 @@ export class DownloadManager {
         setWebSocketManager(WsManager, this.download_dir);
     }
 }
+/**
+ * JDKManager管理クラス
+ * 可読性確保＋既存リソース活用のためルーティングのみ個々で行うこととしよう。
+ */
+export class JdkmanagerRoute {
+    public readonly router: express.Router;
+    private app: JDKManagerAPP;
+    constructor(private authMiddleware: express.RequestHandler, app: JDKManagerAPP) {
+        this.router = express.Router();
+        this.app = app;
+        this.setupRoute();
+    }
+    setupRoute() {
+        this.router.get("/installlist", this.authMiddleware, this.app.installlist)
+    }
+}
+
+
 
