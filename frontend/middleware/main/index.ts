@@ -10,12 +10,24 @@ import { MiddlewareManager } from './lib/middleware-manager';
 import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
 import { createModuleLogger } from './lib/logger';
-import path from 'path';
-
 const log = createModuleLogger('main');
+import { JdkManager } from './lib/jdk-manager/src/Main';
+import path from 'path';
+import { SetupUserdata } from './lib/setup-dir';
+
+
 //ダウンロードパス
 const DOWNLOAD_TEMP_PATH: string = path.join(__dirname, 'temp', 'download');
 export { DOWNLOAD_TEMP_PATH };
+
+//ユーザーデータ確定
+const UserDataPath = {
+    basedir: path.join(__dirname, "userdata"),
+    Javadir: path.join(__dirname, "userdata", "jdk"),
+    MCdatadir: path.join(__dirname, "userdata", "minecraftServ"),
+}
+SetupUserdata(UserDataPath.basedir, [UserDataPath.Javadir, UserDataPath.MCdatadir]);
+
 /**
  * アプリケーションのエントリーポイント
  */
@@ -63,6 +75,9 @@ async function main(port: number): Promise<void> {
 
     // 7.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
     new DownloadManager(middlewareManager, wsInstance, DOWNLOAD_TEMP_PATH, "/ws");
+
+    //8 JDKmanagerのセットアップ
+    const JDKmanager = new JdkManager(UserDataPath.Javadir);
 
 
 
