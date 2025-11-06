@@ -11,7 +11,7 @@ import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, Sample
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('main');
-import { JdkManager } from './lib/jdk-manager/src/Main';
+import { JdkManager, JDKManagerAPP } from './lib/jdk-manager/src/Main';
 import path from 'path';
 import { SetupUserdata } from './lib/setup-dir';
 
@@ -77,15 +77,7 @@ async function main(port: number): Promise<void> {
     new DownloadManager(middlewareManager, wsInstance, DOWNLOAD_TEMP_PATH, "/ws");
 
     //8 JDKmanagerのセットアップ
-    const JDKmanager = new JdkManager(UserDataPath.Javadir);
-
-
-
-
-
-
-
-
+    const JDKmanager = new JDKManagerAPP(new JdkManager(UserDataPath.Javadir));
     // 8. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
 
