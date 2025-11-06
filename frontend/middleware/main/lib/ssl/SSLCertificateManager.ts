@@ -19,35 +19,35 @@ export class SSLCertificateManager {
    * @returns HTTPSサーバーオプション、失敗時はnull
    */
   public static async initialize(port: number = DEFAULT_SERVER_PORT, maxRetries: number = 3): Promise<https.ServerOptions | null> {
-    log.info('🔒 SSL Certificate Manager initializing...');
+    log.info('SSL Certificate Manager initializing...');
 
     try {
       // 証明書の検証
       const isValid = CertificateValidator.validate();
 
       if (!isValid) {
-        log.info('🔄 Certificate needs to be generated or renewed');
+        log.info('Certificate needs to be generated or renewed');
 
         // 証明書を生成（リトライ付き）
         let success = false;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
-            log.info({ attempt, maxRetries }, `📝 Generation attempt ${attempt}/${maxRetries}`);
+            log.info({ attempt, maxRetries }, `Generation attempt ${attempt}/${maxRetries}`);
             await CertificateGenerator.generate();
             success = true;
             break;
           } catch (error) {
-            log.error({ err: error, attempt, maxRetries }, `❌ Generation attempt ${attempt} failed`);
+            log.error({ err: error, attempt, maxRetries }, `Generation attempt ${attempt} failed`);
             if (attempt < maxRetries) {
-              log.info('⏳ Retrying in 2 seconds...');
+              log.info('Retrying in 2 seconds...');
               await this.sleep(2000);
             }
           }
         }
 
         if (!success) {
-          log.error('❌ Failed to generate certificate after all retries');
-          log.warn('⚠️  Server will start without HTTPS (HTTP only)');
+          log.error('Failed to generate certificate after all retries');
+          log.warn('Server will start without HTTPS (HTTP only)');
           return null;
         }
       }
@@ -55,8 +55,8 @@ export class SSLCertificateManager {
       // 証明書を読み込み
       const sslOptions = this.loadCertificates();
       if (!sslOptions) {
-        log.error('❌ Failed to load certificates');
-        log.warn('⚠️  Server will start without HTTPS (HTTP only)');
+        log.error('Failed to load certificates');
+        log.warn('Server will start without HTTPS (HTTP only)');
         return null;
       }
 
@@ -66,8 +66,8 @@ export class SSLCertificateManager {
       return sslOptions;
 
     } catch (error) {
-      log.error({ err: error }, '❌ SSL Certificate Manager initialization failed');
-      log.warn('⚠️  Server will start without HTTPS (HTTP only)');
+      log.error({ err: error }, 'SSL Certificate Manager initialization failed');
+      log.warn('Server will start without HTTPS (HTTP only)');
       return null;
     }
   }

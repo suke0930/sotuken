@@ -69,7 +69,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
       },
       // 完了コールバック
       () => {
-        log.info({ taskId, filename: task.getFilename() }, '✅ Download completed');
+        log.info({ taskId, filename: task.getFilename() }, 'Download completed');
         if (wsManager) {
           wsManager.broadcastComplete(taskId, task.getFilename());
         }
@@ -77,7 +77,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
       },
       // エラーコールバック
       (error) => {
-        log.error({ taskId, err: error }, '❌ Download error');
+        log.error({ taskId, err: error }, 'Download error');
         if (wsManager) {
           wsManager.broadcastError(taskId, error.message);
         }
@@ -106,7 +106,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    log.error({ err: error }, '❌ Failed to start download');
+    log.error({ err: error }, 'Failed to start download');
 
     res.status(500).json({
       success: false,
@@ -148,7 +148,7 @@ export const getDownloadStatus = (req: Request, res: Response): void => {
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    log.error({ err: error }, '❌ Failed to get download status');
+    log.error({ err: error }, 'Failed to get download status');
 
     res.status(500).json({
       success: false,
@@ -177,7 +177,7 @@ export const getActiveDownloads = (req: Request, res: Response): void => {
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    log.error({ err: error }, '❌ Failed to get active downloads');
+    log.error({ err: error }, 'Failed to get active downloads');
 
     res.status(500).json({
       success: false,
@@ -225,7 +225,7 @@ export const cancelDownload = (req: Request, res: Response): void => {
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    log.error({ err: error }, '❌ Failed to cancel download');
+    log.error({ err: error }, 'Failed to cancel download');
 
     res.status(500).json({
       success: false,

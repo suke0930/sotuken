@@ -37,7 +37,7 @@ async function main(port: number): Promise<void> {
 
     // 5. WebSocketサーバーの初期化（ミドルウェア設定の前に実行）
     const wsInstance = expressWs(app, server);
-    log.info('✅ express-ws initialized');
+    log.info('express-ws initialized');
 
     // 6. ミドルウェアのセットアップ
     const middlewareManager = new MiddlewareManager(app, !!sslOptions);
@@ -91,13 +91,13 @@ async function main(port: number): Promise<void> {
             sessionSecret: SESSION_SECRET.substring(0, 10) + '...',
             environment: process.env.NODE_ENV || 'development',
             sslEnabled: !!sslOptions
-        }, '🚀 Front Driver Server Started');
+        }, 'Front Driver Server Started');
 
         if (!sslOptions) {
             log.warn({
                 event: 'ssl_disabled',
                 reason: 'certificate_generation_failed'
-            }, '⚠️  WARNING: Running in HTTP mode - insecure for production');
+            }, 'WARNING: Running in HTTP mode - insecure for production');
         }
     });
 }
