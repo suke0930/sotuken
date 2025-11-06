@@ -21,7 +21,7 @@ export const getServersList = async (req: Request, res: Response): Promise<void>
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    console.error('❌ Failed to fetch servers list:', error.message);
+    console.error('Failed to fetch servers list:', error.message);
 
     res.status(500).json({
       success: false,
@@ -52,7 +52,7 @@ export const getJDKList = async (req: Request, res: Response): Promise<void> => 
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    console.error('❌ Failed to fetch JDK list:', error.message);
+    console.error('Failed to fetch JDK list:', error.message);
 
     res.status(500).json({
       success: false,
@@ -97,7 +97,7 @@ export const getAssetFilesList = async (req: Request, res: Response): Promise<vo
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    console.error('❌ Failed to fetch asset files list:', error.message);
+    console.error('Failed to fetch asset files list:', error.message);
 
     res.status(500).json({
       success: false,
