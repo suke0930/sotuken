@@ -5,6 +5,9 @@ import { WebSocketManager } from '../lib/WebSocketManager';
 import { ApiResponse } from '../types';
 import * as path from 'path';
 import expressWs from 'express-ws';
+import { createModuleLogger } from '../../../logger';
+
+const log = createModuleLogger('asset:download');
 
 // ダウンロード先ディレクトリ
 let DOWNLOAD_DIR = "";//あとで定数化するゔぇ
@@ -47,9 +50,11 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
     // タスクIDを生成
     const taskId = `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    console.log(`🚀 Starting download task: ${taskId}`);
-    console.log(`   URL: ${url}`);
-    console.log(`   Save to: ${DOWNLOAD_DIR}`);
+    log.info({
+      taskId,
+      url,
+      saveDir: DOWNLOAD_DIR
+    }, '🚀 Starting download task');
 
     // ダウンロードタスクを作成
     const task = new DownloadTask(
@@ -64,7 +69,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
       },
       // 完了コールバック
       () => {
-        console.log(`✅ Download completed: ${taskId}`);
+        log.info({ taskId, filename: task.getFilename() }, '✅ Download completed');
         if (wsManager) {
           wsManager.broadcastComplete(taskId, task.getFilename());
         }
@@ -72,7 +77,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
       },
       // エラーコールバック
       (error) => {
-        console.error(`❌ Download error: ${taskId}`, error.message);
+        log.error({ taskId, err: error }, '❌ Download error');
         if (wsManager) {
           wsManager.broadcastError(taskId, error.message);
         }
@@ -85,7 +90,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
 
     // ダウンロードを開始（非同期）
     task.start().catch((error) => {
-      console.error(`Failed to start download: ${error.message}`);
+      log.error({ err: error, taskId }, 'Failed to start download');
     });
 
     // レスポンスを即座に返す
@@ -101,7 +106,7 @@ export const startDownload = async (req: Request, res: Response): Promise<void> 
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    console.error('❌ Failed to start download:', error.message);
+    log.error({ err: error }, '❌ Failed to start download');
 
     res.status(500).json({
       success: false,
@@ -143,7 +148,7 @@ export const getDownloadStatus = (req: Request, res: Response): void => {
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    console.error('❌ Failed to get download status:', error.message);
+    log.error({ err: error }, '❌ Failed to get download status');
 
     res.status(500).json({
       success: false,
@@ -172,7 +177,7 @@ export const getActiveDownloads = (req: Request, res: Response): void => {
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    console.error('❌ Failed to get active downloads:', error.message);
+    log.error({ err: error }, '❌ Failed to get active downloads');
 
     res.status(500).json({
       success: false,
@@ -220,7 +225,7 @@ export const cancelDownload = (req: Request, res: Response): void => {
 
     res.status(200).json(apiResponse);
   } catch (error: any) {
-    console.error('❌ Failed to cancel download:', error.message);
+    log.error({ err: error }, '❌ Failed to cancel download');
 
     res.status(500).json({
       success: false,
