@@ -6,15 +6,25 @@ import express from 'express';
 
 async function main() {
     const JDKManager = new JdkManager(path.join(__dirname + "/tmp/java"));
-    // await JDKManager.Data.init();
-    // const B = await JDKManager.Entrys.add({ archivePath: "C:\\Users\\jpas\\Downloads\\OpenJDK21U-jdk_x64_windows_hotspot_21.0.9_10.zip", majorVersion: 21 });
+
+    await JDKManager.Data.load();
+    const B = await JDKManager.Entrys.add(
+        {
+            archivePath: "C:\\Users\\jpas\\Downloads\\sotuken\\backend\\Asset\\resources\\jdk\\21\\windows\\OpenJDK17U-jdk_x64_windows_hotspot_17.0.17_10.zip",
+            majorVersion: 17
+        });
+    await JDKManager.Data.save();
+    // console.log(B);
+    console.log(await JDKManager.Entrys.getByVersion(21));
+    process.exit();
+
+
+
+
+
     // await JDKManager.Data.save();
     // console.log(B);
     // process.exit(0);
-    const tryload = await JDKManager.Data.load();
-    //JDK正常性チェック
-    if (!(tryload.success)) { throw new Error("Failed to load JDK data:" + tryload.error) };
-
 
     const MCmanager = ServerManager.initialize("./tmp/serv/server.json", path.join(__dirname + "/tmp/serv/"), "./tmp/serv/logs.json", JDKManager,
         {
@@ -36,8 +46,11 @@ async function main() {
 
     //UUID取得(サーバーが存在しない場合は作成)
     const uuid: string = await (() => {
+
         return new Promise<string>(async (resolve, reject) => {
             if (Manager.getAllInstances().length === 0) {
+
+
                 const uuid = await Manager.addInstance({
                     name: "Test Server",
                     note: "for debug server",
@@ -45,6 +58,11 @@ async function main() {
                     serverBinaryFilePath: "C:\\Users\\jpas\\Downloads\\paper-1.21.8-60.jar",
                     software: { name: "paper", version: "1.20.4" },
                 });
+                console.log(uuid);
+                process.exit();
+
+
+
                 resolve(uuid.uuid || "");
             }
             resolve(await Manager.getAllInstances()[0].uuid);
