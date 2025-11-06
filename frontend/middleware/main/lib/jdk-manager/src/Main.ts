@@ -42,6 +42,15 @@ export class JDKManagerAPP {
             }
             logger.info("Registry initialized");
             console.log("初期化は正常に終了しました。");
+            const trysave = await app.Data.save();
+            if (trysave.success) {
+                logger.info("Save Registry after init");
+                return;
+            } else {
+                console.log(tryload + "初期化後のファイルのセーブに失敗しました");
+                logger.error("Failed Save Registry after init");
+            }
+
         }
         async function healthcheck(logger: pino.Logger) {
             const result = await app.Entrys.checkFileHealthAll();
@@ -76,7 +85,7 @@ export class JDKManagerAPP {
             this.logger.info("Registry loaded");
             console.log("JDKマネージャデータロード完了....");
             const list = await app.Entrys.getInstallList().map(data => { return data.majorVersion });
-            console.log("以下のJDKがインストールされています:" + list.join(","))
+            console.log("以下のJDKがインストールされています:" + list.join(","));
             this.logger.info("installed jdk:" + list.join(","));
             //ヘルスチェック
             healthcheck(this.logger);
