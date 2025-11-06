@@ -8,6 +8,9 @@ import expressWs from 'express-ws';
 import { WebSocketManager } from './Asset_handler/src/lib/WebSocketManager';
 import { setWebSocketManager } from './Asset_handler/src/controllers/downloadController';
 import { MiddlewareManager } from './middleware-manager';
+import { createModuleLogger } from './logger';
+
+const log = createModuleLogger('auth');
 /**
  * APIエンドポイントのルーティングを管理するクラス
  */
@@ -78,7 +81,7 @@ export class ApiRouter {
 
             return res.status(201).json({ ok: true, message: "ユーザー登録とログインが完了しました", userId: id });
         } catch (error) {
-            console.error("Signup error:", error);
+            log.error({ err: error, userId: id }, "Signup error");
             return res.status(500).json({ ok: false, message: "サーバー内部エラーが発生しました" });
         }
     };
@@ -103,11 +106,15 @@ export class ApiRouter {
                     req.session.save((saveErr) => saveErr ? reject(saveErr) : resolve());
                 });
             });
-            console.log(`User logged in: ${authenticatedUserId} at ${req.session.loginAt}`);
+            log.info({
+                event: 'user_login',
+                userId: authenticatedUserId,
+                loginAt: req.session.loginAt
+            }, `User logged in: ${authenticatedUserId}`);
 
             return res.status(200).json({ ok: true, message: "ログインに成功しました", userId: authenticatedUserId });
         } catch (error) {
-            console.error("Login error:", error);
+            log.error({ err: error, userId: id }, "Login error");
             return res.status(500).json({ ok: false, message: "サーバー内部エラーが発生しました" });
         }
     };
@@ -123,7 +130,7 @@ export class ApiRouter {
         }
         // ユーザーがまだ登録されていない状態も考慮
         DevUserManager.hasUser().then(hasUser => {
-            console.log("Auth check: hasUser =", hasUser);
+            log.debug({ hasUser }, "Auth check");
             if (!hasUser) {
                 return res.status(200).json({ ok: false, reason: "no_user_registered", message: "ユーザーが登録されていません" });
             }
@@ -134,7 +141,7 @@ export class ApiRouter {
     private logoutHandler: express.RequestHandler = (req, res) => {
         req.session.destroy((err) => {
             if (err) {
-                console.error("Session destruction failed:", err);
+                log.error({ err }, "Session destruction failed");
                 return res.status(500).json({ ok: false, reason: "logout_failed", message: "ログアウト処理中にエラーが発生しました" });
             }
             res.clearCookie(SESSION_NAME);
@@ -252,7 +259,7 @@ export class DownloadManager {
         this.router = express.Router();
         this.wsServer = wsInstance; // 外部から渡されたインスタンスを使用
         this.middlewareManager = middlewareManager;
-        console.log('✅ DownloadManager initialized with existing wsInstance');
+        createModuleLogger('download').info('DownloadManager initialized with existing wsInstance');
         this.configureRoutes();
     }
 
