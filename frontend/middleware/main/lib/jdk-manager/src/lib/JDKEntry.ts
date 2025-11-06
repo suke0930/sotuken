@@ -5,7 +5,7 @@
  */
 
 import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+
 import {
   JdkInstance,
   RuntimeLock,
@@ -49,7 +49,7 @@ export class JDKEntry {
    * entry.unUseRuntime(lockId);
    */
   public useRuntime(purpose?: string): string {
-    const lockId = uuidv4();
+    const lockId = crypto.randomUUID();
     const lock: RuntimeLock = {
       lockId,
       lockedAt: new Date().toISOString(),
@@ -57,7 +57,7 @@ export class JDKEntry {
     };
 
     this.locks.push(lock);
-    
+
     this.logger?.info(
       `Runtime locked: ${this.instance.id} (lockId: ${lockId}, purpose: ${purpose || 'N/A'})`
     );
@@ -88,7 +88,7 @@ export class JDKEntry {
     }
 
     this.locks.splice(index, 1);
-    
+
     this.logger?.info(
       `Runtime unlocked: ${this.instance.id} (lockId: ${lockId})`
     );
