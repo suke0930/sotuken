@@ -25,7 +25,7 @@ export class SSLCertificateDisplay {
         validFrom: certInfo.generatedAt,
         validUntil: certInfo.expiresAt,
         sanCount: certInfo.subjectAltNames.length
-      }, '📋 Certificate Information');
+      }, ' Certificate Information');
     } catch (error) {
       // 情報表示に失敗しても続行
       log.warn({ err: error }, 'Failed to display certificate info');
@@ -49,10 +49,10 @@ export class SSLCertificateDisplay {
       wsProtocol: wsProtocol.toUpperCase(),
       hostname,
       localIPs
-    }, `🔒 ${protocol.toUpperCase()} Server accessible`);
+    }, ` ${protocol.toUpperCase()} Server accessible`);
 
     if (protocol === 'https') {
-      log.info('Note: Self-signed certificate will show browser warnings - Click "Advanced" → "Proceed to localhost"');
+      log.info('Note: Self-signed certificate will show browser warnings - Click "Advanced"  "Proceed to localhost"');
     }
   }
 }
