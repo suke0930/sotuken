@@ -53,9 +53,9 @@ export class CertificateGenerator {
       const subjectAltNames = NetworkUtils.buildSubjectAltNames();
 
       // RSA 4096bit鍵ペアを生成（Ed25519と同等のセキュリティ強度）
-      log.info('⏳ Generating RSA 4096-bit key pair (this may take a moment)...');
+      log.info('Generating RSA 4096-bit key pair (this may take a moment)...');
       const keys = forge.pki.rsa.generateKeyPair(4096);
-      log.info('✅ Key pair generated');
+      log.info('Key pair generated');
 
       // 証明書を作成
       const cert = forge.pki.createCertificate();
@@ -151,10 +151,10 @@ export class CertificateGenerator {
         certDir: SSL_CERT_DIR,
         expiresAt: notAfter.toISOString(),
         serialNumber: cert.serialNumber
-      }, '✅ Certificate generated successfully');
+      }, 'Certificate generated successfully');
 
     } catch (error) {
-      log.error({ err: error }, '❌ Failed to generate certificate');
+      log.error({ err: error }, 'Failed to generate certificate');
       throw error;
     }
   }

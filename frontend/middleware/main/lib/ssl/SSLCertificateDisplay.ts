@@ -28,7 +28,7 @@ export class SSLCertificateDisplay {
       }, '📋 Certificate Information');
     } catch (error) {
       // 情報表示に失敗しても続行
-      log.warn({ err: error }, '⚠️  Failed to display certificate info');
+      log.warn({ err: error }, 'Failed to display certificate info');
     }
   }
 
@@ -52,7 +52,7 @@ export class SSLCertificateDisplay {
     }, `🔒 ${protocol.toUpperCase()} Server accessible`);
 
     if (protocol === 'https') {
-      log.info('⚠️  Note: Self-signed certificate will show browser warnings - Click "Advanced" → "Proceed to localhost"');
+      log.info('Note: Self-signed certificate will show browser warnings - Click "Advanced" → "Proceed to localhost"');
     }
   }
 }

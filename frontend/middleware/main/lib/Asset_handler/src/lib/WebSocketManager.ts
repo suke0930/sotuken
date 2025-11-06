@@ -65,7 +65,7 @@ export class WebSocketManager {
       // express-wsのアップグレード時にミドルウェアチェーンが正しく実行されない場合があるため
       this.middlewareManager.sessionMiddleware(req, {} as any, (err?: any) => {
         if (err) {
-          log.error({ err }, '❌ Session middleware error');
+          log.error({ err }, 'Session middleware error');
           // エラーメッセージを送信してから切断
           this.sendErrorAndClose(ws, 1011, 'Session processing failed', 'セッション処理中にエラーが発生しました');
           return;
@@ -75,18 +75,18 @@ export class WebSocketManager {
         const authResult = this.middlewareManager.checkWebSocketAuth(req);
 
         if (!authResult.authenticated || !authResult.userId) {
-          log.warn('❌ WebSocket authentication failed - closing connection');
+          log.warn('WebSocket authentication failed - closing connection');
           // 認証失敗メッセージを送信してから切断
           this.sendErrorAndClose(ws, 1008, 'Authentication failed', '認証に失敗しました。ログインしてください。');
           return;
         }
 
-        log.info({ userId: authResult.userId }, '✅ WebSocket client connected');
+        log.info({ userId: authResult.userId }, 'WebSocket client connected');
         this.handleConnection(ws, authResult.userId);
       });
     });
 
-    log.info({ basepath: this.basepath }, `✅ WebSocket endpoint setup`);
+    log.info({ basepath: this.basepath }, `WebSocket endpoint setup`);
   }
 
   /**
@@ -115,7 +115,7 @@ export class WebSocketManager {
     });
 
     ws.on('close', () => {
-      log.info({ userId }, '❌ WebSocket client disconnected');
+      log.info({ userId }, 'WebSocket client disconnected');
       this.clients.delete(ws);
     });
 

@@ -259,7 +259,7 @@ export class DownloadManager {
         this.router = express.Router();
         this.wsServer = wsInstance; // 外部から渡されたインスタンスを使用
         this.middlewareManager = middlewareManager;
-        createModuleLogger('download').info('✅ DownloadManager initialized with existing wsInstance');
+        createModuleLogger('download').info('DownloadManager initialized with existing wsInstance');
         this.configureRoutes();
     }
 

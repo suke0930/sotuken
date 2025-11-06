@@ -23,7 +23,7 @@ export class MiddlewareManager {
         this.app.use(express.json());
         // Cookie ParserをSessionの前に追加（WebSocketでもCookieを正しく解析するため）
         this.app.use(cookieParser(SESSION_SECRET));
-        console.log('✅ Cookie parser middleware configured');
+        console.log('Cookie parser middleware configured');
         this.setupSession();
         this.setupStaticFiles();
         this.setupSecurityHeaders();
@@ -58,9 +58,9 @@ export class MiddlewareManager {
         this.app.use(this.sessionMiddleware);
 
         if (this.sslEnabled) {
-            console.log('✅ Secure cookies enabled (HTTPS)');
+            console.log('Secure cookies enabled (HTTPS)');
         } else {
-            console.log('⚠️  Secure cookies disabled (HTTP fallback)');
+            console.log('Secure cookies disabled (HTTP fallback)');
         }
     }
 
@@ -101,11 +101,11 @@ export class MiddlewareManager {
      */
     public checkWebSocketAuth(req: express.Request): { authenticated: boolean; userId?: string } {
         if (req.session?.userId) {
-            console.log('✅ WebSocket authentication successful for user:', req.session.userId);
+            console.log('WebSocket authentication successful for user:', req.session.userId);
             return { authenticated: true, userId: req.session.userId };
         }
 
-        console.log('❌ WebSocket authentication failed - No valid session');
+        console.log('WebSocket authentication failed - No valid session');
         return { authenticated: false };
     }
 

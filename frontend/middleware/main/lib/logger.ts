@@ -4,7 +4,8 @@ import path from 'path';
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const logLevel = process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info');
 const logDir = path.join(__dirname, '..', 'logs');
-
+process.stdout.setDefaultEncoding?.('utf8');
+process.stderr.setDefaultEncoding?.('utf8');
 // Base logger configuration
 export const logger = pino({
   level: logLevel,

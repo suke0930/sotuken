@@ -61,17 +61,17 @@ export class CertificateValidator {
 
     // 有効期限切れ
     if (now > expiresAt) {
-      log.warn('⚠️  Certificate has expired');
+      log.warn('Certificate has expired');
       return false;
     }
 
     // 更新期限（10日前）に達している
     if (daysUntilExpiry <= CERT_RENEWAL_THRESHOLD_DAYS) {
-      log.warn({ daysUntilExpiry }, `⚠️  Certificate expires in ${daysUntilExpiry} days, renewal needed`);
+      log.warn({ daysUntilExpiry }, `Certificate expires in ${daysUntilExpiry} days, renewal needed`);
       return false;
     }
 
-    log.info('✅ Certificate is valid');
+    log.info('Certificate is valid');
     return true;
   }
 
@@ -91,7 +91,7 @@ export class CertificateValidator {
     // 現在のIPが証明書のSANに含まれているかチェック
     for (const ip of currentIPs) {
       if (!certSANs.includes(ip)) {
-        log.warn({ newIP: ip }, `⚠️  New IP detected, certificate needs regeneration`);
+        log.warn({ newIP: ip }, `New IP detected, certificate needs regeneration`);
         return true;
       }
     }
@@ -125,15 +125,15 @@ export class CertificateValidator {
       const verified = publicKey.verify(md.digest().bytes(), signature);
 
       if (!verified) {
-        log.error('❌ Private key and certificate do not match');
+        log.error('Private key and certificate do not match');
         return false;
       }
 
-      log.info('✅ Key pair validation successful');
+      log.info('Key pair validation successful');
       return true;
 
     } catch (error) {
-      log.error({ err: error }, '❌ Failed to validate key pair');
+      log.error({ err: error }, 'Failed to validate key pair');
       return false;
     }
   }
@@ -147,7 +147,7 @@ export class CertificateValidator {
 
     // ファイル存在チェック
     if (!this.filesExist()) {
-      log.warn('❌ Certificate files not found');
+      log.warn('Certificate files not found');
       return false;
     }
 
@@ -166,7 +166,7 @@ export class CertificateValidator {
       return false;
     }
 
-    log.info('✅ Certificate validation successful');
+    log.info('Certificate validation successful');
     return true;
   }
 }
