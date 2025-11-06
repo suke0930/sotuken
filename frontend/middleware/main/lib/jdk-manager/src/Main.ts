@@ -99,7 +99,32 @@ export class JDKManagerAPP {
     }
 
     public installlist: express.RequestHandler = async (req, res) => {
-
-        res.json({ ok: true, servers });
+        try {
+            const list = await this.app.Entrys.getInstallList();
+            res.json({ ok: true, list });
+        } catch (error) {
+            res.json({ ok: false });
+        }
+    };
+    public getbyId: express.RequestHandler = async (req, res) => {
+        if (!req.params.id) res.json({ ok: false, message: "パラメータがありません" });
+        try {
+            const list = await this.app.Entrys.getById(req.params.id);
+            res.json({ ok: true, list });
+        } catch (error) {
+            console.log(error);
+            res.json({ ok: false, error });
+        }
+    };
+    public getbyMajorVersion: express.RequestHandler = async (req, res) => {
+        if (!req.params.verison) res.json({ ok: false, message: "パラメータがありません" });
+        if (isNaN(Number(req.params.verison))) res.json({ ok: false, message: "入力値が数値ではありません" });
+        try {
+            const list = await this.app.Entrys.getByVersion(Number(req.params.verison));
+            res.json({ ok: true, list });
+        } catch (error) {
+            console.log(error);
+            res.json({ ok: false, error });
+        }
     };
 }

@@ -58,6 +58,7 @@ export class ApiRouter {
     }
 
     private signupHandler: express.RequestHandler = async (req, res) => {
+        if ((req.body.id == undefined) || (req.body.password == undefined)) return res.status(400).json({ ok: false, message: "JSONの形式が間違っています" });
         const { id, password } = req.body;
         if (!id || !password || typeof id !== 'string' || typeof password !== 'string') {
             return res.status(400).json({ ok: false, message: "IDとパスワードが必要です" });
@@ -89,6 +90,7 @@ export class ApiRouter {
     };
 
     private loginHandler: express.RequestHandler = async (req, res) => {
+        if (!(req.body) || (req.body.id == undefined) || (req.body.password == undefined)) return res.status(400).json({ ok: false, message: "JSONの形式が間違っています" });
         const { id, password } = req.body;
         if (!id || !password) {
             return res.status(400).json({ ok: false, message: "IDとパスワードが必要です" });
@@ -285,7 +287,9 @@ export class JdkmanagerRoute {
         this.setupRoute();
     }
     setupRoute() {
-        this.router.get("/installlist", this.authMiddleware, this.app.installlist)
+        this.router.get("/installlist", this.authMiddleware, this.app.installlist);
+        this.router.get("/getbyid/:id", this.authMiddleware, this.app.getbyId);
+        this.router.get("/getbyid/:verison", this.authMiddleware, this.app.getbyMajorVersion);
     }
 }
 
