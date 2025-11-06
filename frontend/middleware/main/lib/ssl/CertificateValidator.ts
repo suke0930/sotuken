@@ -8,6 +8,9 @@ import {
 } from '../constants';
 import { CertificateInfo } from './CertificateGenerator';
 import { NetworkUtils } from './NetworkUtils';
+import { createModuleLogger } from '../logger';
+
+const log = createModuleLogger('ssl:validator');
 
 /**
  * SSL証明書の検証を管理するクラス
@@ -32,7 +35,7 @@ export class CertificateValidator {
       const data = fs.readFileSync(SSL_INFO_FILE, 'utf-8');
       return JSON.parse(data) as CertificateInfo;
     } catch (error) {
-      console.error('Failed to load certificate info:', error);
+      log.error({ err: error }, 'Failed to load certificate info');
       return null;
     }
   }
@@ -51,23 +54,24 @@ export class CertificateValidator {
     const expiresAt = new Date(certInfo.expiresAt);
     const daysUntilExpiry = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    console.log(`📋 Certificate Status:`);
-    console.log(`  - Expires: ${certInfo.expiresAt}`);
-    console.log(`  - Days remaining: ${daysUntilExpiry}`);
+    log.info({
+      expiresAt: certInfo.expiresAt,
+      daysRemaining: daysUntilExpiry
+    }, ' Certificate Status');
 
     // 有効期限切れ
     if (now > expiresAt) {
-      console.log('  ⚠️  Certificate has expired');
+      log.warn('Certificate has expired');
       return false;
     }
 
     // 更新期限（10日前）に達している
     if (daysUntilExpiry <= CERT_RENEWAL_THRESHOLD_DAYS) {
-      console.log(`  ⚠️  Certificate expires in ${daysUntilExpiry} days, renewal needed`);
+      log.warn({ daysUntilExpiry }, `Certificate expires in ${daysUntilExpiry} days, renewal needed`);
       return false;
     }
 
-    console.log('  ✅ Certificate is valid');
+    log.info('Certificate is valid');
     return true;
   }
 
@@ -87,7 +91,7 @@ export class CertificateValidator {
     // 現在のIPが証明書のSANに含まれているかチェック
     for (const ip of currentIPs) {
       if (!certSANs.includes(ip)) {
-        console.log(`  ⚠️  New IP detected: ${ip}, certificate needs regeneration`);
+        log.warn({ newIP: ip }, `New IP detected, certificate needs regeneration`);
         return true;
       }
     }
@@ -121,15 +125,15 @@ export class CertificateValidator {
       const verified = publicKey.verify(md.digest().bytes(), signature);
 
       if (!verified) {
-        console.error('  ❌ Private key and certificate do not match');
+        log.error('Private key and certificate do not match');
         return false;
       }
 
-      console.log('  ✅ Key pair validation successful');
+      log.info('Key pair validation successful');
       return true;
 
     } catch (error) {
-      console.error('  ❌ Failed to validate key pair:', error);
+      log.error({ err: error }, 'Failed to validate key pair');
       return false;
     }
   }
@@ -139,11 +143,11 @@ export class CertificateValidator {
    * @returns 証明書が有効で使用可能ならtrue
    */
   public static validate(): boolean {
-    console.log('🔍 Validating SSL certificate...');
+    log.info(' Validating SSL certificate...');
 
     // ファイル存在チェック
     if (!this.filesExist()) {
-      console.log('  ❌ Certificate files not found');
+      log.warn('Certificate files not found');
       return false;
     }
 
@@ -162,7 +166,7 @@ export class CertificateValidator {
       return false;
     }
 
-    console.log('✅ Certificate validation successful');
+    log.info('Certificate validation successful');
     return true;
   }
 }

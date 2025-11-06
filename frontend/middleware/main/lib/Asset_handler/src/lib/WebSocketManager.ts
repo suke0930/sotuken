@@ -3,6 +3,9 @@ import { DownloadProgress } from './DownloadTask';
 import expressWs from 'express-ws';
 import { Request as ExpressRequest } from 'express';
 import { MiddlewareManager } from '../../../middleware-manager';
+import { createModuleLogger } from '../../../logger';
+
+const log = createModuleLogger('asset:websocket');
 
 /**
  * WebSocketメッセージタイプ
@@ -56,13 +59,13 @@ export class WebSocketManager {
    */
   private setupWebSocketRoute(): void {
     this.expressWsInstance.app.ws(this.basepath, (ws: WebSocket, req: ExpressRequest) => {
-      console.log('🔌 WebSocket connection attempt from:', req.headers.origin);
+      log.info({ origin: req.headers.origin }, '🔌 WebSocket connection attempt');
 
       // セッションミドルウェアを明示的に実行
       // express-wsのアップグレード時にミドルウェアチェーンが正しく実行されない場合があるため
       this.middlewareManager.sessionMiddleware(req, {} as any, (err?: any) => {
         if (err) {
-          console.error('❌ Session middleware error:', err);
+          log.error({ err }, 'Session middleware error');
           // エラーメッセージを送信してから切断
           this.sendErrorAndClose(ws, 1011, 'Session processing failed', 'セッション処理中にエラーが発生しました');
           return;
@@ -72,18 +75,18 @@ export class WebSocketManager {
         const authResult = this.middlewareManager.checkWebSocketAuth(req);
 
         if (!authResult.authenticated || !authResult.userId) {
-          console.log('❌ WebSocket authentication failed - closing connection');
+          log.warn('WebSocket authentication failed - closing connection');
           // 認証失敗メッセージを送信してから切断
           this.sendErrorAndClose(ws, 1008, 'Authentication failed', '認証に失敗しました。ログインしてください。');
           return;
         }
 
-        console.log('✅ WebSocket client connected - User:', authResult.userId);
+        log.info({ userId: authResult.userId }, 'WebSocket client connected');
         this.handleConnection(ws, authResult.userId);
       });
     });
 
-    console.log(`✅ WebSocket endpoint setup at: ${this.basepath}`);
+    log.info({ basepath: this.basepath }, `WebSocket endpoint setup`);
   }
 
   /**
@@ -107,17 +110,17 @@ export class WebSocketManager {
           });
         }
       } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+        log.error({ err: error, userId }, 'Failed to parse WebSocket message');
       }
     });
 
     ws.on('close', () => {
-      console.log('❌ WebSocket client disconnected - User:', userId);
+      log.info({ userId }, 'WebSocket client disconnected');
       this.clients.delete(ws);
     });
 
     ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      log.error({ err: error, userId }, 'WebSocket error');
       this.clients.delete(ws);
     });
 
@@ -199,7 +202,7 @@ export class WebSocketManager {
         ws.send(JSON.stringify(errorMessage));
       }
     } catch (error) {
-      console.error('Failed to send error message:', error);
+      log.error({ err: error }, 'Failed to send error message');
     } finally {
       // メッセージ送信後、少し待ってから切断
       setTimeout(() => {
