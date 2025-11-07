@@ -1,0 +1,2795 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+api-reference.md
+architecture.md
+JDK-REGISTRY-SCHEMA.md
+README.md
+usage-examples.md
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="api-reference.md">
+# JDK Manager - API Reference (Mermaid Edition)
+
+## API階層構造
+
+```mermaid
+graph TB
+    subgraph "Public API"
+        JdkManager[JdkManager]
+        
+        subgraph "Manager APIs"
+            DataAPI[Data API]
+            EntrysAPI[Entrys API]
+        end
+        
+        subgraph "Entry APIs"
+            EntryAPI[JDKEntry API]
+            UpdateAPI[UpdateHandler API]
+        end
+    end
+    
+    JdkManager --> DataAPI
+    JdkManager --> EntrysAPI
+    EntrysAPI --> EntryAPI
+    EntryAPI --> UpdateAPI
+    
+    style JdkManager fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    style DataAPI fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style EntrysAPI fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style EntryAPI fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style UpdateAPI fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+```
+
+## JdkManager API
+
+### コンストラクタ
+
+```mermaid
+flowchart LR
+    Input[["baseRuntimePath: string<br/>options?: {<br/>  logger?: Logger,<br/>  dryRun?: boolean<br/>}"]] --> Constructor[new JdkManager]
+    Constructor --> Output[["JdkManager<br/>インスタンス"]]
+    
+    style Input fill:#e3f2fd
+    style Constructor fill:#fff3e0
+    style Output fill:#e8f5e9
+```
+
+### プロパティ
+
+```mermaid
+classDiagram
+    class JdkManager {
+        +Data: DataManager
+        +Entrys: EntryManager
+    }
+    
+    class DataManager {
+        +init() Result~void~
+        +load() Promise~Result~void~~
+        +save() Promise~Result~void~~
+    }
+    
+    class EntryManager {
+        +add(params) Promise~Result~JDKEntry~~
+        +remove(id) Promise~Result~void~~
+        +getByVersion(v) Result~JDKEntry~
+        +getByStructName(name) Result~JDKEntry~
+        +getById(id) Result~JDKEntry~
+        +getInstallList() InstallInfo[]
+        +updateCheck(jdks) UpdateInfo[]
+        +checkFileHealthAll() Promise~Result~VerificationResult[]~~
+    }
+    
+    JdkManager --> DataManager
+    JdkManager --> EntryManager
+```
+
+## Data API
+
+### init() - レジストリ初期化
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant Data as DataManager
+    participant Memory as Memory
+    
+    Caller->>Data: init()
+    Data->>Memory: 空のJdkRegistryを作成
+    Memory-->>Data: registry
+    Data->>Data: isLoaded = true
+    Data-->>Caller: Result<void>
+    
+    Note over Caller,Data: ファイルには触らない
+```
+
+**戻り値:**
+```typescript
+Result<void>
+```
+
+### load() - レジストリ読み込み
+
+```mermaid
+flowchart TD
+    Start([load呼び出し]) --> Check{jdk-registry.json<br/>存在確認}
+    Check -->|なし| ErrorNotFound[Error: File not found]
+    Check -->|あり| Read[ファイル読み込み]
+    
+    Read --> Parse[JSON解析]
+    Parse --> Validate{schemaVersion<br/>検証}
+    
+    Validate -->|不正| ErrorSchema[Error: Incompatible schema]
+    Validate -->|正常| SetRegistry[registryに格納]
+    
+    SetRegistry --> SetLoaded[isLoaded = true]
+    SetLoaded --> Success[Result<void> success]
+    
+    ErrorNotFound --> End([終了])
+    ErrorSchema --> End
+    Success --> End
+    
+    style Success fill:#c8e6c9
+    style ErrorNotFound fill:#ffcdd2
+    style ErrorSchema fill:#ffcdd2
+```
+
+**戻り値:**
+```typescript
+Promise<Result<void>>
+```
+
+### save() - レジストリ保存
+
+```mermaid
+flowchart TD
+    Start([save呼び出し]) --> CheckLoaded{isLoaded<br/>確認}
+    CheckLoaded -->|false| ErrorNotLoaded[Error: Registry not loaded]
+    CheckLoaded -->|true| UpdateTime[lastUpdated更新]
+    
+    UpdateTime --> Serialize[JSONシリアライズ]
+    Serialize --> CheckDryRun{dryRun<br/>モード?}
+    
+    CheckDryRun -->|true| LogDryRun[ログ出力のみ]
+    CheckDryRun -->|false| CreateDir[ディレクトリ作成]
+    
+    CreateDir --> Write[ファイル書き込み]
+    Write --> Success[Result<void> success]
+    LogDryRun --> Success
+    
+    ErrorNotLoaded --> End([終了])
+    Success --> End
+    
+    style Success fill:#c8e6c9
+    style ErrorNotLoaded fill:#ffcdd2
+    style LogDryRun fill:#fff9c4
+```
+
+**戻り値:**
+```typescript
+Promise<Result<void>>
+```
+
+## Entrys API
+
+### add() - JDKインストール
+
+```mermaid
+graph TD
+    subgraph "Input Parameters"
+        Params["AddJdkParams {<br/>archivePath: string<br/>majorVersion: number<br/>structName?: string<br/>name?: string<br/>}"]
+    end
+    
+    subgraph "Validation"
+        V1{installLock<br/>確認}
+        V2{同一バージョン<br/>存在確認}
+        V3{アーカイブファイル<br/>存在確認}
+    end
+    
+    subgraph "Processing"
+        P1[アーカイブ解凍]
+        P2[ファイル移動]
+        P3[バージョン確認]
+        P4[チェックサム計算]
+        P5[エントリ作成]
+    end
+    
+    subgraph "Output"
+        Success["Result<JDKEntry><br/>success: true<br/>data: JDKEntry"]
+        Error["Result<JDKEntry><br/>success: false<br/>error: string"]
+    end
+    
+    Params --> V1
+    V1 -->|OK| V2
+    V1 -->|NG| Error
+    V2 -->|OK| V3
+    V2 -->|NG| Error
+    V3 -->|OK| P1
+    V3 -->|NG| Error
+    
+    P1 --> P2
+    P2 --> P3
+    P3 --> P4
+    P4 --> P5
+    P5 --> Success
+    
+    style Params fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+```
+
+**シグネチャ:**
+```typescript
+async add(params: AddJdkParams): Promise<Result<JDKEntry>>
+```
+
+### remove() - JDK削除
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant EM as EntryManager
+    participant Entry as JDKEntry
+    participant FS as FileSystem
+    participant DM as DataManager
+    
+    Caller->>EM: remove(id)
+    EM->>EM: エントリ検索
+    
+    alt エントリなし
+        EM-->>Caller: Error: Not found
+    end
+    
+    EM->>Entry: isLocked()
+    Entry-->>EM: boolean
+    
+    alt ロック中
+        EM-->>Caller: Error: Locked
+    end
+    
+    alt dryRunモード
+        EM->>EM: ログ出力のみ
+    else 通常モード
+        EM->>FS: removeDirectory(jdkPath)
+        FS-->>EM: 完了
+    end
+    
+    EM->>EM: instances配列から削除
+    EM->>EM: entryCacheから削除
+    EM->>EM: activeJdkId更新
+    
+    EM->>DM: save()
+    DM-->>EM: Result<void>
+    
+    EM-->>Caller: Result<void> success
+```
+
+**シグネチャ:**
+```typescript
+async remove(id: string): Promise<Result<void>>
+```
+
+### getByVersion() - バージョンで検索
+
+```mermaid
+flowchart LR
+    Input["majorVersion: number"] --> Search[instances配列を検索]
+    Search --> Found{見つかった?}
+    Found -->|Yes| GetEntry[JDKEntry取得/作成]
+    Found -->|No| Error["Result<JDKEntry><br/>success: false"]
+    GetEntry --> Success["Result<JDKEntry><br/>success: true<br/>data: JDKEntry"]
+    
+    style Input fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+```
+
+**シグネチャ:**
+```typescript
+getByVersion(majorVersion: number): Result<JDKEntry>
+```
+
+### getByStructName() - 正式名称で検索
+
+```mermaid
+flowchart LR
+    Input["structName: string"] --> Search[instances配列を検索]
+    Search --> Found{見つかった?}
+    Found -->|Yes| GetEntry[JDKEntry取得/作成]
+    Found -->|No| Error["Result<JDKEntry><br/>success: false"]
+    GetEntry --> Success["Result<JDKEntry><br/>success: true<br/>data: JDKEntry"]
+    
+    style Input fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+```
+
+**シグネチャ:**
+```typescript
+getByStructName(structName: string): Result<JDKEntry>
+```
+
+### getById() - IDで検索
+
+```mermaid
+flowchart LR
+    Input["id: string"] --> Search[instances配列を検索]
+    Search --> Found{見つかった?}
+    Found -->|Yes| GetEntry[JDKEntry取得/作成]
+    Found -->|No| Error["Result<JDKEntry><br/>success: false"]
+    GetEntry --> Success["Result<JDKEntry><br/>success: true<br/>data: JDKEntry"]
+    
+    style Input fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+```
+
+**シグネチャ:**
+```typescript
+getById(id: string): Result<JDKEntry>
+```
+
+### getInstallList() - インストール済みリスト取得
+
+```mermaid
+flowchart TD
+    Start([getInstallList]) --> Loop{全instances<br/>処理完了?}
+    Loop -->|No| Extract[必要な情報を抽出]
+    Extract --> Create[InstallInfo作成]
+    Create --> Add[配列に追加]
+    Add --> Loop
+    Loop -->|Yes| Return[InstallInfo[]返却]
+    
+    style Start fill:#e3f2fd
+    style Return fill:#c8e6c9
+```
+
+**戻り値:**
+```typescript
+InstallInfo[] = {
+  id: string;
+  majorVersion: number;
+  name: string;
+  structName: string;
+  verificationStatus: VerificationStatus;
+}[]
+```
+
+### updateCheck() - アップデートチェック
+
+```mermaid
+graph TD
+    Input["availableJdks:<br/>AvailableJdk[]"] --> GetOS[現在のOS判定]
+    GetOS --> Init[updates配列初期化]
+    
+    Init --> Loop{全instances<br/>処理}
+    
+    Loop --> Find[availableJdksから<br/>同じバージョン検索]
+    Find --> Match{マッチ?}
+    
+    Match -->|No| Loop
+    Match -->|Yes| GetDL[OS対応<br/>ダウンロードURL取得]
+    
+    GetDL --> Exists{URL存在?}
+    Exists -->|No| Loop
+    Exists -->|Yes| Compare{structName<br/>比較}
+    
+    Compare -->|同じ| Loop
+    Compare -->|異なる| AddUpdate[UpdateInfo作成<br/>配列に追加]
+    
+    AddUpdate --> Loop
+    Loop --> Return[UpdateInfo[]返却]
+    
+    style Input fill:#e3f2fd
+    style Return fill:#c8e6c9
+```
+
+**戻り値:**
+```typescript
+UpdateInfo[] = {
+  id: string;
+  currentStructName: string;
+  availableStructName: string;
+  downloadUrl: string;
+  majorVersion: number;
+}[]
+```
+
+### checkFileHealthAll() - 全JDKの整合性検証
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant EM as EntryManager
+    participant Entry as JDKEntry
+    participant DM as DataManager
+    
+    Caller->>EM: checkFileHealthAll()
+    
+    loop 全instances
+        EM->>Entry: checkFileHealth()
+        Entry->>Entry: ファイル検証処理
+        Entry-->>EM: Result<VerificationStatus>
+        EM->>EM: VerificationResult作成
+        EM->>EM: results配列に追加
+    end
+    
+    EM->>DM: save()
+    DM-->>EM: Result<void>
+    
+    EM-->>Caller: Result<VerificationResult[]>
+```
+
+**戻り値:**
+```typescript
+Promise<Result<VerificationResult[]>>
+
+VerificationResult = {
+  id: string;
+  status: VerificationStatus;
+  missingFiles?: string[];
+  corruptedFiles?: string[];
+}
+```
+
+## JDKEntry API
+
+### メソッド一覧
+
+```mermaid
+classDiagram
+    class JDKEntry {
+        +useRuntime(purpose?) string
+        +unUseRuntime(lockId) Result~void~
+        +isLocked() boolean
+        +checkFileHealth() Promise~Result~VerificationStatus~~
+        +getUpdate(availableJdks, onSave) UpdateHandler | null
+        
+        +getId() string
+        +getName() string
+        +getStructName() string
+        +getMajorVersion() number
+        +getPath() string
+        +getVerificationStatus() VerificationStatus
+        +getOS() string
+        +getInstalledAt() string
+        +getChecksums() FileChecksum[]
+        +getLocks() RuntimeLock[]
+    }
+```
+
+### useRuntime() - ランタイムロック取得
+
+```mermaid
+flowchart TD
+    Input["purpose?: string"] --> GenUUID[UUID生成]
+    GenUUID --> CreateLock[RuntimeLockオブジェクト作成]
+    CreateLock --> AddLock[locks配列に追加]
+    AddLock --> Log[ログ出力]
+    Log --> Return["lockId: string"]
+    
+    style Input fill:#e3f2fd
+    style Return fill:#c8e6c9
+```
+
+**シグネチャ:**
+```typescript
+useRuntime(purpose?: string): string
+```
+
+### unUseRuntime() - ランタイムロック解放
+
+```mermaid
+flowchart TD
+    Input["lockId: string"] --> Search{locks配列から<br/>検索}
+    Search -->|見つからない| Error["Result<void><br/>success: false<br/>error: 'Lock not found'"]
+    Search -->|見つかった| Remove[locks配列から削除]
+    Remove --> Log[ログ出力]
+    Log --> Success["Result<void><br/>success: true"]
+    
+    style Input fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+```
+
+**シグネチャ:**
+```typescript
+unUseRuntime(lockId: string): Result<void>
+```
+
+### isLocked() - ロック状態確認
+
+```mermaid
+flowchart LR
+    Call([isLocked]) --> Check{locks.length > 0}
+    Check -->|Yes| True[return true]
+    Check -->|No| False[return false]
+    
+    style Call fill:#e3f2fd
+    style True fill:#c8e6c9
+    style False fill:#c8e6c9
+```
+
+**シグネチャ:**
+```typescript
+isLocked(): boolean
+```
+
+### checkFileHealth() - ファイル整合性検証
+
+```mermaid
+graph TD
+    Start([checkFileHealth]) --> Init[missingFiles/corruptedFiles初期化]
+    
+    Init --> Loop{全checksums<br/>処理完了?}
+    
+    Loop -->|No| CheckExists{ファイル存在?}
+    CheckExists -->|No| AddMissing[missingFilesに追加]
+    CheckExists -->|Yes| CalcHash[SHA-256計算]
+    
+    CalcHash --> Compare{チェックサム一致?}
+    Compare -->|No| AddCorrupt[corruptedFilesに追加]
+    Compare -->|Yes| UpdateTime[lastVerified更新]
+    
+    AddMissing --> Loop
+    AddCorrupt --> Loop
+    UpdateTime --> Loop
+    
+    Loop -->|Yes| Determine{ステータス判定}
+    
+    Determine -->|missing| SetMissing[status = 'missing']
+    Determine -->|corrupted| SetCorrupt[status = 'corrupted']
+    Determine -->|verified| SetVerified[status = 'verified']
+    
+    SetMissing --> Update[verificationStatus更新]
+    SetCorrupt --> Update
+    SetVerified --> Update
+    
+    Update --> Return["Result<VerificationStatus>"]
+    
+    style Start fill:#e3f2fd
+    style Return fill:#c8e6c9
+    style SetMissing fill:#ffcdd2
+    style SetCorrupt fill:#fff9c4
+    style SetVerified fill:#c8e6c9
+```
+
+**シグネチャ:**
+```typescript
+async checkFileHealth(): Promise<Result<VerificationStatus>>
+```
+
+### getUpdate() - アップデートハンドラ取得
+
+```mermaid
+flowchart TD
+    Input["availableJdks: AvailableJdk[]<br/>onSave: Function"] --> GetOS[現在のOS取得]
+    
+    GetOS --> Find{同じmajorVersion<br/>のJDK検索}
+    Find -->|なし| ReturnNull[return null]
+    
+    Find -->|あり| GetDL{OS対応<br/>ダウンロードあり?}
+    GetDL -->|なし| ReturnNull
+    
+    GetDL -->|あり| Extract[URLから<br/>structName抽出]
+    Extract --> Compare{structName<br/>比較}
+    
+    Compare -->|同じ| ReturnNull
+    Compare -->|異なる| Create[UpdateHandler作成]
+    Create --> ReturnHandler[return UpdateHandler]
+    
+    style Input fill:#e3f2fd
+    style ReturnHandler fill:#c8e6c9
+    style ReturnNull fill:#e0e0e0
+```
+
+**シグネチャ:**
+```typescript
+getUpdate(
+  availableJdks: AvailableJdk[],
+  onSaveRegistry: () => Promise<Result<void>>
+): UpdateHandler | null
+```
+
+### ゲッターメソッド
+
+```mermaid
+graph LR
+    subgraph "Getters"
+        getId[getId]
+        getName[getName]
+        getStructName[getStructName]
+        getMajorVersion[getMajorVersion]
+        getPath[getPath]
+        getVerificationStatus[getVerificationStatus]
+        getOS[getOS]
+        getInstalledAt[getInstalledAt]
+        getChecksums[getChecksums]
+        getLocks[getLocks]
+    end
+    
+    subgraph "Internal Data"
+        Instance[instance: JdkInstance]
+        Locks[locks: RuntimeLock[]]
+        BasePath[baseRuntimePath: string]
+    end
+    
+    Instance --> getId
+    Instance --> getName
+    Instance --> getStructName
+    Instance --> getMajorVersion
+    Instance --> getVerificationStatus
+    Instance --> getOS
+    Instance --> getInstalledAt
+    Instance --> getChecksums
+    
+    Locks --> getLocks
+    BasePath --> getPath
+    Instance --> getPath
+    
+    style Instance fill:#e3f2fd
+    style Locks fill:#e3f2fd
+    style BasePath fill:#e3f2fd
+```
+
+## UpdateHandler API
+
+### install() - アップデート実行
+
+```mermaid
+sequenceDiagram
+    participant Caller
+    participant UH as UpdateHandler
+    participant Entry as JDKEntry
+    participant FS as FileSystem
+    
+    Caller->>UH: install(archivePath, dryRun?)
+    
+    UH->>Entry: isLocked()
+    Entry-->>UH: boolean
+    
+    alt ロック中
+        UH-->>Caller: Error: Locked
+    end
+    
+    alt dryRunモード
+        UH->>UH: ログ出力のみ
+        UH-->>Caller: Success
+    end
+    
+    UH->>UH: レジストリバックアップ
+    UH->>FS: moveDirectory(jdk, backup)
+    
+    Note over UH,FS: 新バージョンインストール
+    
+    alt インストール失敗
+        UH->>FS: ロールバック処理
+        UH-->>Caller: Error
+    end
+    
+    UH->>Entry: instance更新
+    UH->>UH: onSaveRegistry()
+    UH->>FS: クリーンアップ
+    
+    UH-->>Caller: Success
+```
+
+**シグネチャ:**
+```typescript
+async install(
+  archivePath: string,
+  dryRun?: boolean
+): Promise<Result<void>>
+```
+
+### getNewVersionInfo() - 新バージョン情報取得
+
+```mermaid
+flowchart LR
+    Call([getNewVersionInfo]) --> Return["return {<br/>structName: string<br/>downloadUrl: string<br/>version: string<br/>vendor?: string<br/>}"]
+    
+    style Call fill:#e3f2fd
+    style Return fill:#c8e6c9
+```
+
+**シグネチャ:**
+```typescript
+getNewVersionInfo(): {
+  structName: string;
+  downloadUrl: string;
+  version: string;
+  vendor?: string;
+}
+```
+
+## エラーハンドリング
+
+### Result型のフロー
+
+```mermaid
+flowchart TD
+    Start([API呼び出し]) --> Try[try-catchで実行]
+    
+    Try --> Success{成功?}
+    Success -->|Yes| ReturnSuccess["return {<br/>success: true<br/>data: T<br/>}"]
+    Success -->|No| CatchError[Errorをキャッチ]
+    
+    CatchError --> ReturnError["return {<br/>success: false<br/>error: string<br/>}"]
+    
+    style Start fill:#e3f2fd
+    style ReturnSuccess fill:#c8e6c9
+    style ReturnError fill:#ffcdd2
+```
+
+### エラーメッセージの例
+
+```mermaid
+mindmap
+  root((Error Messages))
+    Installation
+      JDK with major version X already exists
+      Installation is already in progress
+      Archive file not found
+      Failed to verify Java version
+      Version mismatch
+    Removal
+      JDK not found
+      Entry is locked and cannot be removed
+      Failed to remove directory
+    Verification
+      Failed to calculate checksum
+      Failed to read file
+    Lock Management
+      Lock not found
+    Data Management
+      Registry not loaded
+      Registry file not found
+      Incompatible schema version
+      Failed to save registry
+```
+
+## 使用例フロー
+
+### 基本的な使用例
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant App
+    participant Manager as JdkManager
+    participant Entrys as EntryManager
+    participant Entry as JDKEntry
+    
+    User->>App: JDK管理システム起動
+    App->>Manager: new JdkManager(path, options)
+    Manager-->>App: manager
+    
+    App->>Manager: Data.init()
+    Manager-->>App: Result<void>
+    
+    User->>App: Java 17インストール要求
+    App->>Entrys: add({archivePath, majorVersion: 17})
+    Entrys->>Entrys: インストール処理
+    Entrys-->>App: Result<JDKEntry>
+    
+    App->>Manager: Entrys.getInstallList()
+    Manager-->>App: InstallInfo[]
+    App-->>User: インストール済みリスト表示
+    
+    User->>App: Java 17使用開始
+    App->>Entrys: getByVersion(17)
+    Entrys-->>App: Result<JDKEntry>
+    
+    App->>Entry: useRuntime("Minecraft")
+    Entry-->>App: lockId
+    
+    Note over App,Entry: Minecraftプレイ中...
+    
+    App->>Entry: unUseRuntime(lockId)
+    Entry-->>App: Result<void>
+    
+    User->>App: 整合性チェック要求
+    App->>Manager: Entrys.checkFileHealthAll()
+    Manager-->>App: Result<VerificationResult[]>
+    App-->>User: 検証結果表示
+```
+
+---
+
+**このドキュメントは、JDK Manager APIの包括的なリファレンスをMermaid図で提供します。**
+</file>
+
+<file path="architecture.md">
+# JDK Manager - Architecture Documentation
+
+## システムアーキテクチャ概要
+
+```mermaid
+graph TB
+    subgraph "External Systems"
+        Orchestrator[上位オーケストレータ]
+        Downloader[汎用ダウンロードクラス]
+        JDKSource[JDK配布サーバー]
+    end
+    
+    subgraph "JDK Manager System"
+        JdkManager[JdkManager<br/>メインクラス]
+        DataMgr[DataManager<br/>データ永続化]
+        EntryMgr[EntryManager<br/>エントリ管理]
+        
+        subgraph "Entity Layer"
+            JDKEntry[JDKEntry<br/>JDKインスタンス]
+            UpdateHandler[UpdateHandler<br/>アップデート処理]
+        end
+        
+        subgraph "Utility Layer"
+            FileUtils[FileUtils<br/>ファイル操作]
+        end
+        
+        subgraph "Data Layer"
+            Registry[(jdk-registry.json<br/>レジストリファイル)]
+            JDKFiles[(JDKファイル群)]
+        end
+    end
+    
+    Orchestrator -->|initialize| JdkManager
+    Orchestrator -->|install request| EntryMgr
+    Downloader -->|archive path| EntryMgr
+    JDKSource -->|download| Downloader
+    
+    JdkManager --> DataMgr
+    JdkManager --> EntryMgr
+    
+    EntryMgr -->|create/manage| JDKEntry
+    EntryMgr -->|use| FileUtils
+    
+    JDKEntry -->|create| UpdateHandler
+    UpdateHandler -->|use| FileUtils
+    
+    DataMgr <-->|read/write| Registry
+    EntryMgr -->|install| JDKFiles
+    FileUtils -->|verify| JDKFiles
+    
+    style JdkManager fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    style DataMgr fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style EntryMgr fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style JDKEntry fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style UpdateHandler fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style FileUtils fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style Registry fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style JDKFiles fill:#ffebee,stroke:#c62828,stroke-width:2px
+```
+
+## クラス構造
+
+```mermaid
+classDiagram
+    class JdkManager {
+        -registry: JdkRegistry
+        -isLoaded: boolean
+        -baseRuntimePath: string
+        -registryFilePath: string
+        -entryCache: Map~string, JDKEntry~
+        -logger?: Logger
+        -installLock: boolean
+        -dryRun: boolean
+        
+        +constructor(baseRuntimePath, options?)
+        +Data: DataManager
+        +Entrys: EntryManager
+    }
+    
+    class DataManager {
+        -manager: JdkManager
+        
+        +init() Result~void~
+        +load() Promise~Result~void~~
+        +save() Promise~Result~void~~
+    }
+    
+    class EntryManager {
+        -manager: JdkManager
+        
+        +checkFileHealthAll() Promise~Result~VerificationResult[]~~
+        +getByStructName(structName) Result~JDKEntry~
+        +getByVersion(majorVersion) Result~JDKEntry~
+        +getById(id) Result~JDKEntry~
+        +add(params) Promise~Result~JDKEntry~~
+        +remove(id) Promise~Result~void~~
+        +getInstallList() InstallInfo[]
+        +updateCheck(availableJdks) UpdateInfo[]
+    }
+    
+    class JDKEntry {
+        -instance: JdkInstance
+        -baseRuntimePath: string
+        -locks: RuntimeLock[]
+        -logger?: Logger
+        
+        +useRuntime(purpose?) string
+        +unUseRuntime(lockId) Result~void~
+        +isLocked() boolean
+        +checkFileHealth() Promise~Result~VerificationStatus~~
+        +getUpdate(availableJdks, onSave) UpdateHandler | null
+        +getId() string
+        +getName() string
+        +getStructName() string
+        +getMajorVersion() number
+        +getPath() string
+        +getVerificationStatus() VerificationStatus
+    }
+    
+    class UpdateHandler {
+        -entry: JDKEntry
+        -newVersion: AvailableJdk
+        -downloadUrl: string
+        -newStructName: string
+        -baseRuntimePath: string
+        -onSaveRegistry: Function
+        -logger?: Logger
+        
+        +install(archivePath, dryRun?) Promise~Result~void~~
+        +getNewVersionInfo() object
+    }
+    
+    class FileUtils {
+        <<utility>>
+        +getCurrentOS() string
+        +calculateChecksum(filePath) Promise~string~
+        +extractArchive(archivePath, destPath) Promise~Result~void~~
+        +findFile(baseDir, fileName, maxDepth) Promise~string | null~
+        +getJavaVersion(javaPath) Promise~Result~number~~
+        +generateStructName(archivePath) string
+        +generateId(majorVersion, structName) string
+        +getRecommendedChecksumFiles(jdkPath, os) string[]
+        +findJdkRoot(extractedPath) Promise~string~
+    }
+    
+    JdkManager "1" *-- "1" DataManager : contains
+    JdkManager "1" *-- "1" EntryManager : contains
+    JdkManager "1" --> "*" JDKEntry : manages via cache
+    EntryManager "1" --> "*" JDKEntry : creates/manages
+    JDKEntry "1" --> "0..1" UpdateHandler : creates
+    EntryManager ..> FileUtils : uses
+    UpdateHandler ..> FileUtils : uses
+    JDKEntry ..> FileUtils : uses
+```
+
+## データモデル
+
+```mermaid
+erDiagram
+    JdkRegistry ||--o{ JdkInstance : contains
+    JdkInstance ||--o{ FileChecksum : has
+    
+    JdkRegistry {
+        string schemaVersion
+        string baseRuntimePath
+        string activeJdkId
+        JdkInstance[] instances
+        string lastUpdated
+    }
+    
+    JdkInstance {
+        string id
+        string name
+        string structName
+        number majorVersion
+        string os
+        string installedAt
+        FileChecksum[] checksums
+        VerificationStatus verificationStatus
+    }
+    
+    FileChecksum {
+        string path
+        string checksum
+        string lastVerified
+    }
+    
+    RuntimeLock {
+        string lockId
+        string lockedAt
+        string purpose
+    }
+    
+    JdkInstance ||--o{ RuntimeLock : has-runtime
+```
+
+## 状態遷移図
+
+### JDKインスタンスのライフサイクル
+
+```mermaid
+stateDiagram-v2
+    [*] --> NotInstalled: システム起動
+    
+    NotInstalled --> Installing: add() 呼び出し
+    Installing --> Installed: インストール成功
+    Installing --> NotInstalled: インストール失敗
+    
+    Installed --> Verifying: checkFileHealth()
+    Verifying --> Verified: 整合性OK
+    Verifying --> Corrupted: ファイル破損検出
+    Verifying --> Missing: ファイル欠損検出
+    
+    Verified --> Locked: useRuntime()
+    Locked --> Verified: unUseRuntime()
+    
+    Verified --> Updating: UpdateHandler.install()
+    Corrupted --> Updating: 再インストール
+    Missing --> Updating: 再インストール
+    
+    Updating --> Verified: アップデート成功
+    Updating --> Verified: ロールバック
+    
+    Verified --> Removing: remove()
+    Corrupted --> Removing: remove()
+    Missing --> Removing: remove()
+    Removing --> [*]: 削除完了
+    
+    note right of Locked
+        ロック中は削除・
+        アップデート不可
+    end note
+    
+    note right of Updating
+        失敗時は自動的に
+        ロールバック実行
+    end note
+```
+
+### 検証ステータスの遷移
+
+```mermaid
+stateDiagram-v2
+    [*] --> unverified: インストール直後
+    
+    unverified --> verifying: checkFileHealth()
+    verifying --> verified: すべてのファイルが正常
+    verifying --> missing: ファイルが存在しない
+    verifying --> corrupted: チェックサム不一致
+    
+    verified --> verifying: 再検証
+    missing --> verifying: 再検証
+    corrupted --> verifying: 再検証
+    
+    verified --> [*]: 削除
+    missing --> [*]: 削除
+    corrupted --> [*]: 削除
+    
+    note right of verified
+        定期的な検証により
+        AV誤削除を検出
+    end note
+```
+
+## シーケンス図
+
+### インストールフロー
+
+```mermaid
+sequenceDiagram
+    actor User as 上位システム
+    participant EM as EntryManager
+    participant FS as FileSystem
+    participant FU as FileUtils
+    participant Proc as ChildProcess
+    participant DM as DataManager
+    participant Entry as JDKEntry
+    
+    User->>EM: add({archivePath, majorVersion})
+    
+    Note over EM: 前提条件チェック
+    EM->>EM: installLockチェック
+    EM->>EM: 同一バージョン存在確認
+    
+    EM->>EM: installLock = true
+    EM->>EM: レジストリバックアップ
+    
+    Note over EM,FU: ファイル操作開始
+    EM->>FU: extractArchive(archivePath, tempPath)
+    FU->>FS: 解凍処理
+    FS-->>FU: 完了
+    FU-->>EM: Result<void>
+    
+    EM->>FU: findJdkRoot(tempPath)
+    FU->>FS: bin/java を検索
+    FS-->>FU: JDKルートパス
+    FU-->>EM: jdkRoot
+    
+    EM->>FS: moveDirectory(jdkRoot, jdkPath)
+    FS-->>EM: 完了
+    
+    Note over EM,Proc: バージョン確認
+    EM->>FU: getJavaVersion(javaPath)
+    FU->>Proc: java -version
+    Proc-->>FU: バージョン出力
+    FU->>FU: バージョン解析
+    FU-->>EM: Result<number>
+    
+    alt バージョン不一致
+        EM->>FS: ロールバック処理
+        EM->>EM: installLock = false
+        EM-->>User: Error: Version mismatch
+    end
+    
+    Note over EM,FU: チェックサム計算
+    loop 推奨ファイルごと
+        EM->>FU: calculateChecksum(filePath)
+        FU->>FS: SHA-256計算
+        FS-->>FU: checksum
+        FU-->>EM: checksum
+        EM->>EM: checksums配列に追加
+    end
+    
+    Note over EM,DM: レジストリ更新
+    EM->>EM: JdkInstanceオブジェクト作成
+    EM->>EM: instances配列に追加
+    EM->>DM: save()
+    DM->>FS: jdk-registry.jsonに書き込み
+    FS-->>DM: 完了
+    DM-->>EM: Result<void>
+    
+    EM->>FS: tempディレクトリ削除
+    EM->>FS: アーカイブファイル削除
+    EM->>EM: installLock = false
+    
+    EM->>Entry: new JDKEntry(instance)
+    Entry-->>EM: entry
+    EM->>EM: entryCache追加
+    
+    EM-->>User: Result<JDKEntry>
+```
+
+### アップデートフロー
+
+```mermaid
+sequenceDiagram
+    actor User as 上位システム
+    participant Entry as JDKEntry
+    participant UH as UpdateHandler
+    participant FS as FileSystem
+    participant FU as FileUtils
+    participant DM as DataManager
+    
+    User->>Entry: getUpdate(availableJdks, onSave)
+    Entry->>Entry: 新バージョン検索
+    
+    alt 新バージョンあり
+        Entry->>UH: new UpdateHandler(...)
+        UH-->>Entry: updateHandler
+        Entry-->>User: updateHandler
+    else 新バージョンなし
+        Entry-->>User: null
+    end
+    
+    User->>UH: install(archivePath)
+    
+    Note over UH: 前提条件チェック
+    UH->>Entry: isLocked()
+    Entry-->>UH: false
+    
+    UH->>UH: installLockチェック
+    UH->>UH: レジストリバックアップ
+    
+    Note over UH,FS: バックアップ作成
+    UH->>FS: moveDirectory(jdkPath, backupPath)
+    FS-->>UH: 完了
+    
+    Note over UH,FU: 新バージョンインストール
+    UH->>FU: extractArchive(archivePath, tempPath)
+    FU->>FS: 解凍
+    FS-->>FU: 完了
+    FU-->>UH: Result<void>
+    
+    UH->>FU: findJdkRoot(tempPath)
+    FU-->>UH: jdkRoot
+    
+    UH->>FS: moveDirectory(jdkRoot, jdkPath)
+    FS-->>UH: 完了
+    
+    UH->>FU: getJavaVersion(javaPath)
+    FU-->>UH: Result<version>
+    
+    alt インストール失敗
+        Note over UH,FS: ロールバック開始
+        UH->>FS: removeDirectory(jdkPath)
+        UH->>FS: moveDirectory(backupPath, jdkPath)
+        UH->>UH: レジストリ復元
+        UH->>DM: save()
+        UH-->>User: Error: Rollback completed
+    end
+    
+    Note over UH,FU: チェックサム再計算
+    loop 推奨ファイルごと
+        UH->>FU: calculateChecksum(filePath)
+        FU-->>UH: checksum
+    end
+    
+    Note over UH: エントリ更新
+    UH->>Entry: getInstanceRef()
+    Entry-->>UH: instance
+    UH->>UH: instance.structName更新
+    UH->>UH: instance.checksums更新
+    UH->>UH: instance.verificationStatus = 'verified'
+    
+    UH->>DM: save()
+    DM-->>UH: Result<void>
+    
+    Note over UH,FS: クリーンアップ
+    UH->>FS: removeDirectory(tempPath)
+    UH->>FS: removeDirectory(backupPath)
+    UH->>FS: unlink(archivePath)
+    
+    UH-->>User: Result<void>
+```
+
+### ファイル整合性検証フロー
+
+```mermaid
+sequenceDiagram
+    actor User as 上位システム
+    participant Entry as JDKEntry
+    participant FS as FileSystem
+    participant FU as FileUtils
+    
+    User->>Entry: checkFileHealth()
+    
+    Note over Entry: 検証開始
+    Entry->>Entry: missingFiles = []
+    Entry->>Entry: corruptedFiles = []
+    
+    loop checksums配列の各ファイル
+        Entry->>FS: fileExists(fullPath)
+        
+        alt ファイルが存在しない
+            FS-->>Entry: false
+            Entry->>Entry: missingFiles.push(path)
+        else ファイルが存在
+            FS-->>Entry: true
+            Entry->>FU: calculateChecksum(fullPath)
+            FU->>FS: SHA-256計算
+            FS-->>FU: currentChecksum
+            FU-->>Entry: currentChecksum
+            
+            Entry->>Entry: チェックサム比較
+            
+            alt チェックサム不一致
+                Entry->>Entry: corruptedFiles.push(path)
+            else チェックサム一致
+                Entry->>Entry: lastVerified更新
+            end
+        end
+    end
+    
+    Note over Entry: ステータス判定
+    alt missingFiles.length > 0
+        Entry->>Entry: status = 'missing'
+    else corruptedFiles.length > 0
+        Entry->>Entry: status = 'corrupted'
+    else すべてOK
+        Entry->>Entry: status = 'verified'
+    end
+    
+    Entry->>Entry: verificationStatus更新
+    Entry-->>User: Result<VerificationStatus>
+```
+
+### ランタイムロック管理
+
+```mermaid
+sequenceDiagram
+    actor App as アプリケーション
+    participant Entry as JDKEntry
+    
+    App->>Entry: useRuntime("Minecraft 1.20.1")
+    Entry->>Entry: lockId = UUID生成
+    Entry->>Entry: RuntimeLockオブジェクト作成
+    Entry->>Entry: locks配列に追加
+    Entry-->>App: lockId
+    
+    Note over App,Entry: JDKを使用中...
+    
+    App->>Entry: isLocked()
+    Entry->>Entry: locks.length > 0
+    Entry-->>App: true
+    
+    Note over App,Entry: 使用終了
+    
+    App->>Entry: unUseRuntime(lockId)
+    Entry->>Entry: locks配列から検索
+    
+    alt lockIdが見つからない
+        Entry-->>App: Error: Lock not found
+    else lockIdが見つかった
+        Entry->>Entry: locks配列から削除
+        Entry-->>App: Result<void>
+    end
+    
+    App->>Entry: isLocked()
+    Entry->>Entry: locks.length > 0
+    Entry-->>App: false
+```
+
+## 処理フローチャート
+
+### インストール処理の詳細フロー
+
+```mermaid
+flowchart TD
+    Start([add呼び出し]) --> CheckLock{installLock<br/>確認}
+    CheckLock -->|ロック中| ErrorLocked[エラー: 処理中]
+    CheckLock -->|利用可能| CheckVersion{同一バージョン<br/>存在確認}
+    
+    CheckVersion -->|存在する| ErrorExists[エラー: 既存]
+    CheckVersion -->|存在しない| CheckFile{アーカイブ<br/>存在確認}
+    
+    CheckFile -->|存在しない| ErrorNoFile[エラー: ファイルなし]
+    CheckFile -->|存在する| SetLock[installLock = true]
+    
+    SetLock --> Backup[レジストリバックアップ]
+    Backup --> Extract[アーカイブ解凍]
+    
+    Extract --> FindRoot[JDKルート検索]
+    FindRoot --> Move[ファイル移動]
+    Move --> FindJava[java.exe検索]
+    
+    FindJava --> VerifyVer{バージョン<br/>確認}
+    VerifyVer -->|不一致| Rollback[ロールバック]
+    VerifyVer -->|一致| CalcChecksum[チェックサム計算]
+    
+    CalcChecksum --> CreateInstance[JdkInstance作成]
+    CreateInstance --> UpdateRegistry[レジストリ更新]
+    UpdateRegistry --> SaveRegistry[save呼び出し]
+    
+    SaveRegistry --> Cleanup[クリーンアップ]
+    Cleanup --> ReleaseLock[installLock = false]
+    ReleaseLock --> CreateEntry[JDKEntry作成]
+    CreateEntry --> AddCache[キャッシュ追加]
+    AddCache --> Success([成功])
+    
+    Rollback --> CleanupFail[失敗時クリーンアップ]
+    CleanupFail --> ReleaseLockFail[installLock = false]
+    ReleaseLockFail --> ErrorFail[エラー返却]
+    
+    ErrorLocked --> End([終了])
+    ErrorExists --> End
+    ErrorNoFile --> End
+    ErrorFail --> End
+    Success --> End
+    
+    style Start fill:#e1f5ff
+    style Success fill:#c8e6c9
+    style ErrorLocked fill:#ffcdd2
+    style ErrorExists fill:#ffcdd2
+    style ErrorNoFile fill:#ffcdd2
+    style ErrorFail fill:#ffcdd2
+    style Rollback fill:#fff9c4
+    style End fill:#e0e0e0
+```
+
+### ファイル整合性検証フロー
+
+```mermaid
+flowchart TD
+    Start([checkFileHealth<br/>呼び出し]) --> Init[リスト初期化]
+    Init --> Loop{全ファイル<br/>チェック完了?}
+    
+    Loop -->|いいえ| GetNext[次のファイル取得]
+    GetNext --> Exists{ファイル<br/>存在?}
+    
+    Exists -->|いいえ| AddMissing[missingFilesに追加]
+    Exists -->|はい| CalcHash[SHA-256計算]
+    
+    CalcHash --> Compare{チェックサム<br/>一致?}
+    Compare -->|いいえ| AddCorrupt[corruptedFilesに追加]
+    Compare -->|はい| UpdateTime[lastVerified更新]
+    
+    AddMissing --> Loop
+    AddCorrupt --> Loop
+    UpdateTime --> Loop
+    
+    Loop -->|はい| CheckMissing{missing<br/>あり?}
+    CheckMissing -->|はい| SetMissing[status = 'missing']
+    CheckMissing -->|いいえ| CheckCorrupt{corrupted<br/>あり?}
+    
+    CheckCorrupt -->|はい| SetCorrupt[status = 'corrupted']
+    CheckCorrupt -->|いいえ| SetVerified[status = 'verified']
+    
+    SetMissing --> UpdateStatus[verificationStatus更新]
+    SetCorrupt --> UpdateStatus
+    SetVerified --> UpdateStatus
+    
+    UpdateStatus --> Return([Result返却])
+    
+    style Start fill:#e1f5ff
+    style SetVerified fill:#c8e6c9
+    style SetMissing fill:#ffcdd2
+    style SetCorrupt fill:#fff9c4
+    style Return fill:#e0e0e0
+```
+
+### アップデートチェックフロー
+
+```mermaid
+flowchart TD
+    Start([updateCheck<br/>呼び出し]) --> GetOS[現在のOS判定]
+    GetOS --> InitList[updates配列初期化]
+    
+    InitList --> Loop{全インスタンス<br/>チェック完了?}
+    
+    Loop -->|いいえ| GetInstance[次のインスタンス]
+    GetInstance --> FindAvail{availableJdksから<br/>同じバージョン検索}
+    
+    FindAvail -->|見つからない| Loop
+    FindAvail -->|見つかった| GetDownload{現在のOS対応<br/>ダウンロードあり?}
+    
+    GetDownload -->|なし| Loop
+    GetDownload -->|あり| ExtractName[URLからファイル名抽出]
+    
+    ExtractName --> GenStructName[structName生成]
+    GenStructName --> CompareStruct{structName<br/>比較}
+    
+    CompareStruct -->|同じ| Loop
+    CompareStruct -->|異なる| CreateUpdate[UpdateInfo作成]
+    
+    CreateUpdate --> AddUpdate[updates配列に追加]
+    AddUpdate --> Loop
+    
+    Loop -->|はい| Return([updates配列返却])
+    
+    style Start fill:#e1f5ff
+    style CreateUpdate fill:#fff9c4
+    style Return fill:#c8e6c9
+```
+
+## コンポーネント間の依存関係
+
+```mermaid
+graph LR
+    subgraph "External Dependencies"
+        NodeFS[Node.js fs/promises]
+        NodePath[Node.js path]
+        NodeCrypto[Node.js crypto]
+        NodeCP[Node.js child_process]
+        UUID[uuid]
+        AdmZip[adm-zip]
+        Tar[tar]
+        Axios[axios]
+    end
+    
+    subgraph "Core Types"
+        Types[jdk-registry.types.ts]
+    end
+    
+    subgraph "Utilities"
+        FileUtils[fileUtils.ts]
+    end
+    
+    subgraph "Core Classes"
+        JdkManager[JdkManager.ts]
+        JDKEntry[JDKEntry.ts]
+        UpdateHandler[UpdateHandler.ts]
+    end
+    
+    subgraph "Tests"
+        TestDriver[testDriver.ts]
+        IntegrationTest[integrationTest.ts]
+    end
+    
+    Types --> JdkManager
+    Types --> JDKEntry
+    Types --> UpdateHandler
+    Types --> FileUtils
+    
+    FileUtils --> JdkManager
+    FileUtils --> JDKEntry
+    FileUtils --> UpdateHandler
+    
+    JDKEntry --> JdkManager
+    UpdateHandler --> JdkManager
+    UpdateHandler --> JDKEntry
+    
+    NodeFS --> FileUtils
+    NodePath --> FileUtils
+    NodeCrypto --> FileUtils
+    NodeCP --> FileUtils
+    UUID --> JDKEntry
+    AdmZip --> FileUtils
+    Tar --> FileUtils
+    
+    Axios --> IntegrationTest
+    
+    JdkManager --> TestDriver
+    JdkManager --> IntegrationTest
+    
+    style Types fill:#e1f5ff,stroke:#01579b
+    style FileUtils fill:#e8f5e9,stroke:#1b5e20
+    style JdkManager fill:#fff3e0,stroke:#e65100
+    style JDKEntry fill:#f3e5f5,stroke:#4a148c
+    style UpdateHandler fill:#f3e5f5,stroke:#4a148c
+```
+
+## デプロイメント図
+
+```mermaid
+graph TB
+    subgraph "File System"
+        subgraph "Base Runtime Directory"
+            Registry[jdk-registry.json]
+            
+            subgraph "JDK Instances"
+                JDK8[jdk-8-temurin/]
+                JDK17[jdk-17-openjdk/]
+                JDK21[jdk-21-temurin/]
+            end
+            
+            subgraph "Working Directories"
+                Temp[temp/<br/>一時作業用]
+                Backup[backup/<br/>アップデート時バックアップ]
+            end
+        end
+        
+        subgraph "Application"
+            AppCode[アプリケーションコード]
+            JDKMgr[JDK Manager<br/>ライブラリ]
+        end
+    end
+    
+    AppCode -->|import| JDKMgr
+    JDKMgr -->|read/write| Registry
+    JDKMgr -->|manage| JDK8
+    JDKMgr -->|manage| JDK17
+    JDKMgr -->|manage| JDK21
+    JDKMgr -->|use| Temp
+    JDKMgr -->|use| Backup
+    
+    style Registry fill:#ffebee,stroke:#c62828
+    style JDK8 fill:#e8f5e9,stroke:#1b5e20
+    style JDK17 fill:#e8f5e9,stroke:#1b5e20
+    style JDK21 fill:#e8f5e9,stroke:#1b5e20
+    style Temp fill:#fff9c4,stroke:#f57f17
+    style Backup fill:#fff9c4,stroke:#f57f17
+    style JDKMgr fill:#e1f5ff,stroke:#01579b
+```
+
+## タイミング図（ロック機構）
+
+```mermaid
+sequenceDiagram
+    participant App1 as アプリ1
+    participant App2 as アプリ2
+    participant Entry as JDKEntry
+    participant Admin as 管理者
+    
+    Note over App1,Entry: 正常なロック・アンロック
+    App1->>Entry: useRuntime("App1")
+    Entry-->>App1: lockId1
+    
+    App1->>Entry: useRuntime("App1-Task2")
+    Entry-->>App1: lockId2
+    
+    Note over App1,Entry: 複数ロック保持中
+    
+    App1->>Entry: unUseRuntime(lockId1)
+    Entry-->>App1: Success
+    
+    Note over Entry: まだlockId2が残っている
+    
+    App2->>Entry: useRuntime("App2")
+    Entry-->>App2: lockId3
+    
+    Note over Entry: 複数アプリから同時ロック可能
+    
+    Admin->>Entry: remove(id)
+    Entry-->>Admin: Error: Locked
+    
+    Note over Admin: ロック中は削除不可
+    
+    App1->>Entry: unUseRuntime(lockId2)
+    Entry-->>App1: Success
+    
+    App2->>Entry: unUseRuntime(lockId3)
+    Entry-->>App2: Success
+    
+    Note over Entry: すべてのロックが解放された
+    
+    Admin->>Entry: remove(id)
+    Entry-->>Admin: Success
+```
+
+---
+
+**このドキュメントは、JDK Managerシステムの包括的なアーキテクチャ説明を提供します。**
+</file>
+
+<file path="JDK-REGISTRY-SCHEMA.md">
+# JDKレジストリ スキーマ仕様書
+
+**バージョン:** 1.0.0  
+**最終更新:** 2025-10-21  
+**用途:** Minecraft用Java実行環境管理
+
+## 概要
+
+このドキュメントは、Node.js + TypeScript環境でMinecraft用のJava開発環境（JDK）を管理するためのデータスキーマを定義します。本スキーマは、複数バージョンのJDKを一元管理し、ファイル整合性の検証を通じてアンチウイルスソフトによる誤削除を検出することを目的としています。
+
+## データ構造全体図
+
+```mermaid
+classDiagram
+    class JdkRegistry {
+        +string schemaVersion
+        +string baseRuntimePath
+        +string? activeJdkId
+        +JdkInstance[] instances
+        +string lastUpdated
+    }
+    
+    class JdkInstance {
+        +string id
+        +string name
+        +string structName
+        +number majorVersion
+        +string os
+        +string installedAt
+        +FileChecksum[] checksums
+        +VerificationStatus verificationStatus
+    }
+    
+    class FileChecksum {
+        +string path
+        +string checksum
+        +string lastVerified
+    }
+    
+    class VerificationStatus {
+        <<enumeration>>
+        verified
+        unverified
+        corrupted
+        missing
+    }
+    
+    JdkRegistry "1" --> "*" JdkInstance : manages
+    JdkInstance "1" --> "*" FileChecksum : contains
+    JdkInstance --> VerificationStatus : has
+```
+
+## ディレクトリ構造
+
+本システムでは、すべてのJDKインスタンスを単一のベースディレクトリ配下に配置します。
+
+```mermaid
+graph TD
+    A[baseRuntimePath] --> B[jdk-17-temurin/]
+    A --> C[jdk-8-oracle/]
+    A --> D[jdk-21-temurin/]
+    
+    B --> B1[bin/]
+    B --> B2[lib/]
+    B --> B3[conf/]
+    
+    B1 --> B1A[java.exe]
+    B1 --> B1B[javaw.exe]
+    B1 --> B1C[javac.exe]
+    
+    B2 --> B2A[modules]
+    B2 --> B2B[jrt-fs.jar]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style C fill:#fff4e1
+    style D fill:#fff4e1
+```
+
+**パス構築ルール:**
+
+$$\text{JDK Instance Path} = \text{baseRuntimePath} + / + \text{instance.id}$$
+
+**例:**
+- ベースパス: `C:\GameRuntimes\Java`
+- インスタンスID: `jdk-17-temurin`
+- 実際のパス: `C:\GameRuntimes\Java\jdk-17-temurin`
+
+## 型定義詳細
+
+### JdkRegistry
+
+システム全体のJava実行環境を管理するルートデータ構造です。
+
+| プロパティ | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `schemaVersion` | `string` | ✓ | データ構造のバージョン（例: "1.0.0"） |
+| `baseRuntimePath` | `string` | ✓ | すべてのJDKを配置する親ディレクトリの絶対パス |
+| `activeJdkId` | `string?` | - | デフォルトで使用されるJDKのID |
+| `instances` | `JdkInstance[]` | ✓ | 管理下にあるすべてのJDKインスタンス |
+| `lastUpdated` | `string` | ✓ | レジストリの最終更新日時（ISO 8601形式） |
+
+**baseRuntimePathの役割**
+
+このパスは、すべてのJDKインスタンスが配置される共通の親ディレクトリを指します。各JDKインスタンスは、このパス配下に`instance.id`をディレクトリ名として個別に保存されます。
+
+**activeJdkIdの役割**
+
+複数のJDKが登録されている場合、どのJDKをデフォルトで使用するかを示します。このフィールドは`instances`配列内のいずれかの`JdkInstance.id`と一致する必要があります。
+
+### JdkInstance
+
+個別のJava実行環境の完全な情報を保持します。
+
+| プロパティ | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `id` | `string` | ✓ | 一意識別子（ディレクトリ名としても使用） |
+| `name` | `string` | ✓ | ユーザー表示用の短い名前（例: "Java 17"） |
+| `structName` | `string` | ✓ | 完全な正式名称（例: "Eclipse Temurin JDK 17.0.8+7"） |
+| `majorVersion` | `number` | ✓ | メジャーバージョン番号（例: 8, 17, 21） |
+| `os` | `string` | ✓ | OS種別（例: "windows", "linux", "darwin"） |
+| `installedAt` | `string` | ✓ | インストール日時（ISO 8601形式） |
+| `checksums` | `FileChecksum[]` | ✓ | ファイル整合性チェック情報 |
+| `verificationStatus` | `VerificationStatus` | ✓ | 検証ステータス |
+
+**idの命名規則**
+
+推奨される命名規則は`jdk-{majorVersion}-{vendor}`です。例えば、`jdk-17-temurin`、`jdk-8-oracle`などです。この識別子はファイルシステム上のディレクトリ名として使用されるため、OSで有効なファイル名である必要があります。
+
+**nameとstructNameの使い分け**
+
+`name`はユーザーインターフェースでの表示用の短い名前です。一方、`structName`はベンダー名、詳細バージョン、ビルド番号などを含む完全な情報を保持します。ユーザーが詳細を確認したい場合に参照されます。
+
+**majorVersionの用途**
+
+このフィールドは、Minecraftの各バージョンが要求するJavaバージョンとの照合に使用されます。数値型であるため、プログラムでの比較や検索が容易です。
+
+### FileChecksum
+
+個別ファイルの整合性情報を保持します。
+
+| プロパティ | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `path` | `string` | ✓ | ファイルの相対パス（JDKルートからの相対） |
+| `checksum` | `string` | ✓ | SHA-256ハッシュ値 |
+| `lastVerified` | `string` | ✓ | 最終検証日時（ISO 8601形式） |
+
+**pathの形式**
+
+JDKインスタンスのルートディレクトリからの相対パスで表現します。例えば、`bin/java.exe`、`lib/modules`などです。
+
+**checksumの計算方法**
+
+SHA-256アルゴリズムを使用してファイル内容のハッシュ値を計算します。このハッシュ値により、ファイルの改変や破損を検出できます。
+
+**推奨チェックサム対象ファイル**
+
+すべてのファイルをチェックサムする必要はありません。以下の重要なファイルのみを対象とすることを推奨します。
+
+- `bin/java.exe` (Windows) / `bin/java` (Unix系)
+- `bin/javaw.exe` (Windows)
+- `bin/javac.exe` (Windows) / `bin/javac` (Unix系)
+- `lib/modules`
+- `lib/jrt-fs.jar`
+
+### VerificationStatus
+
+JDKインスタンスの整合性状態を示す列挙型です。
+
+```mermaid
+stateDiagram-v2
+    [*] --> unverified : 新規インストール
+    unverified --> verified : 検証成功
+    unverified --> corrupted : ファイル破損検出
+    unverified --> missing : ファイル欠損検出
+    
+    verified --> verified : 定期検証成功
+    verified --> corrupted : ファイル破損検出
+    verified --> missing : ファイル欠損検出
+    
+    corrupted --> verified : 修復後検証成功
+    missing --> verified : 再インストール後検証成功
+    
+    corrupted --> [*] : 削除
+    missing --> [*] : 削除
+```
+
+| 値 | 説明 |
+|-----|------|
+| `verified` | すべてのチェックサムが一致し、整合性が確認された状態 |
+| `unverified` | 検証が未実行または最新でない状態 |
+| `corrupted` | チェックサム不一致が検出され、ファイルが破損している状態 |
+| `missing` | 必須ファイルが存在しない状態 |
+
+**verified（検証済み）**
+
+すべての登録済みファイルのチェックサムが一致し、ファイルの整合性が確認された状態です。このJDKインスタンスは安全に使用できます。
+
+**unverified（未検証）**
+
+インストール直後や、最後の検証から時間が経過している状態です。必ずしも問題があるわけではありませんが、使用前に検証を実行することを推奨します。
+
+**corrupted（破損）**
+
+一つ以上のファイルでチェックサムの不一致が検出された状態です。ファイルが改変または破損している可能性があります。再インストールまたは修復が必要です。
+
+**missing（欠損）**
+
+必須ファイルが存在しない状態です。アンチウイルスソフトによる誤削除や不完全なインストールが原因として考えられます。再インストールが必要です。
+
+## データ例
+
+### 最小構成
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "baseRuntimePath": "C:\\GameRuntimes\\Java",
+  "instances": [],
+  "lastUpdated": "2025-10-21T08:00:00Z"
+}
+```
+
+### 単一JDKインスタンス
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "baseRuntimePath": "C:\\GameRuntimes\\Java",
+  "activeJdkId": "jdk-17-temurin",
+  "instances": [
+    {
+      "id": "jdk-17-temurin",
+      "name": "Java 17",
+      "structName": "Eclipse Temurin JDK 17.0.8+7",
+      "majorVersion": 17,
+      "os": "windows",
+      "installedAt": "2024-03-15T10:30:00Z",
+      "checksums": [
+        {
+          "path": "bin/java.exe",
+          "checksum": "a3c5f1d8e9b2c4f6a8d7e3b1c9f5a2d4e6b8c1a3f5d7e9b2c4f6a8d7e3b1c9f5",
+          "lastVerified": "2025-10-21T08:00:00Z"
+        }
+      ],
+      "verificationStatus": "verified"
+    }
+  ],
+  "lastUpdated": "2025-10-21T08:00:00Z"
+}
+```
+
+### 複数JDKインスタンス
+
+```json
+{
+  "schemaVersion": "1.0.0",
+  "baseRuntimePath": "C:\\GameRuntimes\\Java",
+  "activeJdkId": "jdk-17-temurin",
+  "instances": [
+    {
+      "id": "jdk-17-temurin",
+      "name": "Java 17",
+      "structName": "Eclipse Temurin JDK 17.0.8+7",
+      "majorVersion": 17,
+      "os": "windows",
+      "installedAt": "2024-03-15T10:30:00Z",
+      "checksums": [
+        {
+          "path": "bin/java.exe",
+          "checksum": "a3c5f1d8e9b2c4f6a8d7e3b1c9f5a2d4e6b8c1a3f5d7e9b2c4f6a8d7e3b1c9f5",
+          "lastVerified": "2025-10-21T08:00:00Z"
+        }
+      ],
+      "verificationStatus": "verified"
+    },
+    {
+      "id": "jdk-8-oracle",
+      "name": "Java 8",
+      "structName": "Oracle JDK 8u381",
+      "majorVersion": 8,
+      "os": "windows",
+      "installedAt": "2023-11-10T09:15:00Z",
+      "checksums": [
+        {
+          "path": "bin/java.exe",
+          "checksum": "d6f8a2c4e6b8d1a3f5e7c9b2d4f6a8e1c3d5f7a9b2c4e6f8a1d3e5f7c9b2d4f6",
+          "lastVerified": "2025-10-15T12:00:00Z"
+        }
+      ],
+      "verificationStatus": "verified"
+    }
+  ],
+  "lastUpdated": "2025-10-21T08:45:00Z"
+}
+```
+
+## 拡張性
+
+本スキーマは将来的な拡張を考慮した設計となっています。
+
+**スキーマバージョン管理**
+
+`schemaVersion`フィールドにより、データ構造の変更時も後方互換性を維持できます。バージョン番号はセマンティックバージョニング（`major.minor.patch`）に従います。
+
+**オプショナルフィールドの追加**
+
+既存のインターフェースに新しいオプショナルフィールドを追加することで、既存データとの互換性を保ちながら機能拡張が可能です。
+```
+</file>
+
+<file path="README.md">
+# JDK Manager - Documentation Index
+
+## 📚 ドキュメント一覧
+
+このディレクトリには、JDK Managerシステムの詳細なドキュメントが含まれています。すべてのドキュメントはMermaid図を使用して視覚的に説明されています。
+
+### 📖 ドキュメント構成
+
+```mermaid
+mindmap
+  root((JDK Manager<br/>Documentation))
+    Architecture
+      システムアーキテクチャ
+      クラス構造
+      データモデル
+      状態遷移図
+      シーケンス図
+      処理フローチャート
+      依存関係
+      デプロイメント図
+    API Reference
+      JdkManager API
+      Data API
+      Entrys API
+      JDKEntry API
+      UpdateHandler API
+      エラーハンドリング
+      使用例フロー
+    Usage Examples
+      基本的な使用パターン
+      インストールパターン
+      ランタイムロック管理
+      整合性検証
+      アップデート管理
+      エラーハンドリング
+      実践的統合例
+```
+
+---
+
+## 1️⃣ Architecture Documentation
+
+**ファイル**: [architecture.md](./architecture.md)
+
+システム全体のアーキテクチャを図解したドキュメント。
+
+### 📋 内容
+
+- **システムアーキテクチャ概要**
+  - 外部システムとの連携
+  - 内部コンポーネント構成
+  
+- **クラス構造**
+  - 全クラスの関係図
+  - プロパティとメソッド一覧
+  
+- **データモデル**
+  - ERダイアグラム
+  - レジストリ構造
+  
+- **状態遷移図**
+  - JDKインスタンスのライフサイクル
+  - 検証ステータスの遷移
+  
+- **シーケンス図**
+  - インストールフロー
+  - アップデートフロー
+  - ファイル整合性検証フロー
+  - ランタイムロック管理
+  
+- **処理フローチャート**
+  - インストール処理の詳細
+  - ファイル整合性検証
+  - アップデートチェック
+  
+- **コンポーネント間の依存関係**
+- **デプロイメント図**
+- **タイミング図（ロック機構）**
+
+### 🎯 対象読者
+
+- システムアーキテクト
+- 開発者（システム設計を理解したい人）
+- 技術リーダー
+
+---
+
+## 2️⃣ API Reference
+
+**ファイル**: [api-reference.md](./api-reference.md)
+
+すべてのAPIの詳細な仕様をMermaid図で説明したリファレンス。
+
+### 📋 内容
+
+- **API階層構造**
+  
+- **JdkManager API**
+  - コンストラクタ
+  - プロパティ
+  
+- **Data API**
+  - `init()` - レジストリ初期化
+  - `load()` - レジストリ読み込み
+  - `save()` - レジストリ保存
+  
+- **Entrys API**
+  - `add()` - JDKインストール
+  - `remove()` - JDK削除
+  - `getByVersion()` - バージョンで検索
+  - `getByStructName()` - 正式名称で検索
+  - `getById()` - IDで検索
+  - `getInstallList()` - インストール済みリスト取得
+  - `updateCheck()` - アップデートチェック
+  - `checkFileHealthAll()` - 全JDKの整合性検証
+  
+- **JDKEntry API**
+  - `useRuntime()` - ランタイムロック取得
+  - `unUseRuntime()` - ランタイムロック解放
+  - `isLocked()` - ロック状態確認
+  - `checkFileHealth()` - ファイル整合性検証
+  - `getUpdate()` - アップデートハンドラ取得
+  - 各種ゲッターメソッド
+  
+- **UpdateHandler API**
+  - `install()` - アップデート実行
+  - `getNewVersionInfo()` - 新バージョン情報取得
+  
+- **エラーハンドリング**
+  - Result型のフロー
+  - エラーメッセージ一覧
+  
+- **使用例フロー**
+
+### 🎯 対象読者
+
+- 開発者（API使用方法を知りたい人）
+- API統合担当者
+- テストエンジニア
+
+---
+
+## 3️⃣ Usage Examples
+
+**ファイル**: [usage-examples.md](./usage-examples.md)
+
+実践的な使用例とパターンをMermaid図で説明したガイド。
+
+### 📋 内容
+
+- **基本的な使用パターン**
+  - 初回セットアップ
+  - 既存レジストリの読み込み
+  
+- **JDKインストールのパターン**
+  - シンプルなインストール
+  - カスタム名称でのインストール
+  - 複数バージョンのインストール
+  
+- **ランタイムロックのパターン**
+  - 基本的なロック管理
+  - 複数アプリケーションからの使用
+  
+- **ファイル整合性検証のパターン**
+  - 起動時の一括検証
+  - 個別JDKの検証
+  - 定期的なバックグラウンド検証
+  
+- **アップデート管理のパターン**
+  - アップデートチェックとインストール
+  - 個別JDKのアップデート
+  
+- **エラーハンドリングのパターン**
+  - Result型の使用例
+  - エラーごとの対応フロー
+  
+- **実践的な統合例**
+  - Minecraftランチャーとの統合
+  - 自動メンテナンスシステム
+  
+- **ドライランモードの使用**
+
+### 🎯 対象読者
+
+- 開発者（実装例を知りたい人）
+- アプリケーション統合担当者
+- 初めてシステムを使う人
+
+---
+
+## 📊 ドキュメントの読み方
+
+### 初めての方
+
+1. **[Usage Examples](./usage-examples.md)** から始める
+   - 基本的な使用パターンを理解
+   - 簡単な統合例を確認
+
+2. **[API Reference](./api-reference.md)** で詳細を確認
+   - 必要なAPIの仕様を参照
+   - パラメータと戻り値を確認
+
+3. **[Architecture](./architecture.md)** で全体像を把握
+   - システムの内部構造を理解
+   - より高度な使い方を検討
+
+### システム設計者の方
+
+1. **[Architecture](./architecture.md)** から始める
+   - システム全体の設計を理解
+   - クラス構造と依存関係を確認
+
+2. **[API Reference](./api-reference.md)** で詳細を確認
+   - 各APIの責任範囲を理解
+   - エラーハンドリング戦略を確認
+
+3. **[Usage Examples](./usage-examples.md)** で実装例を参照
+   - 推奨パターンを確認
+   - 統合ポイントを検討
+
+### 既存コードを保守する方
+
+1. **[Architecture](./architecture.md)** でシステムを理解
+   - 処理フローを確認
+   - 各コンポーネントの役割を把握
+
+2. **[API Reference](./api-reference.md)** で仕様を確認
+   - 変更が必要な部分のAPIを理解
+   - 影響範囲を確認
+
+3. **[Usage Examples](./usage-examples.md)** でパターンを確認
+   - 既存の使用例と比較
+   - ベストプラクティスを適用
+
+---
+
+## 🔗 関連リンク
+
+- [README.md](../README.md) - プロジェクト概要と基本的な使い方
+- [仕様書.md](../仕様書.md) - 詳細な設計仕様書（テキスト形式）
+- [GitHub Repository](https://github.com/suke0930/sotuken)
+
+---
+
+## 📝 ドキュメントの表記について
+
+### Mermaid図の凡例
+
+#### フローチャート
+- 🔵 青色: 開始・入力
+- 🟢 緑色: 成功・完了
+- 🔴 赤色: エラー・失敗
+- 🟡 黄色: 警告・特殊処理
+
+#### シーケンス図
+- `participant`: システムコンポーネント
+- `Note over`: 処理の説明
+- `alt/else`: 条件分岐
+- `loop`: 繰り返し処理
+- `rect`: グループ化
+
+#### クラス図
+- `+`: public メソッド/プロパティ
+- `-`: private メソッド/プロパティ
+- `*--`: 合成関係
+- `-->`: 依存関係
+- `..>`: 使用関係
+
+---
+
+**最終更新**: 2025-10-21  
+**バージョン**: 1.0.0
+</file>
+
+<file path="usage-examples.md">
+# JDK Manager - Usage Examples (Mermaid Edition)
+
+## 基本的な使用パターン
+
+### パターン1: 初回セットアップ
+
+```mermaid
+sequenceDiagram
+    participant App as アプリケーション
+    participant Manager as JdkManager
+    participant Data
+    participant Entrys
+    
+    Note over App: アプリケーション起動時
+    
+    App->>Manager: new JdkManager('/path/to/runtime')
+    Manager-->>App: manager
+    
+    App->>Data: init()
+    Note over Data: 空のレジストリを作成
+    Data-->>App: Result<void> success
+    
+    App->>Data: save()
+    Note over Data: jdk-registry.json作成
+    Data-->>App: Result<void> success
+    
+    App->>Entrys: getInstallList()
+    Entrys-->>App: [] (空配列)
+    
+    Note over App: セットアップ完了
+```
+
+### パターン2: 既存レジストリの読み込み
+
+```mermaid
+sequenceDiagram
+    participant App as アプリケーション
+    participant Manager as JdkManager
+    participant Data
+    participant Entrys
+    
+    Note over App: アプリケーション起動時
+    
+    App->>Manager: new JdkManager('/path/to/runtime')
+    Manager-->>App: manager
+    
+    App->>Data: load()
+    Note over Data: jdk-registry.json読み込み
+    Data-->>App: Result<void> success
+    
+    App->>Entrys: getInstallList()
+    Entrys-->>App: InstallInfo[] (既存JDK一覧)
+    
+    Note over App: 既存データ読み込み完了
+```
+
+## JDKインストールのパターン
+
+### シンプルなインストール
+
+```mermaid
+flowchart TD
+    Start([JDKインストール開始]) --> Download[JDKダウンロード]
+    
+    Download --> Prepare["params準備<br/>{<br/>archivePath: '/path/to/jdk.zip'<br/>majorVersion: 17<br/>}"]
+    
+    Prepare --> Call[manager.Entrys.add]
+    
+    Call --> Process[インストール処理]
+    
+    Process --> Result{成功?}
+    
+    Result -->|Yes| Success["JDKEntry取得<br/>ID: jdk-17-openjdk<br/>Path: /runtime/jdk-17-openjdk"]
+    Result -->|No| Error["エラーハンドリング<br/>ログ出力<br/>ユーザー通知"]
+    
+    Success --> UseJDK[JDK使用可能]
+    
+    style Start fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+    style UseJDK fill:#e8f5e9
+```
+
+### カスタム名称でのインストール
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Entrys
+    participant Entry
+    
+    Note over App: カスタム設定でインストール
+    
+    App->>Entrys: add({<br/>archivePath: '/downloads/jdk17.zip',<br/>majorVersion: 17,<br/>name: 'Minecraft用 Java 17',<br/>structName: 'custom-jdk-17'<br/>})
+    
+    Entrys->>Entrys: インストール処理
+    Entrys->>Entry: new JDKEntry(instance)
+    Entry-->>Entrys: entry
+    Entrys-->>App: Result<JDKEntry> success
+    
+    App->>Entry: getName()
+    Entry-->>App: 'Minecraft用 Java 17'
+    
+    App->>Entry: getStructName()
+    Entry-->>App: 'custom-jdk-17'
+```
+
+## 複数バージョンのインストール
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Entrys
+    
+    Note over App: 複数バージョンを順次インストール
+    
+    rect rgb(225, 245, 254)
+        Note over App,Entrys: Java 8インストール
+        App->>Entrys: add({archivePath: 'jdk8.zip', majorVersion: 8})
+        Entrys-->>App: Result<JDKEntry> (Java 8)
+    end
+    
+    rect rgb(227, 242, 253)
+        Note over App,Entrys: Java 17インストール
+        App->>Entrys: add({archivePath: 'jdk17.zip', majorVersion: 17})
+        Entrys-->>App: Result<JDKEntry> (Java 17)
+    end
+    
+    rect rgb(225, 245, 254)
+        Note over App,Entrys: Java 21インストール
+        App->>Entrys: add({archivePath: 'jdk21.zip', majorVersion: 21})
+        Entrys-->>App: Result<JDKEntry> (Java 21)
+    end
+    
+    App->>Entrys: getInstallList()
+    Entrys-->>App: [Java 8, Java 17, Java 21]
+```
+
+## ランタイムロックのパターン
+
+### 基本的なロック管理
+
+```mermaid
+stateDiagram-v2
+    [*] --> Available: JDKインストール済み
+    
+    Available --> Locked: useRuntime("Minecraft 1.20.1")
+    
+    state Locked {
+        [*] --> InUse
+        InUse --> InUse: 継続使用中
+    }
+    
+    Locked --> Available: unUseRuntime(lockId)
+    
+    Available --> [*]: remove()
+    
+    Locked --> Locked: remove()試行<br/>→ Error
+    
+    note right of Locked
+        ロック中は削除・
+        アップデート不可
+    end note
+```
+
+### 複数アプリケーションからの使用
+
+```mermaid
+sequenceDiagram
+    participant App1 as アプリ1
+    participant App2 as アプリ2
+    participant Entry as JDKEntry
+    
+    App1->>Entry: useRuntime("App1-Process1")
+    Entry-->>App1: lockId1
+    
+    Note over Entry: locks.length = 1
+    
+    App2->>Entry: useRuntime("App2-Task")
+    Entry-->>App2: lockId2
+    
+    Note over Entry: locks.length = 2<br/>両アプリが同時使用可能
+    
+    App1->>Entry: useRuntime("App1-Process2")
+    Entry-->>App1: lockId3
+    
+    Note over Entry: locks.length = 3
+    
+    App1->>Entry: unUseRuntime(lockId1)
+    Entry-->>App1: Success
+    
+    Note over Entry: locks.length = 2
+    
+    App2->>Entry: unUseRuntime(lockId2)
+    Entry-->>App2: Success
+    
+    Note over Entry: locks.length = 1
+    
+    App1->>Entry: unUseRuntime(lockId3)
+    Entry-->>App1: Success
+    
+    Note over Entry: locks.length = 0<br/>完全にフリーになった
+```
+
+## ファイル整合性検証のパターン
+
+### 起動時の一括検証
+
+```mermaid
+flowchart TD
+    Start([アプリケーション起動]) --> Load[レジストリ読み込み]
+    
+    Load --> CheckAll[Entrys.checkFileHealthAll]
+    
+    CheckAll --> Process[全JDKを検証]
+    
+    Process --> Analyze{検証結果分析}
+    
+    Analyze -->|すべてverified| Normal[正常起動]
+    Analyze -->|一部missing/corrupted| Warning[警告表示]
+    
+    Warning --> Prompt{ユーザー選択}
+    Prompt -->|再インストール| Reinstall[該当JDKを再インストール]
+    Prompt -->|無視| ContinueWarning[警告付きで起動]
+    Prompt -->|終了| Exit[アプリケーション終了]
+    
+    Reinstall --> Normal
+    ContinueWarning --> Normal
+    
+    Normal --> Ready[アプリケーション準備完了]
+    
+    style Start fill:#e3f2fd
+    style Normal fill:#c8e6c9
+    style Warning fill:#fff9c4
+    style Exit fill:#ffcdd2
+    style Ready fill:#e8f5e9
+```
+
+### 個別JDKの検証
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant Entry as JDKEntry
+    
+    Note over App: Minecraft起動前チェック
+    
+    App->>Entry: checkFileHealth()
+    Entry->>Entry: ファイル検証処理
+    Entry-->>App: Result<VerificationStatus>
+    
+    alt status === 'verified'
+        App->>App: Minecraft起動
+    else status === 'missing'
+        App->>App: エラー表示: "JDKファイルが不足しています"
+        App->>App: 再インストール提案
+    else status === 'corrupted'
+        App->>App: エラー表示: "JDKファイルが破損しています"
+        App->>App: 再インストール提案
+    end
+```
+
+### 定期的なバックグラウンド検証
+
+```mermaid
+sequenceDiagram
+    participant Timer as タイマー
+    participant BG as バックグラウンドタスク
+    participant Manager as JdkManager
+    participant UI as ユーザーインターフェース
+    
+    loop 1時間ごと
+        Timer->>BG: 定期検証トリガー
+        BG->>Manager: Entrys.checkFileHealthAll()
+        Manager-->>BG: Result<VerificationResult[]>
+        
+        alt すべて正常
+            BG->>BG: ログ記録のみ
+        else 問題検出
+            BG->>UI: 通知表示
+            UI->>UI: トースト通知
+            UI->>UI: "JDK整合性に問題が検出されました"
+        end
+    end
+```
+
+## アップデート管理のパターン
+
+### アップデートチェックとインストール
+
+```mermaid
+flowchart TD
+    Start([アップデートチェック]) --> GetAvailable[利用可能なJDK情報取得]
+    
+    GetAvailable --> Check[manager.Entrys.updateCheck]
+    
+    Check --> HasUpdates{アップデートあり?}
+    
+    HasUpdates -->|No| NoUpdate[最新状態を通知]
+    HasUpdates -->|Yes| ShowList[アップデート可能リスト表示]
+    
+    ShowList --> UserChoice{ユーザー選択}
+    
+    UserChoice -->|キャンセル| End([終了])
+    UserChoice -->|個別選択| SelectItems[対象JDK選択]
+    UserChoice -->|全て| SelectAll[全JDK選択]
+    
+    SelectItems --> Download[JDKダウンロード]
+    SelectAll --> Download
+    
+    Download --> GetHandler[entry.getUpdate]
+    GetHandler --> Install[updateHandler.install]
+    
+    Install --> Result{成功?}
+    
+    Result -->|Yes| Success[アップデート完了通知]
+    Result -->|No| Rollback[自動ロールバック完了]
+    
+    Rollback --> Error[エラー通知]
+    
+    Success --> End
+    NoUpdate --> End
+    Error --> End
+    
+    style Start fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+    style Rollback fill:#fff9c4
+```
+
+### 個別JDKのアップデート
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant Entry
+    participant Handler as UpdateHandler
+    participant Download as ダウンロード
+    
+    User->>App: Java 17のアップデート要求
+    
+    App->>App: 利用可能なJDKリスト取得
+    App->>Entry: getUpdate(availableJdks, onSave)
+    Entry-->>App: UpdateHandler
+    
+    alt UpdateHandler === null
+        App-->>User: "既に最新版です"
+    else UpdateHandler !== null
+        App->>Handler: getNewVersionInfo()
+        Handler-->>App: {structName, downloadUrl, version}
+        
+        App-->>User: "新バージョンあり: {version}"
+        User->>App: アップデート承認
+        
+        App->>Download: download(downloadUrl)
+        Download-->>App: archivePath
+        
+        App->>Handler: install(archivePath)
+        Handler->>Handler: バックアップ→インストール
+        Handler-->>App: Result<void> success
+        
+        App-->>User: "アップデート完了"
+    end
+```
+
+## エラーハンドリングのパターン
+
+### Result型の使用例
+
+```mermaid
+flowchart TD
+    Call[API呼び出し] --> Check{result.success}
+    
+    Check -->|true| Success[result.data使用]
+    Check -->|false| Error[result.errorを処理]
+    
+    Success --> Log1[成功ログ記録]
+    Error --> Log2[エラーログ記録]
+    
+    Error --> UserNotify[ユーザー通知]
+    Error --> Retry{リトライ可能?}
+    
+    Retry -->|Yes| Prompt[リトライ提案]
+    Retry -->|No| Fallback[代替処理]
+    
+    Log1 --> Continue[処理継続]
+    Prompt --> Continue
+    Fallback --> Continue
+    
+    style Call fill:#e3f2fd
+    style Success fill:#c8e6c9
+    style Error fill:#ffcdd2
+```
+
+### エラーごとの対応フロー
+
+```mermaid
+graph TD
+    Error([エラー発生]) --> Type{エラー種別}
+    
+    Type -->|Installation in progress| Wait[別の処理完了を待つ]
+    Type -->|Already exists| Skip[スキップまたは削除後再試行]
+    Type -->|File not found| Redownload[再ダウンロード]
+    Type -->|Version mismatch| CorrectDownload[正しいバージョンをダウンロード]
+    Type -->|Locked| WaitUnlock[ロック解放を待つ]
+    Type -->|Corrupted| Reinstall[再インストール]
+    Type -->|Missing| Reinstall
+    
+    Wait --> Retry[リトライ]
+    Skip --> Retry
+    Redownload --> Retry
+    CorrectDownload --> Retry
+    WaitUnlock --> Retry
+    Reinstall --> Retry
+    
+    Retry --> Success{成功?}
+    Success -->|Yes| Complete([完了])
+    Success -->|No| LogError[エラーログ記録]
+    
+    LogError --> UserReport[ユーザーに報告]
+    
+    style Error fill:#ffcdd2
+    style Complete fill:#c8e6c9
+```
+
+## 実践的な統合例
+
+### Minecraftランチャーとの統合
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Launcher as Minecraftランチャー
+    participant Manager as JdkManager
+    participant Entry as JDKEntry
+    participant MC as Minecraftプロセス
+    
+    User->>Launcher: Minecraft 1.20.1起動
+    Launcher->>Launcher: 必要なJavaバージョン判定<br/>(Java 17)
+    
+    Launcher->>Manager: Entrys.getByVersion(17)
+    Manager-->>Launcher: Result<JDKEntry>
+    
+    alt JDK未インストール
+        Launcher->>User: "Java 17が必要です"
+        User->>Launcher: インストール承認
+        Launcher->>Launcher: Java 17ダウンロード
+        Launcher->>Manager: Entrys.add({...})
+        Manager-->>Launcher: Result<JDKEntry>
+    end
+    
+    Launcher->>Entry: checkFileHealth()
+    Entry-->>Launcher: Result<'verified'>
+    
+    alt 整合性エラー
+        Launcher->>User: "JDKに問題があります"
+        User->>Launcher: 修復承認
+        Launcher->>Manager: 再インストール処理
+    end
+    
+    Launcher->>Entry: useRuntime("Minecraft 1.20.1")
+    Entry-->>Launcher: lockId
+    
+    Launcher->>Entry: getPath()
+    Entry-->>Launcher: jdkPath
+    
+    Launcher->>MC: spawn({<br/>command: jdkPath + '/bin/java',<br/>args: [...minecraftArgs]<br/>})
+    
+    Note over MC: Minecraftプレイ中...
+    
+    User->>Launcher: Minecraft終了
+    MC->>Launcher: プロセス終了通知
+    
+    Launcher->>Entry: unUseRuntime(lockId)
+    Entry-->>Launcher: Result<void>
+```
+
+### 自動メンテナンスシステム
+
+```mermaid
+flowchart TD
+    Start([定期メンテナンス起動]) --> Check[整合性チェック]
+    
+    Check --> Verify[checkFileHealthAll]
+    Verify --> Analyze{問題検出}
+    
+    Analyze -->|なし| UpdateCheck[アップデートチェック]
+    Analyze -->|あり| Fix{自動修復?}
+    
+    Fix -->|Yes| Reinstall[自動再インストール]
+    Fix -->|No| Notify1[管理者通知]
+    
+    Reinstall --> Verify2[再検証]
+    Verify2 --> UpdateCheck
+    Notify1 --> UpdateCheck
+    
+    UpdateCheck --> Updates{更新あり?}
+    
+    Updates -->|なし| Cleanup[クリーンアップ]
+    Updates -->|あり| AutoUpdate{自動更新?}
+    
+    AutoUpdate -->|Yes| Download[ダウンロード&インストール]
+    AutoUpdate -->|No| Notify2[管理者通知]
+    
+    Download --> Cleanup
+    Notify2 --> Cleanup
+    
+    Cleanup --> Log[メンテナンスログ記録]
+    Log --> Report[レポート生成]
+    
+    Report --> End([完了])
+    
+    style Start fill:#e3f2fd
+    style End fill:#c8e6c9
+    style Notify1 fill:#fff9c4
+    style Notify2 fill:#fff9c4
+```
+
+## ドライランモードの使用
+
+```mermaid
+sequenceDiagram
+    participant Admin as 管理者
+    participant App
+    participant Manager as JdkManager<br/>(dryRun: true)
+    
+    Admin->>App: テストモードで起動
+    App->>Manager: new JdkManager(path, {dryRun: true})
+    Manager-->>App: manager
+    
+    Admin->>App: Java 17インストールテスト
+    App->>Manager: Entrys.add({...})
+    
+    Note over Manager: 実際のファイル操作なし<br/>ログ出力のみ
+    
+    Manager-->>App: Result<JDKEntry> success<br/>(ダミーエントリ)
+    
+    App-->>Admin: "インストール成功(テスト)"
+    
+    Admin->>App: レジストリ保存テスト
+    App->>Manager: Data.save()
+    
+    Note over Manager: ファイル書き込みなし<br/>ログ出力のみ
+    
+    Manager-->>App: Result<void> success
+    
+    App-->>Admin: "保存成功(テスト)"
+    
+    Admin->>Admin: ログを確認して<br/>実際の動作を検証
+```
+
+---
+
+**このドキュメントは、JDK Managerの実践的な使用例をMermaid図で提供します。**
+</file>
+
+</files>
