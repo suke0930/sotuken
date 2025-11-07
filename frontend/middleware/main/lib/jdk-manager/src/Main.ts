@@ -14,7 +14,8 @@ import { CrashThisapp } from '../../CrashAPP';
 import { machine } from 'os';
 import { log } from 'console';
 import { publicDecrypt } from 'crypto';
-
+import { r } from 'tar';
+import { DOWNLOAD_TEMP_PATH } from '../../../index';
 export { JdkManager } from './lib/JdkManager';
 export { JDKEntry } from './lib/JDKEntry';
 export { UpdateHandler } from './lib/UpdateHandler';
@@ -116,9 +117,22 @@ export class JDKManagerAPP {
             res.json({ ok: false, error });
         }
     };
+    public addJDK: express.RequestHandler = async (req, res) => {
+        if (!req.body) { res.json({ ok: false, message: "Bodyがありません" }); return; };
+        if (!req.body.archivePath || !req.body.majorVersion) { res.json({ ok: false, message: "パラメータがありません" }); return; };
+
+        if (isNaN(Number(req.body.majorVersion))) { res.json({ ok: false, message: "バージョンが数値ではありません" }); return; }
+        try {
+            const list = await this.app.Entrys.add({ archivePath: DOWNLOAD_TEMP_PATH + req.body.archivePath, majorVersion: req.body.majorVersion });
+            res.json(list);
+        } catch (error) {
+            console.log(error);
+            res.json({ ok: false, error });
+        }
+    };
     public getbyMajorVersion: express.RequestHandler = async (req, res) => {
-        if (!req.params.verison) res.json({ ok: false, message: "パラメータがありません" });
-        if (isNaN(Number(req.params.verison))) res.json({ ok: false, message: "入力値が数値ではありません" });
+        if (!req.params.verison) { res.json({ ok: false, message: "パラメータがありません" }); return; };
+        if (isNaN(Number(req.params.verison))) { res.json({ ok: false, message: "入力値が数値ではありません" }); return; };
         try {
             const list = await this.app.Entrys.getByVersion(Number(req.params.verison));
             res.json({ ok: true, list });
