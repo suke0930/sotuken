@@ -33,7 +33,7 @@ export class ApiRouter {
             // express.staticミドルウェアが 'web' ディレクトリを配信するため、
             // このルート定義は実質的に不要になる可能性があります。
             // ただし、明示的にルートパスへの応答を定義しておくことは良い習慣です。
-            res.sendFile(path.join(__dirname, '..', 'web', 'index.html'));
+            res.sendFile(path.join(__dirname, '..', 'web', 'mainpage.html'));
         });
 
         this.app.post('/user/signup', this.signupHandler);
