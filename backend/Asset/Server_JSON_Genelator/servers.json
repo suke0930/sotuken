@@ -37,7 +37,7 @@
     ]
   },
   {
-    "name": "Forge",
+    "name": "TestServer(テスト用モック)",
     "type": "static",
     "versions": [
       {
