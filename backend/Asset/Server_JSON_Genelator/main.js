@@ -51,15 +51,40 @@ async function getPaperLatestBuild(version) {
 }
 
 /**
+ * Mohist APIから特定バージョンの最新ビルド情報を取得
+ */
+async function getMohistLatestBuild(version) {
+  try {
+    // 正しいAPIエンドポイントを使用
+    const downloadUrl = `https://api.mohistmc.com/project/mohist/${version}/builds/latest/download`;
+
+    // ビルド情報を取得（表示用）
+    const data = await fetchJSON(`https://mohistmc.com/api/v2/projects/mohist/${version}/builds/latest`);
+    const buildInfo = data.build;
+    const buildId = buildInfo.id.substring(0, 7);
+    const forgeVersion = buildInfo.forgeVersion;
+
+    return {
+      version: version,
+      build: `${forgeVersion} (${buildId})`,
+      downloadUrl: downloadUrl
+    };
+  } catch (error) {
+    console.error(`Failed to fetch Mohist ${version}:`, error.message);
+    return null;
+  }
+}
+
+/**
  * Fabric Loaderの最新バージョンを取得
  */
 async function getFabricLatestLoader() {
   try {
     const data = await fetchJSON('https://meta.fabricmc.net/v2/versions/loader');
-    return data[0].version; // 最新のローダーバージョン
+    return data[0].version;
   } catch (error) {
     console.error('Failed to fetch Fabric loader version:', error.message);
-    return '0.17.3'; // フォールバック
+    return '0.17.3';
   }
 }
 
@@ -69,10 +94,10 @@ async function getFabricLatestLoader() {
 async function getFabricLatestInstaller() {
   try {
     const data = await fetchJSON('https://meta.fabricmc.net/v2/versions/installer');
-    return data[0].version; // 最新のインストーラーバージョン
+    return data[0].version;
   } catch (error) {
     console.error('Failed to fetch Fabric installer version:', error.message);
-    return '1.1.0'; // フォールバック
+    return '1.1.0';
   }
 }
 
@@ -80,7 +105,7 @@ async function getFabricLatestInstaller() {
  * JDKバージョンを取得
  */
 function getJdkVersion(mcVersion, jdkMap) {
-  return jdkMap[mcVersion]?.toString() || '17'; // デフォルトは17
+  return jdkMap[mcVersion]?.toString() || '17';
 }
 
 /**
@@ -109,10 +134,9 @@ async function generateServersJson() {
 
   // 各サーバーエントリを処理
   for (const server of sourceData) {
-    if (server.jdkmap) continue; // jdkmap はスキップ
+    if (server.jdkmap) continue;
 
     if (server.type === 'dynamic') {
-      // 動的取得
       const dynamicData = {
         name: server.name,
         versions: []
@@ -149,12 +173,25 @@ async function generateServersJson() {
             downloadUrl: downloadUrl
           });
         }
+      } else if (server.name === 'Mohist') {
+        console.log(`\n🔥 Fetching ${server.name} versions...`);
+        for (const version of server.versions) {
+          const buildInfo = await getMohistLatestBuild(version);
+          if (buildInfo) {
+            console.log(`  ✅ ${server.name} ${version}: build ${buildInfo.build}`);
+            const jdk = getJdkVersion(version, jdkMap);
+            dynamicData.versions.push({
+              version: buildInfo.version,
+              jdk: jdk,
+              downloadUrl: buildInfo.downloadUrl
+            });
+          }
+        }
       }
 
       result.push(dynamicData);
 
     } else if (server.type === 'static') {
-      // 静的エントリを従来形式に変換
       console.log(`\n📦 Adding static entry: ${server.name}`);
       const staticData = {
         name: server.name,
@@ -174,7 +211,6 @@ async function generateServersJson() {
     }
   }
 
-  // latest-servers.json に保存（従来形式）
   const outputPath = path.join(__dirname, 'latest-servers.json');
   fs.writeFileSync(outputPath, JSON.stringify(result, null, 2), 'utf-8');
 
@@ -182,7 +218,6 @@ async function generateServersJson() {
   console.log(`📊 Total server types: ${result.length}`);
 }
 
-// 実行
 generateServersJson().catch((error) => {
   console.error('❌ Error:', error.message);
   process.exit(1);
