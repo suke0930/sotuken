@@ -239,6 +239,9 @@ export class MinecraftServerRouter {
  * ただのラッパーだなぁ
  * これだとルーティングが一望できない...
  * ただコードの量的に可読性が著しく落ちるのでこのままで行く
+ * 
+ * 注意！実際のダウンロードAPIはこっちで管理されています
+ * 以下はwebsocketだけだよ！
  */
 export class AssetManagerRouter {
     public readonly router: express.Router;
@@ -250,9 +253,9 @@ export class AssetManagerRouter {
 
 
 /**
- * DownloadAPIエンドポイントのルーティングを行うクラス
+ * DownloadAPIエンドポイントのwebsocketの面倒を見るクラス
  */
-export class DownloadManager {
+export class DownloadWebsocket {
     public readonly router: express.Router;
     private wsServer: expressWs.Instance;
     private basepath: string;
@@ -289,7 +292,8 @@ export class JdkmanagerRoute {
     setupRoute() {
         this.router.get("/installlist", this.authMiddleware, this.app.installlist);
         this.router.get("/getbyid/:id", this.authMiddleware, this.app.getbyId);
-        this.router.get("/getbyid/:verison", this.authMiddleware, this.app.getbyMajorVersion);
+        this.router.get("/getbyverison/:verison", this.authMiddleware, this.app.getbyMajorVersion);
+        this.router.post("/add", this.authMiddleware, this.app.addJDK);
     }
 }
 
