@@ -157,3 +157,10 @@ backend/Asset/resources/servers/**
 
 ./.claude/**
 frontend/middleware/main/temp/**
+
+##jdkresource/
+backend/Asset/resources/jdk/**
+
+#jdklists
+backend\Asset\JDK_JSON_Genelator\latest-jdks.json
+backend\Asset\data\jdk.json
