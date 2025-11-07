@@ -10,6 +10,7 @@ import { setWebSocketManager } from './Asset_handler/src/controllers/downloadCon
 import { MiddlewareManager } from './middleware-manager';
 import { createModuleLogger } from './logger';
 import { JDKManagerAPP } from './jdk-manager/src/Main';
+import { t } from 'tar';
 
 const log = createModuleLogger('auth');
 /**
@@ -294,6 +295,7 @@ export class JdkmanagerRoute {
         this.router.get("/getbyid/:id", this.authMiddleware, this.app.getbyId);
         this.router.get("/getbyverison/:verison", this.authMiddleware, this.app.getbyMajorVersion);
         this.router.post("/add", this.authMiddleware, this.app.addJDK);
+        this.router.delete("/removeJDK/:id", this.authMiddleware, this.app.removeJDK);
     }
 }
 

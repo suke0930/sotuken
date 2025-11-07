@@ -129,7 +129,20 @@ export class JDKManagerAPP {
             console.log(error);
             res.json({ ok: false, error });
         }
+
     };
+    public removeJDK: express.RequestHandler = async (req, res) => {
+        if (!req.params) { res.json({ ok: false, message: "paramsがありません" }); return; };
+        if (!req.params.id) { res.json({ ok: false, message: "パラメータがありません" }); return; };
+        try {
+            const list = await this.app.Entrys.remove(req.params.id);
+            res.json(list);
+        } catch (error) {
+            console.log(error);
+            res.json({ ok: false, error });
+        }
+    };
+
     public getbyMajorVersion: express.RequestHandler = async (req, res) => {
         if (!req.params.verison) { res.json({ ok: false, message: "パラメータがありません" }); return; };
         if (isNaN(Number(req.params.verison))) { res.json({ ok: false, message: "入力値が数値ではありません" }); return; };
