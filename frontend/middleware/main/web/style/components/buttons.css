@@ -1,0 +1,65 @@
+/* Buttons Component */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: 0.65rem 1.25rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-base), color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base), border var(--transition-base);
+}
+
+.btn:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-hover) 100%);
+    color: #ffffff;
+    box-shadow: 0 15px 25px -22px rgba(85, 98, 255, 0.75);
+}
+
+.btn-primary:hover:not(:disabled) {
+    box-shadow: 0 18px 28px -24px rgba(85, 98, 255, 0.8);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: var(--theme-surface);
+    border-color: var(--theme-border);
+    color: var(--theme-text);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    border-color: var(--theme-primary);
+    color: var(--theme-primary);
+    transform: translateY(-2px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--theme-highlight) 0%, var(--theme-secondary) 100%);
+    color: #052e16;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none;
+}
+
+.btn-sm {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+}

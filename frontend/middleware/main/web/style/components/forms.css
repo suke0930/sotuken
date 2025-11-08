@@ -1,0 +1,61 @@
+/* Forms Component */
+
+form {
+    display: grid;
+    gap: var(--space-5);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--theme-text-secondary);
+}
+
+label i {
+    font-size: 0.75rem;
+    margin-right: var(--space-1);
+    color: var(--theme-primary);
+}
+
+input[type="text"],
+input[type="password"],
+select {
+    width: 100%;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid var(--theme-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    background: var(--theme-surface-alt);
+    color: var(--theme-text);
+    transition: border var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
+    outline: none;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus {
+    border-color: var(--theme-primary);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+    background: var(--theme-surface);
+}
+
+select:disabled {
+    background: var(--theme-surface-alt);
+    color: var(--theme-text-secondary);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-4);
+}

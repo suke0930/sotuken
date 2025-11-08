@@ -1,0 +1,53 @@
+/* Auth Component */
+
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6) var(--space-4);
+    background: radial-gradient(70% 70% at 50% 0%, rgba(85, 98, 255, 0.12), transparent),
+        radial-gradient(60% 60% at 80% 80%, rgba(14, 165, 233, 0.12), transparent);
+}
+
+.auth-card {
+    background: var(--theme-surface);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--theme-border);
+    box-shadow: var(--shadow-sm);
+    padding: var(--space-7);
+    width: 100%;
+    max-width: 440px;
+    display: grid;
+    gap: var(--space-5);
+}
+
+.auth-header {
+    text-align: center;
+    display: grid;
+    gap: var(--space-2);
+}
+
+.auth-header h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.auth-header p {
+    font-size: 0.95rem;
+    color: var(--theme-text-secondary);
+}
+
+.auth-icon {
+    width: 4.5rem;
+    height: 4.5rem;
+    background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%);
+    border-radius: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1.75rem;
+    margin: 0 auto;
+    box-shadow: 0 25px 40px -24px rgba(85, 98, 255, 0.7);
+}
