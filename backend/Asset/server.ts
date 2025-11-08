@@ -1,5 +1,6 @@
 import app from './app';
 import { setupJDKs } from './lib/jdkSetup';
+import { setupServers } from './lib/serverSetup';
 
 const PORT = process.env.PORT || 3000;
 
@@ -7,15 +8,23 @@ const PORT = process.env.PORT || 3000;
 const args = process.argv.slice(2);
 const isTestMode = args.includes('--test') || process.env.NODE_ENV === 'test';
 const isDevMode = process.env.NODE_ENV === 'development';
-const shouldSetupJDK = isTestMode || isDevMode;
+const shouldSetup = isTestMode || isDevMode;
 
 async function startServer() {
   // JDK自動セットアップ（test/devモードの場合）
-  if (shouldSetupJDK) {
+  if (shouldSetup) {
     try {
       await setupJDKs(`http://localhost:${PORT}`);
     } catch (error) {
       console.error('⚠️  JDK setup failed, but server will continue to start');
+      console.error(error);
+    }
+
+    // Minecraftサーバー自動セットアップ
+    try {
+      await setupServers(`http://localhost:${PORT}`);
+    } catch (error) {
+      console.error('⚠️  Server setup failed, but server will continue to start');
       console.error(error);
     }
   }
@@ -26,8 +35,8 @@ async function startServer() {
     console.log(`🎮 Minecraft Servers API: http://localhost:${PORT}/api/v1/servers`);
     console.log(`☕ JDK API: http://localhost:${PORT}/api/v1/jdk`);
 
-    if (shouldSetupJDK) {
-      console.log(`🔧 Mode: ${isTestMode ? 'TEST' : 'DEVELOPMENT'} (JDK auto-setup enabled)`);
+    if (shouldSetup) {
+      console.log(`🔧 Mode: ${isTestMode ? 'TEST' : 'DEVELOPMENT'} (Auto-setup enabled)`);
     } else {
       console.log(`🔧 Mode: PRODUCTION`);
     }
