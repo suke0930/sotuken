@@ -15,6 +15,7 @@
 @import './components/dashboard.css';
 @import './components/server-cards.css';
 @import './components/downloads.css';
+@import './components/modal.css';
 
 /* Responsive */
 @import './components/responsive.css';

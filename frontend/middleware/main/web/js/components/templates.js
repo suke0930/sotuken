@@ -197,16 +197,21 @@ export const appTemplate = `
             <div v-else class="servers-grid">
                 <div
                     v-for="server in servers"
-                    :key="server.id"
+                    :key="server.uuid"
                     class="server-card"
                 >
-                    <div :class="['server-status', server.isRunning ? 'running' : 'stopped']">
-                        {{ server.isRunning ? '🟢 稼働中' : '🔴 停止中' }}
+                    <div :class="['server-status', server.status === 'running' ? 'running' : 'stopped']">
+                        {{ server.status === 'running' ? '🟢 稼働中' : '🔴 停止中' }}
                     </div>
 
                     <div class="server-name">
                         <i class="fas fa-cube" style="color: var(--theme-primary); margin-right: 6px; font-size: 14px;"></i>
-                        {{ server.serverName }}
+                        {{ server.name }}
+                    </div>
+
+                    <div v-if="server.note" style="padding: 8px 16px; font-size: 12px; color: var(--theme-text-secondary); border-bottom: 1px solid var(--theme-border);">
+                        <i class="fas fa-sticky-note" style="margin-right: 6px;"></i>
+                        {{ server.note }}
                     </div>
 
                     <div class="server-details">
@@ -214,36 +219,56 @@ export const appTemplate = `
                             <span class="server-detail-label">
                                 <i class="fas fa-code-branch"></i> バージョン
                             </span>
-                            <span class="server-detail-value">{{ server.minecraftVersion }}</span>
+                            <span class="server-detail-value">{{ server.software.version }}</span>
                         </div>
                         <div class="server-detail">
                             <span class="server-detail-label">
                                 <i class="fas fa-cogs"></i> ソフトウェア
                             </span>
-                            <span class="server-detail-value">{{ server.serverSoftware }}</span>
+                            <span class="server-detail-value">{{ server.software.name }}</span>
                         </div>
                         <div class="server-detail">
                             <span class="server-detail-label">
                                 <i class="fas fa-coffee"></i> JDK
                             </span>
-                            <span class="server-detail-value">{{ server.jdkVersion }}</span>
+                            <span class="server-detail-value">JDK {{ server.launchConfig.jdkVersion }}</span>
+                        </div>
+                        <div class="server-detail">
+                            <span class="server-detail-label">
+                                <i class="fas fa-network-wired"></i> ポート
+                            </span>
+                            <span class="server-detail-value">{{ server.launchConfig.port }}</span>
+                        </div>
+                        <div class="server-detail">
+                            <span class="server-detail-label">
+                                <i class="fas fa-memory"></i> メモリ
+                            </span>
+                            <span class="server-detail-value">{{ server.launchConfig.minMemory }}MB ~ {{ server.launchConfig.maxMemory }}MB</span>
                         </div>
                         <div class="server-detail">
                             <span class="server-detail-label">
                                 <i class="fas fa-calendar-alt"></i> 作成日
                             </span>
-                            <span class="server-detail-value">{{ formatDate(server.createdAt) }}</span>
+                            <span class="server-detail-value">{{ formatDate(server.metadata.createdAt) }}</span>
                         </div>
                     </div>
 
                     <div class="server-actions">
-                        <button class="btn btn-secondary btn-sm" @click="editServer(server)">
-                            <i class="fas fa-edit"></i>
-                            編集
+                        <button
+                            v-if="server.status === 'stopped'"
+                            class="btn btn-success btn-sm"
+                            @click="startServer(server)"
+                        >
+                            <i class="fas fa-play"></i>
+                            起動
                         </button>
-                        <button class="btn btn-danger btn-sm" @click="deleteServer(server)">
-                            <i class="fas fa-trash-alt"></i>
-                            削除
+                        <button
+                            v-else
+                            class="btn btn-danger btn-sm"
+                            @click="stopServer(server)"
+                        >
+                            <i class="fas fa-stop"></i>
+                            停止
                         </button>
                     </div>
                 </div>
@@ -261,7 +286,7 @@ export const appTemplate = `
                     <div class="form-group">
                         <label for="serverName">
                             <i class="fas fa-tag"></i>
-                            サーバー名
+                            サーバー名 <span style="color: red;">*</span>
                         </label>
                         <input
                             type="text"
@@ -271,10 +296,28 @@ export const appTemplate = `
                             placeholder="例: My Minecraft Server"
                         >
                     </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="note">
+                            <i class="fas fa-sticky-note"></i>
+                            メモ
+                        </label>
+                        <textarea
+                            id="note"
+                            v-model="serverForm.note"
+                            placeholder="ここにメモを記述..."
+                            style="min-height: 80px; resize: vertical; font-family: inherit;"
+                        ></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label for="serverSoftware">
                             <i class="fas fa-cogs"></i>
-                            サーバーソフトウェアを選択
+                            サーバーソフトウェアを選択 <span style="color: red;">*</span>
                         </label>
                         <select
                             id="serverSoftware"
@@ -292,13 +335,10 @@ export const appTemplate = `
                             </option>
                         </select>
                     </div>
-                </div>
-
-                <div class="form-row">
                     <div class="form-group">
                         <label for="minecraftVersion">
                             <i class="fas fa-code-branch"></i>
-                            Minecraftバージョンを選択
+                            Minecraftバージョンを選択 <span style="color: red;">*</span>
                         </label>
                         <select
                             id="minecraftVersion"
@@ -316,10 +356,13 @@ export const appTemplate = `
                             </option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label for="jdkVersion">
                             <i class="fas fa-coffee"></i>
-                            JDKバージョン (自動選択)
+                            JDKバージョン (自動選択) <span style="color: red;">*</span>
                         </label>
                         <input
                             type="text"
@@ -330,12 +373,93 @@ export const appTemplate = `
                             readonly
                             style="background: var(--theme-bg); cursor: not-allowed;"
                         >
+                        <div v-if="requiredJdkVersion" style="margin-top: 8px;">
+                            <span v-if="jdkCheckLoading" style="color: var(--theme-text-secondary); font-size: 13px;">
+                                <i class="fas fa-spinner fa-spin"></i> チェック中...
+                            </span>
+                            <span v-else-if="jdkInstalled" style="color: #22c55e; font-size: 13px;">
+                                <i class="fas fa-check-circle"></i> JDK {{ requiredJdkVersion }} はインストール済みです
+                            </span>
+                            <span v-else style="color: #f59e0b; font-size: 13px;">
+                                <i class="fas fa-info-circle"></i> JDK {{ requiredJdkVersion }} は未インストール (自動でインストールされます)
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <button type="submit" :class="['btn', editingServer ? 'btn-secondary' : 'btn-primary']" :disabled="formSubmitting">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="port">
+                            <i class="fas fa-network-wired"></i>
+                            ポート番号 <span style="color: red;">*</span>
+                        </label>
+                        <input
+                            type="number"
+                            id="port"
+                            v-model.number="serverForm.port"
+                            required
+                            min="1024"
+                            max="65535"
+                            placeholder="25565"
+                        >
+                        <div v-if="portWarning" style="margin-top: 8px; color: #ef4444; font-size: 13px;">
+                            <i class="fas fa-exclamation-triangle"></i> {{ portWarning }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="minMemory">
+                            <i class="fas fa-memory"></i>
+                            最小メモリ (MB)
+                        </label>
+                        <input
+                            type="number"
+                            id="minMemory"
+                            v-model.number="serverForm.minMemory"
+                            required
+                            min="256"
+                            placeholder="512"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="maxMemory">
+                            <i class="fas fa-memory"></i>
+                            最大メモリ (MB)
+                        </label>
+                        <input
+                            type="number"
+                            id="maxMemory"
+                            v-model.number="serverForm.maxMemory"
+                            required
+                            min="512"
+                            placeholder="1024"
+                        >
+                    </div>
+                </div>
+
+                <!-- Operations Preview -->
+                <div v-if="isFormValid && !editingServer" style="background: var(--theme-surface); border: 2px solid var(--theme-primary); border-radius: 12px; padding: 20px; margin: 24px 0;">
+                    <h4 style="color: var(--theme-text); margin-bottom: 16px; font-size: 16px;">
+                        <i class="fas fa-list-check" style="color: var(--theme-primary);"></i>
+                        これから行われる操作:
+                    </h4>
+                    <ol style="margin: 0; padding-left: 24px; color: var(--theme-text-secondary); line-height: 1.8;">
+                        <li v-if="!jdkInstalled && requiredJdkVersion">
+                            JDK {{ requiredJdkVersion }} のダウンロード
+                        </li>
+                        <li v-if="!jdkInstalled && requiredJdkVersion">
+                            JDK {{ requiredJdkVersion }} のインストール
+                        </li>
+                        <li>サーバー "{{ serverForm.serverSoftware }}-{{ serverForm.minecraftVersion }}.jar" のダウンロード</li>
+                        <li>インスタンス "{{ serverForm.serverName }}" の作成</li>
+                    </ol>
+                </div>
+
+                <button type="submit" :class="['btn', editingServer ? 'btn-secondary' : 'btn-primary']" :disabled="!isFormValid && !editingServer">
                     <i :class="formSubmitting ? 'fas fa-spinner fa-spin' : (editingServer ? 'fas fa-save' : 'fas fa-rocket')"></i>
-                    {{ formSubmitting ? (editingServer ? '更新中...' : 'ダウンロード & 作成中...') : (editingServer ? 'サーバーを更新' : 'サーバーを作成') }}
+                    {{ editingServer ? 'サーバーを更新' : 'サーバーを作成' }}
                 </button>
             </form>
         </div>
@@ -554,45 +678,91 @@ export const appTemplate = `
         </div>
     </div>
 
-    <!-- Download Progress Overlay for Server Creation -->
-    <div :class="['download-overlay', { active: downloadActive }]">
-        <div class="download-overlay-content">
-            <div class="download-header">
-                <div class="download-title">
-                    <i class="fas fa-download"></i>
-                    サーバーファイルをダウンロード中
-                </div>
-                <button class="download-close" @click="closeDownload" v-if="downloadProgress.percentage >= 100">
+    <!-- Server Creation Modal -->
+    <div v-if="creationModal.visible" class="modal-overlay" @click.self="closeCreationModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>
+                    <i class="fas fa-cog fa-spin" v-if="creationModal.status === 'running'"></i>
+                    <i class="fas fa-check-circle" v-else-if="creationModal.status === 'success'" style="color: #22c55e;"></i>
+                    <i class="fas fa-exclamation-circle" v-else style="color: #ef4444;"></i>
+                    サーバー作成
+                </h3>
+                <button class="modal-close" @click="closeCreationModal" v-if="creationModal.canClose">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
 
-            <div class="download-info">
-                <div class="download-filename">
-                    <i class="fas fa-file"></i> {{ downloadProgress.filename }}
+            <div class="modal-body">
+                <!-- Operations List -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="margin-bottom: 12px; color: var(--theme-text);">
+                        <i class="fas fa-list"></i> 実行する操作
+                    </h4>
+                    <div v-for="(op, index) in creationModal.operations" :key="op.id"
+                         style="padding: 12px; background: var(--theme-surface); border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px;">
+                        <div style="flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;"
+                             :style="{
+                                 background: op.status === 'completed' ? '#22c55e' : op.status === 'running' ? '#3b82f6' : '#6b7280',
+                                 color: 'white'
+                             }">
+                            <i class="fas fa-check" v-if="op.status === 'completed'"></i>
+                            <i class="fas fa-spinner fa-spin" v-else-if="op.status === 'running'"></i>
+                            <span v-else>{{ index + 1 }}</span>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="color: var(--theme-text); font-weight: 500;">{{ op.label }}</div>
+                            <div v-if="op.message" style="color: var(--theme-text-secondary); font-size: 12px; margin-top: 4px;">
+                                {{ op.message }}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="download-stats">
-                    <div class="download-stat">
-                        <i class="fas fa-hdd"></i>
-                        <span>{{ downloadProgress.downloadedMB }} / {{ downloadProgress.totalMB }} MB</span>
+
+                <!-- Progress Bar -->
+                <div style="margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--theme-text); font-weight: 500;">進捗</span>
+                        <span style="color: var(--theme-primary); font-weight: 600;">{{ creationModal.progress }}%</span>
                     </div>
-                    <div class="download-stat">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>{{ downloadProgress.speed }} KB/s</span>
+                    <div style="width: 100%; height: 8px; background: var(--theme-bg); border-radius: 4px; overflow: hidden;">
+                        <div style="height: 100%; background: var(--theme-primary); transition: width 0.3s ease;"
+                             :style="{ width: creationModal.progress + '%' }"></div>
                     </div>
+                </div>
+
+                <!-- Logs -->
+                <div style="background: #1f2937; border-radius: 8px; padding: 16px; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                    <div v-for="(log, index) in creationModal.logs" :key="index"
+                         style="margin-bottom: 4px; color: #e5e7eb;">
+                        <span style="color: #9ca3af;">[{{ log.timestamp }}]</span>
+                        <span :style="{ color: log.type === 'error' ? '#ef4444' : log.type === 'success' ? '#22c55e' : '#e5e7eb' }">
+                            {{ log.message }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Status Message -->
+                <div v-if="creationModal.message"
+                     style="margin-top: 16px; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500;"
+                     :style="{
+                         background: creationModal.status === 'success' ? '#dcfce7' : '#fee2e2',
+                         color: creationModal.status === 'success' ? '#166534' : '#991b1b'
+                     }">
+                    {{ creationModal.message }}
                 </div>
             </div>
 
-            <div class="download-progress-wrapper">
-                <div class="download-progress-fill" :style="{ width: downloadProgress.percentage + '%' }"></div>
-            </div>
-            <div style="text-align: center; margin-top: 8px; font-size: 13px; color: var(--theme-text-secondary); font-weight: 500;">
-                {{ downloadProgress.percentage.toFixed(0) }}%
-            </div>
-
-            <div class="download-status">
-                <i :class="downloadProgress.percentage >= 100 ? 'fas fa-check-circle' : 'fas fa-spinner fa-spin'"></i>
-                {{ downloadProgress.status }}
+            <div class="modal-footer" v-if="creationModal.canClose">
+                <button class="btn btn-secondary" @click="closeCreationModal" v-if="creationModal.status === 'success'">
+                    <i class="fas fa-check"></i> 閉じる
+                </button>
+                <button class="btn btn-danger" @click="closeCreationModal" v-if="creationModal.status === 'error'">
+                    <i class="fas fa-times"></i> 閉じる
+                </button>
+                <button class="btn btn-primary" @click="retryServerCreation" v-if="creationModal.status === 'error'">
+                    <i class="fas fa-redo"></i> 再試行
+                </button>
             </div>
         </div>
     </div>

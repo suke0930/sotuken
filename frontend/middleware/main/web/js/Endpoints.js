@@ -21,13 +21,25 @@ export const API_ENDPOINTS = {
         list: '/api/mc/list',
         create: '/api/mc/add',
         update: (id) => `/api/servers/${id}`,
-        delete: (id) => `/api/mc/remove/${id}`
+        delete: (id) => `/api/mc/remove/${id}`,
+        run: (id) => `/api/mc/run/${id}`,
+        stop: (id) => `/api/mc/stop/${id}`,
+        command: (id) => `/api/mc/command/${id}`
     },
 
     // List endpoints
     list: {
         servers: '/api/assets/list/servers',
-        jdk: (type) => `/api/list/${type}`
+        jdk: '/api/assets/list/jdk'
+    },
+
+    // JDK endpoints
+    jdk: {
+        installList: '/api/jdk/installlist',
+        getById: (id) => `/api/jdk/getbyid/${id}`,
+        getByVersion: (version) => `/api/jdk/getbyverison/${version}`,
+        add: '/api/jdk/add',
+        remove: (id) => `/api/jdk/removeJDK/${id}`
     },
 
     // Download endpoints
