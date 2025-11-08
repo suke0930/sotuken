@@ -1,0 +1,74 @@
+/* Responsive Styles */
+
+@media (max-width: 1200px) {
+    .navbar-content {
+        padding: 0 var(--space-3);
+    }
+
+    .dashboard {
+        padding: var(--space-6) var(--space-3) var(--space-7);
+    }
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        width: 260px;
+    }
+
+    .download-stats {
+        gap: var(--space-3);
+    }
+}
+
+@media (max-width: 768px) {
+    .navbar-content {
+        padding: 0 var(--space-3);
+    }
+
+    .navbar-brand span {
+        display: none;
+    }
+
+    .dashboard {
+        padding: var(--space-6) var(--space-3) var(--space-7);
+    }
+
+    .servers-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .download-version-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    }
+
+    .download-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .download-stats {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .user-menu span {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .navbar-content {
+        padding: 0 var(--space-2);
+    }
+
+    .content-section {
+        padding: var(--space-5);
+    }
+
+    .download-overlay {
+        padding: var(--space-5) var(--space-3);
+    }
+
+    .auth-card {
+        padding: var(--space-6);
+    }
+}
