@@ -214,15 +214,8 @@ export class MCserverManagerAPP {
     public sendcommand: express.RequestHandler = async (req, res) => {
         try {
             if (!req.params.id) { res.json({ ok: false, message: "IDがありません" }); return; }
-            const trydel = await this.servermanager.stopServer(req.params.id);
-            if (!trydel.success) {
-                res.json({ ok: false, error: trydel.error });
-                return;
-            }
-            const watcher = this.watchinglist.get(req.params.id);
-            if (watcher) {
-                await this.servermanager.closeProcessStd(req.params.id, watcher);
-            }
+            if (!req.body.command) { res.json({ ok: false, message: "コマンドがありません" }); return; }
+            await this.servermanager.sendCommand(req.params.id, req.body.command);
             res.json({ ok: true });
             return;
         } catch (error) {
