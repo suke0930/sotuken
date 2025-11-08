@@ -18,10 +18,10 @@ export const API_ENDPOINTS = {
 
     // Server management endpoints
     server: {
-        list: '/api/servers',
-        create: '/api/servers/create',
+        list: '/api/mc/list',
+        create: '/api/mc/add',
         update: (id) => `/api/servers/${id}`,
-        delete: (id) => `/api/servers/${id}`
+        delete: (id) => `/api/mc/remove/${id}`
     },
 
     // List endpoints
@@ -32,9 +32,9 @@ export const API_ENDPOINTS = {
 
     // Download endpoints
     download: {
-        start: 'https://localhost:12800/api/download',
-        cancel: (taskId) => `https://localhost:12800/api/download/${taskId}`,
-        list: (type) => `https://localhost:12800/api/list/${type}`
+        start: '/api/assets/download',
+        cancel: (taskId) => `/api/assets/download/taskid${taskId}`,
+        list: (type) => `/api/assets/downloads${type}`
     },
 
     // Other endpoints
