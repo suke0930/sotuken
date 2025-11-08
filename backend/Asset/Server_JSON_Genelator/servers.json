@@ -1,0 +1,49 @@
+[
+  {
+    "jdkmap": {
+      "1.12.2": 8,
+      "1.16.5": 11,
+      "1.18.2": 17,
+      "1.19.2": 17,
+      "1.20.1": 21
+    }
+  },
+  {
+    "name": "Paper",
+    "type": "dynamic",
+    "versions": [
+      "1.16.5",
+      "1.18.2",
+      "1.20.1"
+    ]
+  },
+  {
+    "name": "Fabric",
+    "type": "dynamic",
+    "versions": [
+      "1.16.5",
+      "1.18.2",
+      "1.20.1"
+    ]
+  },
+  {
+    "name": "Mohist",
+    "type": "dynamic",
+    "versions": [
+      "1.16.5",
+      "1.18.2",
+      "1.19.2",
+      "1.20.1"
+    ]
+  },
+  {
+    "name": "TestServer(テスト用モック)",
+    "type": "static",
+    "versions": [
+      {
+        "v": "1.12.2",
+        "url": "https://maven.minecraftforge.net/net/minecraftforge/forge/1.12.2-14.23.5.2859/forge-1.12.2-14.23.5.2859-installer.jar"
+      }
+    ]
+  }
+]
