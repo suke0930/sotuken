@@ -105,6 +105,9 @@
                         serverSoftware: '',
                         jdkVersion: ''
                     },
+                    serverSoftwarePlaceholder: 'サーバーソフトウェアを選択してください',
+                    isFetchingServerList: false,
+                    serverSoftwareFetchFailed: false,
                     formSubmitting: false,
 
                     // Step-by-step form data
@@ -168,7 +171,53 @@
             },
 
             computed: {
+                serverSoftwareOptions() {
+                    const fallbackOptions = [
+                        { value: 'vanilla', label: 'Vanilla (公式)' },
+                        { value: 'forge', label: 'Forge (Mod)' },
+                        { value: 'fabric', label: 'Fabric (軽量Mod)' },
+                        { value: 'paper', label: 'Paper (推奨)' }
+                    ];
+
+                    if (this.isFetchingServerList || this.serverSoftwareFetchFailed) {
+                        return [];
+                    }
+
+                    if (!Array.isArray(this.serverListData) || this.serverListData.length === 0) {
+                        return fallbackOptions;
+                    }
+
+                    const seen = new Set();
+                    const options = [];
+
+                    for (const entry of this.serverListData) {
+                        if (!entry) continue;
+
+                        const rawValue = (entry.key || entry.id || entry.slug || entry.name || '').toString().trim();
+                        if (!rawValue) continue;
+
+                        const normalizedKey = rawValue.toLowerCase();
+                        if (seen.has(normalizedKey)) continue;
+                        seen.add(normalizedKey);
+
+                        const label = (entry.displayName || entry.label || entry.name || rawValue).toString().trim() || rawValue;
+                        options.push({ value: rawValue, label });
+                    }
+
+                    if (options.length === 0) {
+                        return fallbackOptions;
+                    }
+
+                    return options;
+                },
+
                 minecraftVersionPlaceholder() {
+                    if (this.serverSoftwareFetchFailed) {
+                        return 'リストの要求に失敗しました';
+                    }
+                    if (this.isFetchingServerList) {
+                        return 'ソフトウェアの選択待ち...';
+                    }
                     if (!this.serverForm.serverSoftware) {
                         return 'まずサーバーソフトウェアを選択してください';
                     }
@@ -249,6 +298,35 @@
 
                 closeUserMenu() {
                     this.userMenuOpen = false;
+                },
+
+                lockServerFormControls() {
+                    this.isFetchingServerList = true;
+                    this.serverSoftwareFetchFailed = false;
+                    this.serverSoftwarePlaceholder = 'サーバー問い合わせ中...';
+                    this.serverForm.serverSoftware = '';
+                    this.serverForm.minecraftVersion = '';
+                    this.serverForm.jdkVersion = '';
+                    this.availableVersions = [];
+                },
+
+                unlockServerFormControls() {
+                    this.isFetchingServerList = false;
+                    this.serverSoftwareFetchFailed = false;
+                    this.serverSoftwarePlaceholder = 'サーバーソフトウェアを選択してください';
+                },
+
+                handleServerListFetchError() {
+                    this.serverSoftwarePlaceholder = 'リストの要求に失敗しました';
+                    this.isFetchingServerList = false;
+                    this.serverSoftwareFetchFailed = true;
+                    this.serverListData = [];
+                    this.availableVersions = [];
+                    this.serverForm.minecraftVersion = '';
+                    this.serverForm.jdkVersion = '';
+                    if (this.activeTab === 'create') {
+                        this.showError('サーバーリストの取得に失敗しました');
+                    }
                 },
 
                 async checkAuth() {
@@ -398,24 +476,61 @@
                     }
                 },
 
-                async fetchServerList() {
+                async fetchServerList(options = {}) {
+                    const { lockUI = false } = options;
+
+                    if (lockUI) {
+                        this.lockServerFormControls();
+                    } else {
+                        this.isFetchingServerList = true;
+                        this.serverSoftwareFetchFailed = false;
+                    }
+
+                    let success = false;
+
                     try {
                         const response = await fetch(API_ENDPOINTS.list.servers);
                         const data = await response.json();
 
                         if (data.success && data.data) {
                             this.serverListData = data.data;
-                            // If server software is already selected, load its versions
+                            success = true;
+
                             if (this.serverForm.serverSoftware) {
                                 this.loadAvailableVersions(this.serverForm.serverSoftware);
                             }
                         } else {
                             console.error('Failed to fetch server list:', data);
+                            if (lockUI) {
+                                this.handleServerListFetchError();
+                            }
                         }
                     } catch (error) {
                         console.error('Error fetching server list:', error);
-                        // Don't show error to user, just log it
+                        if (lockUI) {
+                            this.handleServerListFetchError();
+                        }
+                    } finally {
+                        if (lockUI) {
+                            if (success) {
+                                this.unlockServerFormControls();
+                            }
+                        } else {
+                            this.isFetchingServerList = false;
+                        }
                     }
+
+                    return success;
+                },
+
+                prepareCreateTab() {
+                    if (this.editingServer) {
+                        return;
+                    }
+                    if (this.isFetchingServerList) {
+                        return;
+                    }
+                    this.fetchServerList({ lockUI: true });
                 },
 
                 loadAvailableVersions(serverSoftware) {
@@ -424,44 +539,44 @@
 
                     // Small delay to show loading state
                     setTimeout(() => {
-                        try {
-                            if (!this.serverListData || !serverSoftware) {
-                                return;
-                            }
-
-                            const normalizedTarget = serverSoftware.toString().toLowerCase();
-
-                            const serverData = this.serverListData.find((entry) => {
-                                if (!entry || typeof entry !== 'object') return false;
-
-                                const candidates = [
-                                    entry.name,
-                                    entry.id,
-                                    entry.slug,
-                                    entry.type,
-                                    entry.key,
-                                    entry.code,
-                                    entry.software
-                                ].filter(Boolean);
-
-                                return candidates.some((value) => {
-                                    if (typeof value !== 'string') return false;
-                                    const normalizedValue = value.toLowerCase();
-                                    if (normalizedValue === normalizedTarget) {
-                                        return true;
-                                    }
-
-                                    // fallback: ignore separators such as spaces, hyphens, underscores
-                                    const compactValue = normalizedValue.replace(/[\s_-]/g, '');
-                                    const compactTarget = normalizedTarget.replace(/[\s_-]/g, '');
-                                    return compactValue === compactTarget;
-                                });
-                            });
-
-                            this.availableVersions = serverData?.versions ?? [];
-                        } finally {
+                        if (!Array.isArray(this.serverListData) || this.serverListData.length === 0) {
                             this.loadingVersions = false;
+                            return;
                         }
+
+                        const normalizedSoftware = (serverSoftware || '').toString().trim().toLowerCase();
+                        const candidatesFor = (entry) => {
+                            return [entry.name, entry.id, entry.slug, entry.key]
+                                .filter(Boolean)
+                                .map(value => value.toString().trim().toLowerCase());
+                        };
+
+                        let serverData = this.serverListData.find((entry) => {
+                            if (!entry) return false;
+                            const candidates = candidatesFor(entry);
+                            return candidates.includes(normalizedSoftware);
+                        });
+
+                        if (!serverData) {
+                            serverData = this.serverListData.find((entry) => {
+                                if (!entry) return false;
+                                const candidates = candidatesFor(entry);
+                                return candidates.some(value => value.includes(normalizedSoftware));
+                            });
+                        }
+
+                        if (serverData && Array.isArray(serverData.versions)) {
+                            this.availableVersions = serverData.versions;
+                        } else {
+                            this.availableVersions = [];
+                        }
+
+                        if (!this.availableVersions.some(v => v.version === this.serverForm.minecraftVersion)) {
+                            this.serverForm.minecraftVersion = '';
+                            this.serverForm.jdkVersion = '';
+                        }
+
+                        this.loadingVersions = false;
                     }, 100);
                 },
 
@@ -647,6 +762,10 @@
                         this.resetForm();
                     }
                     this.activeTab = tabId;
+
+                    if (tabId === 'create' && !this.editingServer) {
+                        this.prepareCreateTab();
+                    }
                     // Close sidebar on mobile after selection
                     if (window.innerWidth < 1024) {
                         this.closeSidebar();
@@ -1130,12 +1249,20 @@
                                             <i class="fas fa-cogs"></i>
                                             サーバーソフトウェアを選択
                                         </label>
-                                        <select id="serverSoftware" v-model="serverForm.serverSoftware" required>
-                                            <option value="">ソフトウェアを選択してください</option>
-                                            <option value="vanilla">Vanilla (公式)</option>
-                                            <option value="forge">Forge (Mod)</option>
-                                            <option value="fabric">Fabric (軽量Mod)</option>
-                                            <option value="paper">Paper (推奨)</option>
+                                        <select 
+                                            id="serverSoftware" 
+                                            v-model="serverForm.serverSoftware" 
+                                            required
+                                            :disabled="isFetchingServerList || serverSoftwareFetchFailed"
+                                        >
+                                            <option value="">{{ serverSoftwarePlaceholder }}</option>
+                                            <option 
+                                                v-for="option in serverSoftwareOptions"
+                                                :key="option.value"
+                                                :value="option.value"
+                                            >
+                                                {{ option.label }}
+                                            </option>
                                         </select>
                                     </div>
                                 </div>
@@ -1149,7 +1276,7 @@
                                         <select 
                                             id="minecraftVersion" 
                                             v-model="serverForm.minecraftVersion" 
-                                            :disabled="!serverForm.serverSoftware || loadingVersions || availableVersions.length === 0"
+                                            :disabled="isFetchingServerList || serverSoftwareFetchFailed || !serverForm.serverSoftware || loadingVersions || availableVersions.length === 0"
                                             required
                                         >
                                             <option value="">{{ minecraftVersionPlaceholder }}</option>
@@ -1171,7 +1298,7 @@
                                             type="text" 
                                             id="jdkVersion" 
                                             v-model="serverForm.jdkVersion" 
-                                            disabled
+                                            :disabled="isFetchingServerList || serverSoftwareFetchFailed || !serverForm.minecraftVersion"
                                             :placeholder="serverForm.minecraftVersion ? '' : 'バージョン選択後に自動設定されます'"
                                             readonly
                                             style="background: var(--theme-bg); cursor: not-allowed;"
