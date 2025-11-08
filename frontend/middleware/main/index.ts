@@ -7,13 +7,15 @@ import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
-import { ApiRouter, AssetManagerRouter, DownloadWebsocket, JdkmanagerRoute, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
+import { ApiRouter, AssetManagerRouter, DownloadWebsocket, JdkmanagerRoute, MCmanagerRoute, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('main');
 import { JdkManager, JDKManagerAPP } from './lib/jdk-manager/src/Main';
 import path from 'path';
 import { SetupUserdata } from './lib/setup-dir';
+import { MCserverManagerAPP } from './lib/minecraft-server-manager/Main';
+import { userAgent } from 'next/server';
 
 
 //ダウンロードパス
@@ -84,8 +86,11 @@ async function main(port: number): Promise<void> {
 
     // 8. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
-
-    // 9. サーバーの起動
+    // 9.MCサーバーのセットアップ
+    const MCmanager = new MCserverManagerAPP(JDKmanager, DOWNLOAD_TEMP_PATH, UserDataPath.MCdatadir);
+    const MCrouter = new MCmanagerRoute(middlewareManager.authMiddleware, MCmanager, JDKmanager);
+    app.use('/api/mc', MCrouter.router);
+    // 10. サーバーの起動
     server.listen(port, '0.0.0.0', () => {
         const protocol = sslOptions ? 'https' : 'http';
         const wsProtocol = sslOptions ? 'wss' : 'ws';
@@ -115,6 +120,6 @@ async function main(port: number): Promise<void> {
 
 // サーバー起動
 main(DEFAULT_SERVER_PORT).catch((error) => {
-    log.error({ err: error }, "Failed to start server");
+    log.error(error, "Failed to start server");
     process.exit(1);
 });

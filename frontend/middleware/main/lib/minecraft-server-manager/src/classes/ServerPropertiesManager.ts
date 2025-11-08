@@ -42,13 +42,13 @@ export class ServerPropertiesManager {
     try {
       const content = this.serializeProperties(properties);
       await fs.writeFile(this.filePath, content, 'utf-8');
-      
-      this.logger.info('Created server.properties', {
+
+      this.logger.info({
         file: this.filePath,
         properties: Object.keys(properties)
-      });
+      }, 'Created server.properties');
     } catch (error) {
-      this.logger.error('Failed to create server.properties', error);
+      this.logger.error({ err: error }, 'Failed to create server.properties');
       throw error;
     }
   }
@@ -63,7 +63,7 @@ export class ServerPropertiesManager {
       const content = await fs.readFile(this.filePath, 'utf-8');
       return this.parseContent(content);
     } catch (error) {
-      this.logger.error('Failed to read server.properties', error);
+      this.logger.error({ err: error }, 'Failed to read server.properties');
       throw error;
     }
   }
@@ -79,16 +79,16 @@ export class ServerPropertiesManager {
       properties.forEach((value, key) => {
         obj[key] = value;
       });
-      
+
       const content = this.serializeProperties(obj);
       await fs.writeFile(this.filePath, content, 'utf-8');
-      
-      this.logger.info('Wrote server.properties', {
+
+      this.logger.info({
         file: this.filePath,
         count: properties.size
-      });
+      }, 'Wrote server.properties');
     } catch (error) {
-      this.logger.error('Failed to write server.properties', error);
+      this.logger.error({ err: error }, 'Failed to write server.properties');
       throw error;
     }
   }
@@ -113,9 +113,9 @@ export class ServerPropertiesManager {
 
     await this.write(properties);
 
-    this.logger.info(`Updated property: ${key}=${value}`, {
+    this.logger.info({
       file: this.filePath
-    });
+    }, `Updated property: ${key}=${value}`);
   }
 
   /**
@@ -139,10 +139,10 @@ export class ServerPropertiesManager {
 
     await this.write(properties);
 
-    this.logger.info('Updated multiple properties', {
+    this.logger.info({
       file: this.filePath,
       keys: Object.keys(updates)
-    });
+    }, 'Updated multiple properties');
   }
 
   /**

@@ -61,10 +61,10 @@ export class ServerInstanceWrapper extends EventEmitter {
       throw new Error(ServerManagerErrors.INSTANCE_RUNNING);
     }
 
-    this.logger.info('Starting server' + {
+    this.logger.info({
       uuid: this.data.uuid,
       name: this.data.name
-    });
+    }, 'Starting server');
 
     try {
       // JDK取得
@@ -97,7 +97,7 @@ export class ServerInstanceWrapper extends EventEmitter {
     } catch (error) {
       // エラー時はJDKロック解放
       this.releaseJdkLock();
-      this.logger.error('Failed to start server' + error);
+      this.logger.error({ err: error }, 'Failed to start server');
       throw error;
     }
   }
@@ -139,18 +139,18 @@ export class ServerInstanceWrapper extends EventEmitter {
    */
   public async stop(timeout: number = 30000): Promise<void> {
     if (!this.isRunning()) {
-      this.logger.warn('Server is not running' + {
+      this.logger.warn({
         uuid: this.data.uuid,
         name: this.data.name
-      });
+      }, 'Server is not running');
       return;
     }
 
-    this.logger.info('Stopping server' + {
+    this.logger.info({
       uuid: this.data.uuid,
       name: this.data.name,
       timeout
-    });
+    }, 'Stopping server');
 
     await this.executeStop(timeout);
   }
@@ -181,10 +181,10 @@ export class ServerInstanceWrapper extends EventEmitter {
    * サーバーを再起動
    */
   public async restart(timeout: number = 30000): Promise<void> {
-    this.logger.info('Restarting server' + {
+    this.logger.info({
       uuid: this.data.uuid,
       name: this.data.name
-    });
+    }, 'Restarting server');
 
     if (this.isRunning()) {
       await this.stop(timeout);
@@ -211,10 +211,10 @@ export class ServerInstanceWrapper extends EventEmitter {
    * サーバーを強制終了
    */
   public forceKill(): void {
-    this.logger.warn('Force killing server' + {
+    this.logger.warn({
       uuid: this.data.uuid,
       name: this.data.name
-    });
+    }, 'Force killing server');
 
     if (this.process) {
       this.process.kill();
@@ -286,11 +286,11 @@ export class ServerInstanceWrapper extends EventEmitter {
    * プロセス終了ハンドラー
    */
   private handleProcessExit(exitCode: number | null): void {
-    this.logger.info('Server process exited' + {
+    this.logger.info({
       uuid: this.data.uuid,
       name: this.data.name,
       exitCode
-    });
+    }, 'Server process exited');
 
     if (exitCode === 0) {
       // 正常終了
@@ -316,11 +316,11 @@ export class ServerInstanceWrapper extends EventEmitter {
    * プロセスエラーハンドラー
    */
   private handleProcessError(error: Error): void {
-    this.logger.error('Server process error' + {
+    this.logger.error({
       uuid: this.data.uuid,
       name: this.data.name,
       error
-    });
+    }, 'Server process error');
 
     this.data.status = 'crashed';
     this.cleanup();
@@ -341,19 +341,19 @@ export class ServerInstanceWrapper extends EventEmitter {
     this.runtimeState.consecutiveRestartCount++;
     this.runtimeState.lastRestartTime = Date.now();
 
-    this.logger.info('Attempting auto restart' + {
+    this.logger.info({
       uuid: this.data.uuid,
       name: this.data.name,
       count: this.runtimeState.consecutiveRestartCount,
       limit: this.data.autoRestart.maxConsecutiveRestarts
-    });
+    }, 'Attempting auto restart');
 
     // 上限チェック
     if (this.runtimeState.consecutiveRestartCount > this.data.autoRestart.maxConsecutiveRestarts) {
-      this.logger.warn('Auto restart limit reached' + {
+      this.logger.warn({
         uuid: this.data.uuid,
         name: this.data.name
-      });
+      }, 'Auto restart limit reached');
       this.reportEvent('autoRestartLimitReached');
       return;
     }
@@ -364,7 +364,7 @@ export class ServerInstanceWrapper extends EventEmitter {
       // ✅ 自動再起動成功を通知
       this.reportEvent('autoRestarted');
     } catch (error) {
-      this.logger.error('Auto restart failed' + error);
+      this.logger.error({ err: error }, 'Auto restart failed');
       // 再起動失敗はcrashedイベントとして扱う
       // （既にクラッシュは通知済みだが、再起動失敗も重要な情報）
     }
@@ -380,11 +380,11 @@ export class ServerInstanceWrapper extends EventEmitter {
 
     // 起動から指定時間後にリセット
     this.runtimeState.resetTimerId = setTimeout(() => {
-      this.logger.info('Resetting restart counter' + {
+      this.logger.info({
         uuid: this.data.uuid,
         name: this.data.name,
         previousCount: this.runtimeState.consecutiveRestartCount
-      });
+      }, 'Resetting restart counter');
       this.resetRestartCounter();
     }, resetThresholdSeconds * 1000);
   }
@@ -414,10 +414,10 @@ export class ServerInstanceWrapper extends EventEmitter {
     if (this.jdkLockId && this.jdkEntry) {
       const result = this.jdkEntry.unUseRuntime(this.jdkLockId);
       if (!result.success) {
-        this.logger.error('Failed to release JDK lock' + {
+        this.logger.error({
           lockId: this.jdkLockId,
           error: result.error
-        });
+        }, 'Failed to release JDK lock');
       }
       this.jdkLockId = null;
       this.jdkEntry = null;

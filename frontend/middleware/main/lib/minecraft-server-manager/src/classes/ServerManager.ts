@@ -4,10 +4,9 @@
  * Minecraftサーバー統合管理クラス
  * @version 1.0.0
  */
-
+import crypto from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import pino, { Logger } from 'pino';
 import type { JdkManager } from '../../../jdk-manager/src/lib/JdkManager';
 import { ServerValidator } from './ServerValidator';
@@ -110,11 +109,11 @@ export class ServerManager {
     // Wrapper生成
     manager.createWrappers();
 
-    manager.logger.info('ServerManager initialized', {
+    manager.logger.info({
       configPath,
       serversBasePath,
       instanceCount: manager.instances.size
-    });
+    }, 'ServerManager initialized');
 
     return manager;
   }
@@ -140,21 +139,21 @@ export class ServerManager {
 
       // バージョンチェック（警告のみ）
       if (parsed.configVersion !== DefaultValues.CONFIG_VERSION) {
-        this.logger.warn('Config version mismatch', {
+        this.logger.warn({
           expected: DefaultValues.CONFIG_VERSION,
           actual: parsed.configVersion
-        });
+        }, 'Config version mismatch');
       }
 
       // Zodバリデーション
       this.config = ServerManagerConfigSchema.parse(parsed);
 
-      this.logger.info('Configuration loaded', {
+      this.logger.info({
         version: this.config.configVersion,
         instances: this.config.instances.length
-      });
+      }, 'Configuration loaded');
     } catch (error) {
-      this.logger.error('Failed to load configuration', error);
+      this.logger.error({ err: error }, 'Failed to load configuration');
       throw new Error(`${ServerManagerErrors.CONFIG_LOAD_FAILED}: ${error}`);
     }
   }
@@ -170,11 +169,11 @@ export class ServerManager {
       const content = JSON.stringify(this.config, null, 2);
       await fs.writeFile(this.configPath, content, 'utf-8');
 
-      this.logger.debug('Configuration saved', {
+      this.logger.debug({
         path: this.configPath
-      });
+      }, 'Configuration saved');
     } catch (error) {
-      this.logger.error('Failed to save configuration', error);
+      this.logger.error({ err: error }, 'Failed to save configuration');
       throw new Error(`${ServerManagerErrors.CONFIG_SAVE_FAILED}: ${error}`);
     }
   }
@@ -200,7 +199,7 @@ export class ServerManager {
    * インスタンスイベントハンドラー
    */
   private handleInstanceEvent(event: InstanceEvent): void {
-    this.logger.info('Instance event', event);
+    this.logger.info({ event }, 'Instance event');
 
     if (!this.callbacks) return;
 
@@ -236,7 +235,7 @@ export class ServerManager {
    * インスタンスを追加
    */
   public async addInstance(params: AddInstanceParams): Promise<AddInstanceResult> {
-    this.logger.info('Adding instance', params);
+    this.logger.info({ params }, 'Adding instance');
 
     // バリデーション
     const validation = await this.validator.validateAddInstance(params);
@@ -251,7 +250,7 @@ export class ServerManager {
       });
     }
 
-    const uuid = uuidv4();
+    const uuid = crypto.randomUUID();
     const port = params.port || DefaultValues.PORT;
     const maxMemory = params.maxMemory || DefaultValues.MAX_MEMORY;
     const minMemory = params.minMemory || DefaultValues.MIN_MEMORY;
@@ -284,7 +283,7 @@ export class ServerManager {
           'server-port': port.toString()
         });
       } catch (error) {
-        this.logger.error('Failed to create server.properties', error);
+        this.logger.error({ err: error }, 'Failed to create server.properties');
 
         // ロールバック: ディレクトリごと削除
         await fs.rm(serverDir, { recursive: true, force: true });
@@ -339,12 +338,12 @@ export class ServerManager {
       );
       this.instances.set(uuid, wrapper);
 
-      this.logger.info('Instance added successfully', { uuid, name: params.name });
+      this.logger.info({ uuid, name: params.name }, 'Instance added successfully');
 
       return { success: true, uuid };
 
     } catch (error) {
-      this.logger.error('Failed to add instance', error);
+      this.logger.error({ err: error }, 'Failed to add instance');
       return {
         success: false,
         error: `Failed to add instance: ${error}`
@@ -372,7 +371,7 @@ export class ServerManager {
       await fs.rm(serverDir, { recursive: true, force: true });
       this.logger.info(`Deleted directory: ${serverDir}`);
     } catch (error) {
-      this.logger.error(`Failed to delete directory: ${serverDir}`, error);
+      this.logger.error({ err: error }, `Failed to delete directory: ${serverDir}`);
       return {
         success: false,
         error: `${ServerManagerErrors.DIRECTORY_DELETE_FAILED}: ${error}`
@@ -387,7 +386,7 @@ export class ServerManager {
     this.config.instances = this.config.instances.filter(inst => inst.uuid !== uuid);
     await this.saveConfig();
 
-    this.logger.info('Instance removed successfully', { uuid });
+    this.logger.info({ uuid }, 'Instance removed successfully');
 
     return { success: true, data: undefined };
   }
@@ -455,7 +454,7 @@ export class ServerManager {
           await propManager.updatePort(params.updates.port);
           this.logger.info(`Updated port to ${params.updates.port}`);
         } catch (error) {
-          this.logger.warn('Failed to update server.properties', error);
+          this.logger.warn({ err: error }, 'Failed to update server.properties');
           this.logger.warn('Port updated in registry, but server.properties update failed');
         }
 
@@ -492,12 +491,12 @@ export class ServerManager {
       }
       await this.saveConfig();
 
-      this.logger.info('Instance updated successfully', { uuid: params.uuid });
+      this.logger.info({ uuid: params.uuid }, 'Instance updated successfully');
 
       return { success: true, data: undefined };
 
     } catch (error) {
-      this.logger.error('Failed to update instance', error);
+      this.logger.error({ err: error }, 'Failed to update instance');
       return {
         success: false,
         error: `Failed to update instance: ${error}`
@@ -528,7 +527,7 @@ export class ServerManager {
 
       return { success: true, data: undefined };
     } catch (error) {
-      this.logger.error('Failed to start server', error);
+      this.logger.error({ err: error }, 'Failed to start server');
       return {
         success: false,
         error: `${ServerManagerErrors.PROCESS_START_FAILED}: ${error}`
@@ -558,7 +557,7 @@ export class ServerManager {
       // タイムアウトしても success: true を返す
       return { success: true, data: undefined };
     } catch (error) {
-      this.logger.error('Failed to stop server', error);
+      this.logger.error({ err: error }, 'Failed to stop server');
       return {
         success: false,
         error: `Failed to stop server: ${error}`
@@ -579,7 +578,7 @@ export class ServerManager {
       await wrapper.restart(timeout);
       return { success: true, data: undefined };
     } catch (error) {
-      this.logger.error('Failed to restart server', error);
+      this.logger.error({ err: error }, 'Failed to restart server');
       return {
         success: false,
         error: `Failed to restart server: ${error}`
@@ -593,12 +592,12 @@ export class ServerManager {
   public forceKillServer(uuid: string): void {
     const wrapper = this.instances.get(uuid);
     if (!wrapper) {
-      this.logger.warn('Instance not found for force kill', { uuid });
+      this.logger.warn({ uuid }, 'Instance not found for force kill');
       return;
     }
 
     wrapper.forceKill();
-    this.logger.info('Force kill requested', { uuid });
+    this.logger.info({ uuid }, 'Force kill requested');
   }
 
   /**
@@ -607,7 +606,7 @@ export class ServerManager {
   public sendCommand(uuid: string, command: string): void {
     const wrapper = this.instances.get(uuid);
     if (!wrapper) {
-      this.logger.warn('Instance not found for command', { uuid });
+      this.logger.warn({ uuid }, 'Instance not found for command');
       return;
     }
 
@@ -620,7 +619,7 @@ export class ServerManager {
   public openProcessStd(uuid: string, callbacks: ProcessStdCallbacks): void {
     const wrapper = this.instances.get(uuid);
     if (!wrapper) {
-      this.logger.warn('Instance not found for process std', { uuid });
+      this.logger.warn({ uuid }, 'Instance not found for process std');
       return;
     }
 
