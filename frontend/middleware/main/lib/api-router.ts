@@ -11,6 +11,10 @@ import { MiddlewareManager } from './middleware-manager';
 import { createModuleLogger } from './logger';
 import { JDKManagerAPP } from './jdk-manager/src/Main';
 import { t } from 'tar';
+import { clearScreenDown } from 'readline';
+import { MCserverManagerAPP } from './minecraft-server-manager/Main';
+import { th } from 'zod/v4/locales';
+import { threadCpuUsage } from 'process';
 
 const log = createModuleLogger('auth');
 /**
@@ -299,6 +303,24 @@ export class JdkmanagerRoute {
     }
 }
 
+export class MCmanagerRoute {
+    public readonly router: express.Router;
+    private app: MCserverManagerAPP;
+    private jdkapp: JDKManagerAPP;
+    constructor(private authMiddleware: express.RequestHandler, app: MCserverManagerAPP, jdk: JDKManagerAPP) {
+        this.router = express.Router();
+        this.app = app;
+        this.jdkapp = jdk;
+        this.setupRoute();
+    }
+    setupRoute() {
+        this.router.get("/list", this.authMiddleware, this.app.list);
+        this.router.post("/add", this.authMiddleware, this.app.addserver);
+        this.router.delete("/remove/:id", this.authMiddleware, this.app.del);
+        this.router.get("/run/:id", this.authMiddleware, this.app.runserver);
+        this.router.get("/stop/:id", this.authMiddleware, this.app.stopserver);
+    }
+}
 
 
 

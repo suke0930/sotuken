@@ -5,7 +5,7 @@
  */
 
 import * as path from 'path';
-
+import crypto from 'crypto';
 import {
   JdkInstance,
   RuntimeLock,

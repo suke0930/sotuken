@@ -76,12 +76,12 @@ export class ProcessExecutor {
     const args2 = args.filter(arg => arg !== '');
     const processArgs = [...args2, '-jar', jarPath, "--nogui"];//NOGUI埋め込み
 
-    this.logger.info('Starting process' + {
+    this.logger.info({
       javaPath,
       jarPath,
       args: processArgs,
       workingDir: this.workingDir
-    });
+    }, 'Starting process');
 
     try {
       // プロセス起動
@@ -98,7 +98,7 @@ export class ProcessExecutor {
       }
 
       this.isRunningFlag = true;
-      this.logger.info('Process started' + { pid: this.process.pid });
+      this.logger.info({ pid: this.process.pid }, 'Process started');
 
       // 標準入出力のセットアップ
       this.setupOutputHandlers();
@@ -107,7 +107,7 @@ export class ProcessExecutor {
       this.setupEventHandlers();
 
     } catch (error) {
-      this.logger.error('Failed to spawn process' + error);
+      this.logger.error({ err: error }, 'Failed to spawn process');
       throw error;
     }
   }
@@ -163,7 +163,7 @@ export class ProcessExecutor {
 
     // 終了イベント
     this.process.on('exit', (code: number | null) => {
-      this.logger.info('Process exited' + { exitCode: code });
+      this.logger.info({ exitCode: code }, 'Process exited');
 
       if (this.onExit) {
         this.onExit(code);
@@ -174,7 +174,7 @@ export class ProcessExecutor {
 
     // エラーイベント
     this.process.on('error', (error: Error) => {
-      this.logger.error('Process error' + error);
+      this.logger.error({ err: error }, 'Process error');
 
       if (this.onError) {
         this.onError(error);
@@ -196,7 +196,7 @@ export class ProcessExecutor {
       return true; // 既に停止している
     }
 
-    this.logger.info('Stopping process' + { timeout });
+    this.logger.info({ timeout }, 'Stopping process');
 
     // stopコマンド送信
     this.sendCommand('stop');
@@ -252,12 +252,12 @@ export class ProcessExecutor {
       return;
     }
 
-    this.logger.warn('Force killing process' + { pid: this.process.pid });
+    this.logger.warn({ pid: this.process.pid }, 'Force killing process');
 
     try {
       this.process.kill('SIGKILL');
     } catch (error) {
-      this.logger.error('Failed to kill process' + error);
+      this.logger.error({ err: error }, 'Failed to kill process');
     }
   }
 
@@ -284,7 +284,7 @@ export class ProcessExecutor {
     try {
       this.process.stdin.write(text);
     } catch (error) {
-      this.logger.error('Failed to send input' + error);
+      this.logger.error({ err: error }, 'Failed to send input');
     }
   }
 
