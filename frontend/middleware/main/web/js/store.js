@@ -50,17 +50,40 @@ export function createStore() {
                     serverName: '',
                     minecraftVersion: '',
                     serverSoftware: '',
-                    jdkVersion: ''
+                    jdkVersion: '',
+                    note: '',
+                    port: 25565,
+                    maxMemory: 1024,
+                    minMemory: 512
                 },
                 serverSoftwarePlaceholder: 'サーバーソフトウェアを選択してください',
                 isFetchingServerList: false,
                 serverSoftwareFetchFailed: false,
                 formSubmitting: false,
+                usedPorts: [],
+                portWarning: '',
+                jdkInstalled: false,
+                jdkCheckLoading: false,
 
                 // Step-by-step form data
                 serverListData: null,
                 availableVersions: [],
                 loadingVersions: false,
+                jdkListData: null,
+
+                // Server creation workflow
+                creationModal: {
+                    visible: false,
+                    step: '',
+                    status: 'running', // 'running', 'success', 'error'
+                    message: '',
+                    logs: [],
+                    operations: [],
+                    currentOperation: null,
+                    progress: 0,
+                    canClose: false,
+                    error: null
+                },
 
                 // API Test
                 apiResponse: 'APIテストボタンをクリックしてください...',
@@ -146,6 +169,27 @@ export function createStore() {
                     return 'バージョンが見つかりません';
                 }
                 return 'バージョンを選択してください';
+            },
+
+            isFormValid() {
+                const form = this.serverForm;
+                const hasRequiredFields = form.serverName &&
+                                         form.minecraftVersion &&
+                                         form.serverSoftware &&
+                                         form.jdkVersion &&
+                                         form.port;
+                const noWarnings = !this.portWarning;
+                const notLoading = !this.formSubmitting && !this.isFetchingServerList;
+
+                return hasRequiredFields && noWarnings && notLoading;
+            },
+
+            requiredJdkVersion() {
+                if (this.serverForm.jdkVersion) {
+                    const match = this.serverForm.jdkVersion.match(/\d+/);
+                    return match ? parseInt(match[0]) : null;
+                }
+                return null;
             }
         },
 
@@ -180,6 +224,16 @@ export function createStore() {
                 // When serverListData loads, if software is already selected, load its versions
                 if (newValue && this.serverForm.serverSoftware) {
                     this.loadAvailableVersions(this.serverForm.serverSoftware);
+                }
+            },
+
+            'serverForm.port'(newValue) {
+                this.checkPortAvailability(newValue);
+            },
+
+            requiredJdkVersion(newValue) {
+                if (newValue) {
+                    this.checkJdkInstalled(newValue);
                 }
             }
         }
