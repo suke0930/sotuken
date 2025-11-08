@@ -131,10 +131,7 @@
             computed: {
                 serverSoftwareOptions() {
                     const fallbackOptions = [
-                        { value: 'vanilla', label: 'Vanilla (公式)' },
-                        { value: 'forge', label: 'Forge (Mod)' },
-                        { value: 'fabric', label: 'Fabric (軽量Mod)' },
-                        { value: 'paper', label: 'Paper (推奨)' }
+                        { value: 'vanilla', label: 'サーバーリストの要求に失敗しました' },
                     ];
 
                     if (this.isFetchingServerList || this.serverSoftwareFetchFailed) {
