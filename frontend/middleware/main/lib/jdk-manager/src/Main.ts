@@ -125,6 +125,7 @@ export class JDKManagerAPP {
         try {
             const list = await this.app.Entrys.add({ archivePath: DOWNLOAD_TEMP_PATH + req.body.archivePath, majorVersion: req.body.majorVersion });
             res.json(list);
+            await this.app.Data.save();
         } catch (error) {
             console.log(error);
             res.json({ ok: false, error });
@@ -137,6 +138,7 @@ export class JDKManagerAPP {
         try {
             const list = await this.app.Entrys.remove(req.params.id);
             res.json(list);
+            await this.app.Data.save();
         } catch (error) {
             console.log(error);
             res.json({ ok: false, error });
