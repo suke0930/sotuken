@@ -320,6 +320,7 @@ export class MCmanagerRoute {
         this.router.get("/run/:id", this.authMiddleware, this.app.runserver);
         this.router.get("/stop/:id", this.authMiddleware, this.app.stopserver);
         this.router.post("/command/:id", this.authMiddleware, this.app.sendcommand);
+        this.router.put("/update/:id", this.authMiddleware, this.app.update);
     }
 }
 
@@ -350,6 +351,3 @@ export class MCServerWebSocket {
         this.mcApp.setWebSocketManager(wsManager);
     }
 }
-
-
-

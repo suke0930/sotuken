@@ -4,6 +4,7 @@ import { JdkManager, JDKManagerAPP } from "../jdk-manager/src/Main"
 import { ProcessStdCallbacks, ServerManager } from "./src";
 import express from "express";
 import { MCServerWebSocketManager } from "./src/websocket/MCServerWebSocketManager";
+import { boolean } from "zod";
 
 export class MCserverManagerAPP {
     private jdkmanager: JdkManager
@@ -205,7 +206,7 @@ export class MCserverManagerAPP {
                     this.wsManager?.sendStdout(req.params.id!, data);
                 }
             };
-            
+
             try {
                 await this.servermanager.openProcessStd(req.params.id, listencallback);
                 this.watchinglist.set(req.params.id, listencallback);
@@ -247,6 +248,40 @@ export class MCserverManagerAPP {
             return;
         } catch (error) {
             res.json({ ok: false, error: error });
+        }
+    }
+    /**
+     * サーバーインスタンスの情報を更新します。
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+    public update: express.RequestHandler = async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { updates } = req.body;
+
+            if (!id) {
+                return res.status(400).json({ ok: false, message: "サーバーIDが指定されていません。" });
+            }
+            if (!req.body) {
+                return res.status(400).json({ ok: false, message: "Bodyがありません" });
+            }
+            if (!updates || typeof updates !== 'object' || Object.keys(updates).length === 0) {
+                return res.status(400).json({ ok: false, message: "更新内容が指定されていないか、形式が正しくありません。" });
+            }
+            const result = await this.servermanager.updateInstance({
+                uuid: id,
+                updates: updates
+            });
+
+            if (result.success) {
+                return res.json({ ok: true });
+            } else {
+                return res.status(400).json({ ok: false, error: result.error });
+            }
+        } catch (error: any) {
+            return res.status(500).json({ ok: false, error: error.message || "サーバー内部でエラーが発生しました。" });
         }
     }
 }
