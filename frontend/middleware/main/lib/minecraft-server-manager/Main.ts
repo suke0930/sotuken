@@ -3,31 +3,60 @@ import path from "path";
 import { JdkManager, JDKManagerAPP } from "../jdk-manager/src/Main"
 import { ProcessStdCallbacks, ServerManager } from "./src";
 import express from "express";
+import { MCServerWebSocketManager } from "./src/websocket/MCServerWebSocketManager";
+
 export class MCserverManagerAPP {
     private jdkmanager: JdkManager
     private servermanager!: ServerManager
     private watchinglist: Map<string, ProcessStdCallbacks>
     private download_dir: string;
+    private wsManager?: MCServerWebSocketManager;
+
     constructor(jdkmanager: JDKManagerAPP, DownloadPath: string, mcdatadir: string) {
         this.jdkmanager = jdkmanager.app;
         this.setup(mcdatadir);
         this.download_dir = DownloadPath;
         this.watchinglist = new Map<string, ProcessStdCallbacks>();
     }
+
+    /**
+     * WebSocketマネージャーを設定
+     */
+    public setWebSocketManager(manager: MCServerWebSocketManager): void {
+        this.wsManager = manager;
+    }
+
     async setup(mcdatadir: string) {
+        const self = this; // thisをキャプチャ
         this.servermanager = await ServerManager.initialize(path.join(mcdatadir, "server.json"), path.join(mcdatadir + "/serv/"), path.join(mcdatadir, "log.json"), this.jdkmanager,
             {
-                onServerStopped: (uuid) => {
-                    console.log(`Server with UUID ${uuid} has stopped.`);
+                onServerStopped: (uuid, exitCode) => {
+                    console.log(`Server with UUID ${uuid} has stopped with exit code ${exitCode}.`);
+                    self.wsManager?.notifyServerStopped(uuid, exitCode);
                 },
                 onServerCrashed: (uuid, crashReport) => {
                     console.log(`Server with UUID ${uuid} has crashed. Crash report: ${crashReport}`);
+                    self.wsManager?.notifyServerCrashed(uuid, crashReport);
                 },
                 onServerStarted: (uuid) => {
                     console.log(`Server with UUID ${uuid} has started.`);
+                    self.wsManager?.notifyServerStarted(uuid);
                 },
                 onAutoRestarted(uuid, consecutiveCount) {
                     console.log(`Server with UUID ${uuid} has been auto-restarted. Consecutive restart count: ${consecutiveCount}`);
+                    self.wsManager?.notifyAutoRestarted(uuid, consecutiveCount);
+                },
+                onAutoRestartLimitReached(uuid) {
+                    console.log(`Server with UUID ${uuid} has reached auto-restart limit.`);
+                    self.wsManager?.notifyAutoRestartLimitReached(uuid);
+                },
+                onStopTimeout(uuid, message) {
+                    console.log(`Server with UUID ${uuid} stop timeout: ${message}`);
+                    self.wsManager?.notifyStopTimeout(uuid, message);
+                },
+                onForcedKill(uuid) {
+                    console.log(`Server with UUID ${uuid} was forcefully killed.`);
+                    self.wsManager?.notifyForcedKill(uuid);
                 },
             });
     }
@@ -161,18 +190,22 @@ export class MCserverManagerAPP {
             if (!req.params.id) { res.json({ ok: false, message: "IDがありません" }); return; }
             const trydel = await this.servermanager.startServer(req.params.id);
             if (!trydel.success) {
-
                 res.json({ ok: false, error: trydel.error });
                 return;
             }
+
+            // WebSocketマネージャー経由で標準出力/エラー出力を配信
             const listencallback: ProcessStdCallbacks = {
                 onStderr: (data: string) => {
-                    console.log("stdout:" + data);
+                    console.log("stderr:" + data);
+                    this.wsManager?.sendStderr(req.params.id!, data);
                 },
                 onStdout: (data: string) => {
-                    console.log("stderr:" + data);
+                    console.log("stdout:" + data);
+                    this.wsManager?.sendStdout(req.params.id!, data);
                 }
             };
+            
             try {
                 await this.servermanager.openProcessStd(req.params.id, listencallback);
                 this.watchinglist.set(req.params.id, listencallback);

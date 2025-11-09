@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import express from 'express';
 import { DownloadTask } from '../lib/DownloadTask';
-import { WebSocketManager } from '../lib/WebSocketManager';
+import { DownloadWebSocketManager } from '../lib/DownloadWebSocketManager';
 import { ApiResponse } from '../types';
 import * as path from 'path';
 import expressWs from 'express-ws';
@@ -13,7 +13,7 @@ const log = createModuleLogger('asset:download');
 let DOWNLOAD_DIR = "";//あとで定数化するゔぇ
 
 // WebSocketマネージャー（後で注入される）
-let wsManager: WebSocketManager | null = null;
+let wsManager: DownloadWebSocketManager | null = null;
 
 // アクティブなダウンロードタスク管理
 const activeTasks = new Map<string, DownloadTask>();
@@ -21,7 +21,7 @@ const activeTasks = new Map<string, DownloadTask>();
 /**
  * WebSocketマネージャーを設定
  */
-export function setWebSocketManager(manager: WebSocketManager, download_dir: string): void {
+export function setWebSocketManager(manager: DownloadWebSocketManager, download_dir: string): void {
   DOWNLOAD_DIR = download_dir;
   wsManager = manager;
 }

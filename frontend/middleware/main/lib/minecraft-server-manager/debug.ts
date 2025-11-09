@@ -1,6 +1,6 @@
 
 import path from "path";
-import { JdkManager } from "../jdk-manager/src";
+import { JdkManager } from "../jdk-manager/src/lib/JdkManager";
 import { ServerManager } from "./src";
 import express from 'express';
 
