@@ -603,15 +603,15 @@ export function createServerMethods() {
         },
 
         async deleteServer(server) {
-            const confirmMessage = `本当に "${server.serverName}" を削除しますか?\n\nこの操作は取り消せません。\n- サーバー名: ${server.serverName}\n- バージョン: ${server.minecraftVersion}\n- ソフトウェア: ${server.serverSoftware}`;
+            const confirmMessage = `本当に "${server.name}" を削除しますか?\n\nこの操作は取り消せません。\n- サーバー名: ${server.name}\n- バージョン: ${server.software.version}\n- ソフトウェア: ${server.software.name}`;
 
             if (!confirm(confirmMessage)) return;
 
             try {
-                const data = await apiDelete(API_ENDPOINTS.server.delete(server.id));
+                const data = await apiDelete(API_ENDPOINTS.server.delete(server.uuid));
 
                 if (data.ok) {
-                    this.showSuccess(`🗑️ "${server.serverName}" を削除しました。`);
+                    this.showSuccess(`🗑️ "${server.name}" を削除しました。`);
                     await this.loadServers();
                 } else {
                     this.showError(data.message || 'サーバーの削除に失敗しました');
