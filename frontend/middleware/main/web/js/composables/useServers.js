@@ -55,6 +55,40 @@ export function createServerMethods() {
             this.portWarning = '';
         },
 
+        checkServerNameAvailability(name) {
+            const serverName = (name || '').toString().trim();
+            
+            // Check if server name is empty
+            if (!serverName) {
+                return true;  // Allow empty (required validation handles this)
+            }
+            
+            // Skip check if editing an existing server
+            if (this.editingServer) {
+                return true;
+            }
+            
+            // Check if name already exists (case-insensitive)
+            const existingServer = this.servers.find(server => 
+                server.name.toLowerCase() === serverName.toLowerCase()
+            );
+            
+            if (existingServer) {
+                // Store the duplicate name and show modal
+                this.duplicateServerName = serverName;
+                this.showDuplicateNameModal = true;
+                return false;
+            }
+            
+            return true;
+        },
+
+        closeDuplicateNameModal() {
+            this.showDuplicateNameModal = false;
+            this.duplicateServerName = '';
+            // Don't clear the field - let user edit the existing name
+        },
+
         findAvailablePort() {
             let port = 25565;
             while (this.usedPorts.includes(port) || port < 1024) {
@@ -636,6 +670,8 @@ export function createServerMethods() {
             this.availableVersions = [];
             this.portWarning = '';
             this.jdkInstalled = false;
+            this.showDuplicateNameModal = false;
+            this.duplicateServerName = '';
         },
 
         lockServerFormControls() {

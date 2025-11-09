@@ -117,3 +117,23 @@
         width: 100%;
     }
 }
+
+/* Server Card Style Modal */
+.modal-content.server-card-style {
+    background: var(--theme-bg) !important;
+    border: 1px solid var(--theme-border);
+    border-radius: 16px !important;
+    padding: 0 !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 
+                0 10px 10px -5px rgba(0, 0, 0, 0.3),
+                0 0 0 1px rgba(85, 98, 255, 0.1) !important;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.modal-content.server-card-style:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 24px 30px -5px rgba(0, 0, 0, 0.5), 
+                0 12px 12px -5px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(85, 98, 255, 0.2) !important;
+}

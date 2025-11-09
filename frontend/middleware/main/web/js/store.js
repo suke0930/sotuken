@@ -114,7 +114,11 @@ export function createStore() {
                 installedJdks: [],
                 jdkManagementLoading: false,
                 jdkToDelete: null,
-                showDeleteJdkModal: false
+                showDeleteJdkModal: false,
+
+                // Duplicate Server Name Warning
+                showDuplicateNameModal: false,
+                duplicateServerName: ''
             };
         },
 
@@ -188,7 +192,12 @@ export function createStore() {
                 const noWarnings = !this.portWarning;
                 const notLoading = !this.formSubmitting && !this.isFetchingServerList;
 
-                return hasRequiredFields && noWarnings && notLoading;
+                // Check for duplicate name (skip if editing)
+                const noDuplicateName = this.editingServer || !this.servers.some(server => 
+                    server.name.toLowerCase() === (form.serverName || '').toString().trim().toLowerCase()
+                );
+
+                return hasRequiredFields && noWarnings && notLoading && noDuplicateName;
             },
 
             requiredJdkVersion() {
