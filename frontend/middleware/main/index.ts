@@ -15,7 +15,6 @@ import { JdkManager, JDKManagerAPP } from './lib/jdk-manager/src/Main';
 import path from 'path';
 import { SetupUserdata } from './lib/setup-dir';
 import { MCserverManagerAPP } from './lib/minecraft-server-manager/Main';
-import { userAgent } from 'next/server';
 
 
 //ダウンロードパス
