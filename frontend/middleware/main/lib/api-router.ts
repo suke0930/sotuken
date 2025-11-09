@@ -5,7 +5,7 @@ import { MinecraftServerManager } from './minecraft-server-manager';
 import { SESSION_NAME } from './constants';
 import { AssetServerAPP, } from './Asset_handler/src/app';
 import expressWs from 'express-ws';
-import { WebSocketManager } from './Asset_handler/src/lib/WebSocketManager';
+import { DownloadWebSocketManager } from './Asset_handler/src/lib/DownloadWebSocketManager';
 import { setWebSocketManager } from './Asset_handler/src/controllers/downloadController';
 import { MiddlewareManager } from './middleware-manager';
 import { createModuleLogger } from './logger';
@@ -278,7 +278,7 @@ export class DownloadWebsocket {
     }
 
     private configureRoutes() {
-        const WsManager = new WebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
+        const WsManager = new DownloadWebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
         setWebSocketManager(WsManager, this.download_dir);
     }
 }
@@ -320,6 +320,34 @@ export class MCmanagerRoute {
         this.router.get("/run/:id", this.authMiddleware, this.app.runserver);
         this.router.get("/stop/:id", this.authMiddleware, this.app.stopserver);
         this.router.post("/command/:id", this.authMiddleware, this.app.sendcommand);
+    }
+}
+
+/**
+ * Minecraft Server WebSocket管理クラス
+ * サーバーの標準出力/エラー出力、サーバーイベントをWebSocketでリアルタイム配信
+ */
+export class MCServerWebSocket {
+    public readonly router: express.Router;
+    private wsServer: expressWs.Instance;
+    private basepath: string;
+    private middlewareManager: MiddlewareManager;
+    private mcApp: MCserverManagerAPP;
+
+    constructor(middlewareManager: MiddlewareManager, wsInstance: expressWs.Instance, basepath: string, mcApp: MCserverManagerAPP) {
+        this.basepath = basepath;
+        this.router = express.Router();
+        this.wsServer = wsInstance;
+        this.middlewareManager = middlewareManager;
+        this.mcApp = mcApp;
+        createModuleLogger('mcserver-websocket').info('MCServerWebSocket initialized');
+        this.configureRoutes();
+    }
+
+    private configureRoutes() {
+        const { MCServerWebSocketManager } = require('./minecraft-server-manager/src/websocket/MCServerWebSocketManager');
+        const wsManager = new MCServerWebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
+        this.mcApp.setWebSocketManager(wsManager);
     }
 }
 

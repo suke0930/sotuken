@@ -7,7 +7,7 @@ import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
-import { ApiRouter, AssetManagerRouter, DownloadWebsocket, JdkmanagerRoute, MCmanagerRoute, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
+import { ApiRouter, AssetManagerRouter, DownloadWebsocket, JdkmanagerRoute, MCmanagerRoute, MCServerWebSocket, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
 import { createModuleLogger } from './lib/logger';
 const log = createModuleLogger('main');
@@ -89,6 +89,9 @@ async function main(port: number): Promise<void> {
     const MCmanager = new MCserverManagerAPP(JDKmanager, DOWNLOAD_TEMP_PATH, UserDataPath.MCdatadir);
     const MCrouter = new MCmanagerRoute(middlewareManager.authMiddleware, MCmanager, JDKmanager);
     app.use('/api/mc', MCrouter.router);
+
+    // 9.1 MCServer WebSocketマネージャーのセットアップ
+    new MCServerWebSocket(middlewareManager, wsInstance, "/ws/mcserver", MCmanager);
     // 10. サーバーの起動
     server.listen(port, '0.0.0.0', () => {
         const protocol = sslOptions ? 'https' : 'http';
@@ -101,7 +104,8 @@ async function main(port: number): Promise<void> {
             endpoints: {
                 main: `${protocol}://127.0.0.1:${port}/`,
                 sampleApi: `${protocol}://127.0.0.1:${port}/api/sample/public-info`,
-                webSocket: `${wsProtocol}://127.0.0.1:${port}/ws`
+                downloadWebSocket: `${wsProtocol}://127.0.0.1:${port}/ws`,
+                mcServerWebSocket: `${wsProtocol}://127.0.0.1:${port}/ws/mcserver`
             },
             sessionSecret: SESSION_SECRET.substring(0, 10) + '...',
             environment: process.env.NODE_ENV || 'development',
