@@ -6,6 +6,7 @@ import { createServerMethods } from './composables/useServers.js';
 import { createDownloadMethods } from './composables/useDownloads.js';
 import { createWebSocketMethods } from './composables/useWebSocket.js';
 import { createUIMethods } from './composables/useUI.js';
+import { createJdkManagementMethods } from './composables/useJdkManagement.js';
 import { appTemplate } from './components/templates.js';
 
 const { createApp } = Vue;
@@ -49,7 +50,8 @@ createApp({
         ...createServerMethods(),
         ...createDownloadMethods(),
         ...createWebSocketMethods(),
-        ...createUIMethods()
+        ...createUIMethods(),
+        ...createJdkManagementMethods()
     },
 
     template: appTemplate

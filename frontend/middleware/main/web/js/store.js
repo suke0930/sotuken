@@ -32,6 +32,7 @@ export function createStore() {
                 sidebarMenu: [
                     { id: 'servers', label: 'サーバー一覧', icon: 'fas fa-server' },
                     { id: 'create', label: '新規作成', icon: 'fas fa-plus-circle' },
+                    { id: 'jdk-management', label: 'JDK管理', icon: 'fas fa-coffee' },
                     { id: 'settings', label: 'システム設定', icon: 'fas fa-cogs' },
                     { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' },
                     { id: 'about', label: 'About Us', icon: 'fas fa-info-circle' },
@@ -107,7 +108,13 @@ export function createStore() {
                     totalMB: 0,
                     speed: 0,
                     status: ''
-                }
+                },
+
+                // JDK Management
+                installedJdks: [],
+                jdkManagementLoading: false,
+                jdkToDelete: null,
+                showDeleteJdkModal: false
             };
         },
 

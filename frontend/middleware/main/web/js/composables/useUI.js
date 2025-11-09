@@ -38,6 +38,8 @@ export function createUIMethods() {
 
             if (tabId === 'create' && !this.editingServer) {
                 this.prepareCreateTab();
+            } else if (tabId === 'jdk-management') {
+                this.loadInstalledJdks();
             }
             // Close sidebar on mobile after selection
             if (window.innerWidth < 1024) {
