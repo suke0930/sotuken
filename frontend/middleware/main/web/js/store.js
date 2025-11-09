@@ -86,6 +86,23 @@ export function createStore() {
                     error: null
                 },
 
+                // Server update workflow
+                updateModal: {
+                    visible: false,
+                    step: 'select', // 'select', 'progress', 'complete', 'error'
+                    server: null,
+                    newSoftware: '',
+                    newVersion: '',
+                    availableVersions: [],
+                    requiredJdk: null,
+                    newJdkRequired: false,
+                    jdkInstalled: false,
+                    createBackup: true,
+                    operations: [],
+                    logs: [],
+                    error: null
+                },
+
                 // API Test
                 apiResponse: 'APIテストボタンをクリックしてください...',
 
