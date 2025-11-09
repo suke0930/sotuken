@@ -2,13 +2,7 @@
 import path from "path";
 import { JdkManager, JDKManagerAPP } from "../jdk-manager/src/Main"
 import { ProcessStdCallbacks, ServerManager } from "./src";
-import { da, fa, th, tr } from "zod/v4/locales";
 import express from "express";
-import { error } from "console";
-import { r } from "tar";
-import { promises } from "dns";
-import { StreamEntry } from "pino";
-import { StackFrame } from "next/dist/build/swc/generated-native";
 export class MCserverManagerAPP {
     private jdkmanager: JdkManager
     private servermanager!: ServerManager
