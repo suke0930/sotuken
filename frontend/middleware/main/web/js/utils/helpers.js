@@ -10,14 +10,26 @@ export function formatDate(dateString) {
 }
 
 /**
- * Format seconds to Japanese time format (分 秒)
+ * Format seconds to Japanese time format (時間 分 秒)
  * @param {number} seconds - Time in seconds
  * @returns {string} Formatted time string
  */
 export function formatTime(seconds) {
-    const min = Math.floor(seconds / 60);
+    if (seconds < 0 || !isFinite(seconds)) {
+        return '--';
+    }
+    
+    const hours = Math.floor(seconds / 3600);
+    const min = Math.floor((seconds % 3600) / 60);
     const sec = Math.floor(seconds % 60);
-    return `${min}分 ${sec}秒`;
+    
+    if (hours > 0) {
+        return `${hours}時間 ${min}分`;
+    } else if (min > 0) {
+        return `${min}分 ${sec}秒`;
+    } else {
+        return `${sec}秒`;
+    }
 }
 
 /**
