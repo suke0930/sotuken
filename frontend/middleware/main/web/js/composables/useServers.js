@@ -349,6 +349,14 @@ export function createServerMethods() {
                 message,
                 type
             });
+            
+            // Auto-scroll to bottom after Vue updates the DOM
+            this.$nextTick(() => {
+                const logsContainer = this.$refs.creationLogsContainer;
+                if (logsContainer) {
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+            });
         },
 
         closeCreationModal() {
