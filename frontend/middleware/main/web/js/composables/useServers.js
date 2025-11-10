@@ -517,17 +517,30 @@ export function createServerMethods() {
                     reject(new Error('ダウンロードがタイムアウトしました'));
                 }, 300000); // 5 minutes timeout
 
+                let lastProgress = 0;
+
                 const checkCompletion = (message) => {
                     if (message.type === 'download_complete' && message.data?.filename === filename) {
                         clearTimeout(timeout);
+                        // Update log one more time with 100%
+                        this.addLog(`✓ ダウンロード完了: ${filename}`, 'success');
                         resolve();
                     } else if (message.type === 'download_error' && message.data?.filename === filename) {
                         clearTimeout(timeout);
+                        this.addLog(`✗ ダウンロードエラー: ${message.data?.error}`, 'error');
                         reject(new Error(message.data?.error || 'ダウンロードエラー'));
                     } else if (message.type === 'download_progress' && message.data?.filename === filename) {
                         // Update progress log
                         const progress = Math.floor(message.data.percentage || 0);
-                        this.addLog(`ダウンロード中: ${progress}% (${filename})`, 'info');
+                        const downloadedMB = (message.data.downloadedBytes / (1024 * 1024)).toFixed(2);
+                        const totalMB = (message.data.totalBytes / (1024 * 1024)).toFixed(2);
+                        const speedKB = ((message.data.speed || 0) / 1024).toFixed(2);
+
+                        // Only log every 10% to reduce spam
+                        if (progress - lastProgress >= 10 || progress === 100) {
+                            this.addLog(`⬇ ${progress}% - ${downloadedMB}MB / ${totalMB}MB (${speedKB} KB/s)`, 'info');
+                            lastProgress = progress;
+                        }
                     }
                 };
 
@@ -745,257 +758,112 @@ export function createServerMethods() {
         openUpdateModal(server) {
             this.updateModal = {
                 visible: true,
-                step: 'select',
+                step: 'edit',
                 server: server,
-                newSoftware: server.software.name,
-                newVersion: '',
-                availableVersions: [],
-                requiredJdk: null,
-                newJdkRequired: false,
-                jdkInstalled: false,
-                createBackup: true,
-                operations: [],
-                logs: [],
+                form: {
+                    name: server.name,
+                    note: server.note || '',
+                    port: server.launchConfig.port,
+                    maxMemory: server.launchConfig.maxMemory,
+                    minMemory: server.launchConfig.minMemory,
+                    jvmArguments: server.launchConfig.jvmArguments?.join(' ') || '',
+                    serverArguments: server.launchConfig.serverArguments?.join(' ') || '',
+                    autoRestart: server.autoRestart?.enabled || false,
+                    maxConsecutiveRestarts: server.autoRestart?.maxConsecutiveRestarts || 3,
+                    resetThresholdSeconds: server.autoRestart?.resetThresholdSeconds || 600
+                },
                 error: null
             };
-            
-            // Load available versions for current software
-            this.loadUpdateVersions();
         },
 
-        async loadUpdateVersions() {
-            if (!this.serverListData) {
-                await this.fetchServerList();
-            }
-            
-            const software = this.serverListData.find(s =>
-                s.name.toLowerCase() === this.updateModal.newSoftware.toLowerCase()
-            );
-            
-            if (software && software.versions) {
-                this.updateModal.availableVersions = software.versions;
-            }
-        },
+        async submitServerUpdate() {
+            this.updateModal.error = null;
 
-        async checkUpdateJdk() {
-            if (!this.updateModal.newVersion) return;
-            
-            const versionData = this.updateModal.availableVersions.find(
-                v => v.version === this.updateModal.newVersion
-            );
-            
-            if (versionData && versionData.jdkVersion) {
-                this.updateModal.requiredJdk = versionData.jdkVersion;
-                
-                // Check if current JDK matches
-                const currentJdk = this.updateModal.server.launchConfig.jdkVersion;
-                this.updateModal.newJdkRequired = currentJdk !== versionData.jdkVersion;
-                
-                if (this.updateModal.newJdkRequired) {
-                    // Check if required JDK is installed
-                    const jdkCheck = await this.checkJdkInstalledForCreation(versionData.jdkVersion);
-                    this.updateModal.jdkInstalled = jdkCheck;
-                }
-            }
-        },
-
-        async startUpdate() {
-            this.updateModal.step = 'progress';
-            this.updateModal.operations = this.prepareUpdateOperations();
-            this.updateModal.logs = [];
-            
             try {
-                await this.executeServerUpdate();
-                this.updateModal.step = 'complete';
+                const server = this.updateModal.server;
+                const form = this.updateModal.form;
+
+                // Build payload with only changed fields
+                const payload = {};
+
+                if (form.name !== server.name) {
+                    payload.name = form.name;
+                }
+
+                if (form.note !== (server.note || '')) {
+                    payload.note = form.note;
+                }
+
+                if (form.port !== server.launchConfig.port) {
+                    payload.port = form.port;
+                }
+
+                if (form.maxMemory !== server.launchConfig.maxMemory) {
+                    payload.maxMemory = form.maxMemory;
+                }
+
+                if (form.minMemory !== server.launchConfig.minMemory) {
+                    payload.minMemory = form.minMemory;
+                }
+
+                // JVM Arguments
+                const currentJvmArgs = server.launchConfig.jvmArguments?.join(' ') || '';
+                if (form.jvmArguments !== currentJvmArgs) {
+                    payload.jvmArguments = form.jvmArguments.trim().split(/\s+/).filter(Boolean);
+                }
+
+                // Server Arguments
+                const currentServerArgs = server.launchConfig.serverArguments?.join(' ') || '';
+                if (form.serverArguments !== currentServerArgs) {
+                    payload.serverArguments = form.serverArguments.trim().split(/\s+/).filter(Boolean);
+                }
+
+                // Auto Restart
+                const autoRestartChanged =
+                    form.autoRestart !== (server.autoRestart?.enabled || false) ||
+                    form.maxConsecutiveRestarts !== (server.autoRestart?.maxConsecutiveRestarts || 3) ||
+                    form.resetThresholdSeconds !== (server.autoRestart?.resetThresholdSeconds || 600);
+
+                if (autoRestartChanged) {
+                    payload.autoRestart = {
+                        enabled: form.autoRestart,
+                        maxConsecutiveRestarts: form.maxConsecutiveRestarts,
+                        resetThresholdSeconds: form.resetThresholdSeconds
+                    };
+                }
+
+                // Check if any changes were made
+                if (Object.keys(payload).length === 0) {
+                    this.showError('変更がありません');
+                    return;
+                }
+
+                const response = await fetch(API_ENDPOINTS.server.update(server.uuid), {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await validateJsonResponse(response);
+
+                if (data.ok) {
+                    this.showSuccess(`サーバー "${server.name}" を更新しました`);
+                    this.closeUpdateModal();
+                    await this.loadServers();
+                } else {
+                    this.updateModal.error = data.message || 'サーバーの更新に失敗しました';
+                }
+
             } catch (error) {
                 console.error('Update error:', error);
-                this.updateModal.step = 'error';
                 this.updateModal.error = error.message || 'サーバーの更新に失敗しました';
             }
         },
 
-        prepareUpdateOperations() {
-            const operations = [];
-            
-            if (this.updateModal.createBackup) {
-                operations.push({
-                    id: 'backup',
-                    label: '現在のサーバーをバックアップ中',
-                    status: 'pending'
-                });
-            }
-            
-            if (this.updateModal.newJdkRequired && !this.updateModal.jdkInstalled) {
-                operations.push({
-                    id: 'download-jdk',
-                    label: `JDK ${this.updateModal.requiredJdk} のダウンロード`,
-                    status: 'pending'
-                });
-                operations.push({
-                    id: 'install-jdk',
-                    label: `JDK ${this.updateModal.requiredJdk} のインストール`,
-                    status: 'pending'
-                });
-            }
-            
-            operations.push({
-                id: 'download-server',
-                label: '新しいサーバーソフトウェアのダウンロード',
-                status: 'pending'
-            });
-            
-            operations.push({
-                id: 'update-server',
-                label: 'サーバーの更新',
-                status: 'pending'
-            });
-            
-            return operations;
-        },
-
-        updateUpdateOperation(operationId, status) {
-            const operation = this.updateModal.operations.find(op => op.id === operationId);
-            if (operation) {
-                operation.status = status;
-            }
-        },
-
-        addUpdateLog(message) {
-            this.updateModal.logs.push({
-                timestamp: new Date().toLocaleTimeString(),
-                message: message
-            });
-        },
-
-        async executeServerUpdate() {
-            const server = this.updateModal.server;
-            
-            // Step 1: Backup (if enabled)
-            if (this.updateModal.createBackup) {
-                this.updateUpdateOperation('backup', 'running');
-                this.addUpdateLog('サーバーをバックアップ中...');
-                
-                try {
-                    await this.backupServer(server.uuid);
-                    this.updateUpdateOperation('backup', 'completed');
-                    this.addUpdateLog('バックアップ完了');
-                } catch (error) {
-                    this.addUpdateLog('警告: バックアップ失敗 - ' + error.message);
-                    // Continue anyway (backup failure shouldn't stop update)
-                }
-            }
-            
-            // Step 2: Download and install JDK if needed
-            if (this.updateModal.newJdkRequired && !this.updateModal.jdkInstalled) {
-                this.updateUpdateOperation('download-jdk', 'running');
-                this.addUpdateLog(`JDK ${this.updateModal.requiredJdk} をダウンロード中...`);
-                
-                const jdkDownloadUrl = await this.getJdkDownloadUrl(this.updateModal.requiredJdk);
-                if (!jdkDownloadUrl) {
-                    throw new Error('JDKダウンロードURLが見つかりません');
-                }
-                
-                const jdkFilename = await this.downloadFile(jdkDownloadUrl, 'jdk');
-                this.updateUpdateOperation('download-jdk', 'completed');
-                
-                this.updateUpdateOperation('install-jdk', 'running');
-                this.addUpdateLog('JDKをインストール中...');
-                await this.installJdk(jdkFilename, this.updateModal.requiredJdk);
-                this.updateUpdateOperation('install-jdk', 'completed');
-                this.addUpdateLog('JDKインストール完了');
-            }
-            
-            // Step 3: Download new server software
-            this.updateUpdateOperation('download-server', 'running');
-            this.addUpdateLog('新しいサーバーソフトウェアをダウンロード中...');
-            
-            const serverDownloadUrl = await this.getServerDownloadUrl(
-                this.updateModal.newSoftware,
-                this.updateModal.newVersion
-            );
-            
-            if (!serverDownloadUrl) {
-                throw new Error('サーバーダウンロードURLが見つかりません');
-            }
-            
-            const serverFilename = await this.downloadFile(serverDownloadUrl, 'server');
-            this.updateUpdateOperation('download-server', 'completed');
-            this.addUpdateLog('ダウンロード完了');
-            
-            // Step 4: Update server
-            this.updateUpdateOperation('update-server', 'running');
-            this.addUpdateLog('サーバーを更新中...');
-            
-            const updatePayload = {
-                serverBinaryFilePath: serverFilename,
-                software: {
-                    name: this.updateModal.newSoftware,
-                    version: this.updateModal.newVersion
-                }
-            };
-            
-            if (this.updateModal.newJdkRequired) {
-                updatePayload.jdkVersion = this.updateModal.requiredJdk;
-            }
-            
-            const response = await fetch(API_ENDPOINTS.server.update(server.uuid), {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(updatePayload)
-            });
-            
-            const data = await validateJsonResponse(response);
-            
-            if (!data.ok) {
-                throw new Error(data.message || 'サーバー更新に失敗しました');
-            }
-            
-            this.updateUpdateOperation('update-server', 'completed');
-            this.addUpdateLog('サーバー更新完了!');
-        },
-
-        async backupServer(serverUuid) {
-            // This would call a backup endpoint on your backend
-            try {
-                const response = await fetch(`/api/mc/backup/${serverUuid}`, {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                
-                // If endpoint doesn't exist (404), we'll skip backup
-                if (response.status === 404) {
-                    this.addUpdateLog('バックアップエンドポイントが見つかりません (スキップ)');
-                    return { ok: true, skipped: true };
-                }
-                
-                const data = await validateJsonResponse(response);
-                
-                if (!data.ok) {
-                    throw new Error('バックアップに失敗しました');
-                }
-                
-                return data;
-            } catch (error) {
-                // If backup fails, log it but don't stop the update
-                console.warn('Backup failed:', error);
-                throw error;
-            }
-        },
-
         closeUpdateModal() {
-            if (this.updateModal.step === 'progress') {
-                if (!confirm('更新処理を中断しますか？')) {
-                    return;
-                }
-            }
-            
             this.updateModal.visible = false;
-            
-            // If update was successful, reload servers
-            if (this.updateModal.step === 'complete') {
-                this.loadServers();
-            }
+            this.updateModal.error = null;
         }
     };
 }

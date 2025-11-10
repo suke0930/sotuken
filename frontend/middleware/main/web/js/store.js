@@ -89,17 +89,20 @@ export function createStore() {
                 // Server update workflow
                 updateModal: {
                     visible: false,
-                    step: 'select', // 'select', 'progress', 'complete', 'error'
+                    step: 'edit',
                     server: null,
-                    newSoftware: '',
-                    newVersion: '',
-                    availableVersions: [],
-                    requiredJdk: null,
-                    newJdkRequired: false,
-                    jdkInstalled: false,
-                    createBackup: true,
-                    operations: [],
-                    logs: [],
+                    form: {
+                        name: '',
+                        note: '',
+                        port: 25565,
+                        maxMemory: 1024,
+                        minMemory: 512,
+                        jvmArguments: '',
+                        serverArguments: '',
+                        autoRestart: false,
+                        maxConsecutiveRestarts: 3,
+                        resetThresholdSeconds: 600
+                    },
                     error: null
                 },
 
@@ -135,7 +138,27 @@ export function createStore() {
 
                 // Duplicate Server Name Warning
                 showDuplicateNameModal: false,
-                duplicateServerName: ''
+                duplicateServerName: '',
+
+                // Server Console/Terminal
+                consoleModal: {
+                    visible: false,
+                    serverUuid: null,
+                    serverName: '',
+                    logs: [],
+                    command: '',
+                    isServerRunning: true,
+                    autoScroll: true
+                },
+                mcWebSocket: null,
+                mcWebSocketConnected: false,
+                subscribedServers: new Set(),
+
+                // Event Notifications
+                notifications: [],
+                unreadNotificationCount: 0,
+                showNotificationPanel: false,
+                toasts: []
             };
         },
 

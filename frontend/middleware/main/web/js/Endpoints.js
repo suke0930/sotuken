@@ -24,7 +24,8 @@ export const API_ENDPOINTS = {
         delete: (id) => `/api/mc/remove/${id}`,
         run: (id) => `/api/mc/run/${id}`,
         stop: (id) => `/api/mc/stop/${id}`,
-        command: (id) => `/api/mc/command/${id}`
+        command: (id) => `/api/mc/command/${id}`,
+        update: (id) => `/api/update/${id}`
     },
 
     // List endpoints

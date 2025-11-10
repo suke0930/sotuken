@@ -16,6 +16,8 @@
 @import './components/server-cards.css';
 @import './components/downloads.css';
 @import './components/modal.css';
+@import './components/console.css';
+@import './components/notifications.css';
 
 /* Responsive */
 @import './components/responsive.css';
