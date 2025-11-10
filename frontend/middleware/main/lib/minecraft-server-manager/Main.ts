@@ -154,6 +154,18 @@ export class MCserverManagerAPP {
     public del: express.RequestHandler = async (req, res) => {
         try {
             if (!req.params.id) { res.json({ ok: false, message: "IDがありません" }); return; }
+            
+            // 削除前にリスナーをクリーンアップ（メモリリーク防止）
+            const watcher = this.watchinglist.get(req.params.id);
+            if (watcher) {
+                try {
+                    await this.servermanager.closeProcessStd(req.params.id, watcher);
+                } catch (err) {
+                    console.warn(`Failed to close process std for ${req.params.id}:`, err);
+                }
+                this.watchinglist.delete(req.params.id);
+            }
+            
             const trydel = await this.servermanager.removeInstance(req.params.id);
             if (!trydel.success) {
                 res.json({ ok: false, error: trydel.error });
@@ -189,6 +201,18 @@ export class MCserverManagerAPP {
     public runserver: express.RequestHandler = async (req, res) => {
         try {
             if (!req.params.id) { res.json({ ok: false, message: "IDがありません" }); return; }
+            
+            // メモリリーク防止: 既存のリスナーがあれば削除
+            const existingWatcher = this.watchinglist.get(req.params.id);
+            if (existingWatcher) {
+                try {
+                    await this.servermanager.closeProcessStd(req.params.id, existingWatcher);
+                    this.watchinglist.delete(req.params.id);
+                } catch (err) {
+                    console.warn(`Failed to close existing process std for ${req.params.id}:`, err);
+                }
+            }
+            
             const trydel = await this.servermanager.startServer(req.params.id);
             if (!trydel.success) {
                 res.json({ ok: false, error: trydel.error });
@@ -229,9 +253,11 @@ export class MCserverManagerAPP {
                 res.json({ ok: false, error: trydel.error });
                 return;
             }
+            // リスナーをクリーンアップしてメモリリークを防止
             const watcher = this.watchinglist.get(req.params.id);
             if (watcher) {
                 await this.servermanager.closeProcessStd(req.params.id, watcher);
+                this.watchinglist.delete(req.params.id); // メモリリーク防止
             }
             res.json({ ok: true });
             return;

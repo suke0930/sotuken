@@ -71,6 +71,18 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
       }
     });
 
+    // 切断時にサブスクリプションをクリーンアップ
+    this.onDisconnection((ws, userId, clientInfo) => {
+      const mcClientInfo = clientInfo as MCClientInfo;
+      if (mcClientInfo.subscribedServers.size > 0) {
+        this.logger.info(
+          { userId, serverUuids: Array.from(mcClientInfo.subscribedServers) },
+          'Auto-unsubscribing from servers on disconnect'
+        );
+        mcClientInfo.subscribedServers.clear();
+      }
+    });
+
     // サブスクリプションリクエストのハンドラー
     this.setupSubscriptionHandlers();
   }
@@ -168,12 +180,13 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
   }
 
   /**
-   * サーバー起動イベントを配信
+   * サーバー起動イベントをブロードキャスト
+   * 認証済みクライアント全員に配信
    * 
    * @param serverUuid - サーバーUUID
    */
   public notifyServerStarted(serverUuid: string): void {
-    this.sendToServerSubscribers(serverUuid, {
+    this.broadcast({
       type: 'server_started',
       data: { uuid: serverUuid },
       timestamp: new Date().toISOString(),
@@ -181,13 +194,14 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
   }
 
   /**
-   * サーバー停止イベントを配信
+   * サーバー停止イベントをブロードキャスト
+   * 認証済みクライアント全員に配信
    * 
    * @param serverUuid - サーバーUUID
    * @param exitCode - 終了コード
    */
   public notifyServerStopped(serverUuid: string, exitCode: number): void {
-    this.sendToServerSubscribers(serverUuid, {
+    this.broadcast({
       type: 'server_stopped',
       data: { uuid: serverUuid, exitCode },
       timestamp: new Date().toISOString(),
@@ -195,13 +209,14 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
   }
 
   /**
-   * サーバークラッシュイベントを配信
+   * サーバークラッシュイベントをブロードキャスト
+   * 認証済みクライアント全員に配信
    * 
    * @param serverUuid - サーバーUUID
    * @param error - エラー情報
    */
   public notifyServerCrashed(serverUuid: string, error: Error): void {
-    this.sendToServerSubscribers(serverUuid, {
+    this.broadcast({
       type: 'server_crashed',
       data: { uuid: serverUuid, error: error.message },
       timestamp: new Date().toISOString(),
@@ -209,13 +224,14 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
   }
 
   /**
-   * サーバー自動再起動イベントを配信
+   * サーバー自動再起動イベントをブロードキャスト
+   * 認証済みクライアント全員に配信
    * 
    * @param serverUuid - サーバーUUID
    * @param consecutiveCount - 連続再起動回数
    */
   public notifyAutoRestarted(serverUuid: string, consecutiveCount: number): void {
-    this.sendToServerSubscribers(serverUuid, {
+    this.broadcast({
       type: 'server_auto_restarted',
       data: { uuid: serverUuid, consecutiveCount },
       timestamp: new Date().toISOString(),
@@ -223,12 +239,13 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
   }
 
   /**
-   * 自動再起動上限到達イベントを配信
+   * 自動再起動上限到達イベントをブロードキャスト
+   * 認証済みクライアント全員に配信
    * 
    * @param serverUuid - サーバーUUID
    */
   public notifyAutoRestartLimitReached(serverUuid: string): void {
-    this.sendToServerSubscribers(serverUuid, {
+    this.broadcast({
       type: 'server_auto_restart_limit_reached',
       data: { uuid: serverUuid },
       timestamp: new Date().toISOString(),
@@ -236,13 +253,14 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
   }
 
   /**
-   * 停止タイムアウトイベントを配信
+   * 停止タイムアウトイベントをブロードキャスト
+   * 認証済みクライアント全員に配信
    * 
    * @param serverUuid - サーバーUUID
    * @param message - タイムアウトメッセージ
    */
   public notifyStopTimeout(serverUuid: string, message: string): void {
-    this.sendToServerSubscribers(serverUuid, {
+    this.broadcast({
       type: 'server_stop_timeout',
       data: { uuid: serverUuid, message },
       timestamp: new Date().toISOString(),
@@ -250,12 +268,13 @@ export class MCServerWebSocketManager extends GenericWebSocketManager<MCServerWS
   }
 
   /**
-   * 強制終了イベントを配信
+   * 強制終了イベントをブロードキャスト
+   * 認証済みクライアント全員に配信
    * 
    * @param serverUuid - サーバーUUID
    */
   public notifyForcedKill(serverUuid: string): void {
-    this.sendToServerSubscribers(serverUuid, {
+    this.broadcast({
       type: 'server_forced_kill',
       data: { uuid: serverUuid },
       timestamp: new Date().toISOString(),
