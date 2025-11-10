@@ -310,4 +310,76 @@ export class MCserverManagerAPP {
             return res.status(500).json({ ok: false, error: error.message || "サーバー内部でエラーが発生しました。" });
         }
     }
+
+    /**
+     * サーバーのログを取得
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+    public getLogs: express.RequestHandler = async (req, res) => {
+        try {
+            if (!req.params.id) {
+                return res.status(400).json({ ok: false, message: "サーバーIDがありません" });
+            }
+
+            // クエリパラメータからlimitを取得（デフォルト: 1000）
+            const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 1000;
+
+            // limitのバリデーション
+            if (isNaN(limit) || limit < 1 || limit > 10000) {
+                return res.status(400).json({ 
+                    ok: false, 
+                    message: "limitは1から10000の間の数値である必要があります" 
+                });
+            }
+
+            const logs = this.servermanager.getServerLogs(req.params.id, limit);
+            const logCount = this.servermanager.getServerLogCount(req.params.id);
+
+            return res.json({ 
+                ok: true, 
+                data: {
+                    uuid: req.params.id,
+                    logs: logs,
+                    totalLogCount: logCount,
+                    returnedLogCount: logs.length
+                }
+            });
+        } catch (error) {
+            console.error('Failed to get logs:', error);
+            return res.status(500).json({ 
+                ok: false, 
+                error: error instanceof Error ? error.message : "ログの取得に失敗しました" 
+            });
+        }
+    }
+
+    /**
+     * サーバーのログをクリア
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+    public clearLogs: express.RequestHandler = async (req, res) => {
+        try {
+            if (!req.params.id) {
+                return res.status(400).json({ ok: false, message: "サーバーIDがありません" });
+            }
+
+            const logCount = this.servermanager.getServerLogCount(req.params.id);
+            this.servermanager.clearServerLogs(req.params.id);
+
+            return res.json({ 
+                ok: true, 
+                message: `${logCount}件のログをクリアしました` 
+            });
+        } catch (error) {
+            console.error('Failed to clear logs:', error);
+            return res.status(500).json({ 
+                ok: false, 
+                error: error instanceof Error ? error.message : "ログのクリアに失敗しました" 
+            });
+        }
+    }
 }

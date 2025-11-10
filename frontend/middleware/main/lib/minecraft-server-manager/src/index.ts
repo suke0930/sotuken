@@ -10,6 +10,7 @@ export { ServerValidator } from './classes/ServerValidator';
 export { ServerPropertiesManager } from './classes/ServerPropertiesManager';
 export { ServerInstanceWrapper } from './classes/ServerInstanceWrapper';
 export { ProcessExecutor } from './classes/ProcessExecutor';
+export { ServerLogManager, LogEntry } from './classes/ServerLogManager';
 
 // Types
 export * from './types/server-schema';

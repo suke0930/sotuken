@@ -321,6 +321,8 @@ export class MCmanagerRoute {
         this.router.get("/stop/:id", this.authMiddleware, this.app.stopserver);
         this.router.post("/command/:id", this.authMiddleware, this.app.sendcommand);
         this.router.put("/update/:id", this.authMiddleware, this.app.update);
+        this.router.get("/logs/:id", this.authMiddleware, this.app.getLogs);
+        this.router.delete("/logs/:id", this.authMiddleware, this.app.clearLogs);
     }
 }
 

@@ -12,6 +12,7 @@ import type { JdkManager } from '../../../jdk-manager/src/lib/JdkManager';
 import { ServerValidator } from './ServerValidator';
 import { ServerPropertiesManager } from './ServerPropertiesManager';
 import { ServerInstanceWrapper } from './ServerInstanceWrapper';
+import { ServerLogManager, LogEntry } from './ServerLogManager';
 import {
   ServerInstance,
   ServerManagerConfig,
@@ -37,6 +38,7 @@ export class ServerManager {
   private config!: ServerManagerConfig;
   private logger!: Logger;
   private validator!: ServerValidator;
+  private logManager!: ServerLogManager;
 
   private instances: Map<string, ServerInstanceWrapper> = new Map();
   private uptimeIntervals: Map<string, NodeJS.Timeout> = new Map();
@@ -93,6 +95,9 @@ export class ServerManager {
     // ServerValidator生成
     manager.validator = new ServerValidator(manager, jdkManager, manager.logger);
 
+    // ServerLogManager生成（最大1000行）
+    manager.logManager = new ServerLogManager(1000, manager.logger);
+
     // 設定ファイルの読み込みまたは作成
     if (require('fs').existsSync(manager.configPath)) {
       // 既存の設定ファイルを読み込み
@@ -148,10 +153,32 @@ export class ServerManager {
       // Zodバリデーション
       this.config = ServerManagerConfigSchema.parse(parsed);
 
+      // 起動時に全インスタンスのstatusを強制的に'stopped'に設定
+      // statusは揮発性であり、サーバー再起動時には保存されない
+      let statusCorrectionCount = 0;
+      this.config.instances.forEach(instance => {
+        if (instance.status !== 'stopped') {
+          this.logger.info({
+            uuid: instance.uuid,
+            name: instance.name,
+            oldStatus: instance.status
+          }, 'Correcting instance status to stopped on startup');
+          instance.status = 'stopped';
+          statusCorrectionCount++;
+        }
+      });
+
       this.logger.info({
         version: this.config.configVersion,
-        instances: this.config.instances.length
+        instances: this.config.instances.length,
+        statusCorrected: statusCorrectionCount
       }, 'Configuration loaded');
+
+      // status修正があった場合は設定を保存
+      if (statusCorrectionCount > 0) {
+        await this.saveConfig();
+        this.logger.info('Configuration saved with corrected status values');
+      }
     } catch (error) {
       this.logger.error({ err: error }, 'Failed to load configuration');
       throw new Error(`${ServerManagerErrors.CONFIG_LOAD_FAILED}: ${error}`);
@@ -166,7 +193,17 @@ export class ServerManager {
       // lastUpdatedを自動更新
       this.config.lastUpdated = new Date().toISOString();
 
-      const content = JSON.stringify(this.config, null, 2);
+      // 保存前に全インスタンスのstatusを'stopped'に設定
+      // statusは揮発性であり、永続化すべきではない
+      const configToSave = {
+        ...this.config,
+        instances: this.config.instances.map(instance => ({
+          ...instance,
+          status: 'stopped' as const
+        }))
+      };
+
+      const content = JSON.stringify(configToSave, null, 2);
       await fs.writeFile(this.configPath, content, 'utf-8');
 
       this.logger.debug({
@@ -615,6 +652,7 @@ export class ServerManager {
 
   /**
    * 標準入出力を監視開始
+   * ログは自動的にServerLogManagerに保存される
    */
   public openProcessStd(uuid: string, callbacks: ProcessStdCallbacks): void {
     const wrapper = this.instances.get(uuid);
@@ -623,12 +661,26 @@ export class ServerManager {
       return;
     }
 
+    // 内部ログ保存用ハンドラーを追加
+    const stdoutLogHandler = (line: string) => {
+      this.logManager.addLog(uuid, 'stdout', line);
+    };
+    const stderrLogHandler = (line: string) => {
+      this.logManager.addLog(uuid, 'stderr', line);
+    };
+
+    wrapper.on('stdout', stdoutLogHandler);
+    wrapper.on('stderr', stderrLogHandler);
+
+    // ユーザー提供のコールバックも追加
     if (callbacks.onStdout) {
       wrapper.on('stdout', callbacks.onStdout);
     }
     if (callbacks.onStderr) {
       wrapper.on('stderr', callbacks.onStderr);
     }
+
+    this.logger.debug({ uuid }, 'Process std monitoring started with log capture');
   }
 
   /**
@@ -646,6 +698,9 @@ export class ServerManager {
     if (callbacks.onStderr) {
       wrapper.off('stderr', callbacks.onStderr);
     }
+
+    // 注意: 内部ログハンドラーは削除しない
+    // これにより、ユーザーがコールバックを削除してもログ保存は継続される
   }
 
   /**
@@ -688,6 +743,36 @@ export class ServerManager {
    */
   public getRunningInstances(): ServerInstance[] {
     return this.getAllInstances().filter(inst => inst.status === 'running');
+  }
+
+  /**
+   * サーバーのログを取得
+   * 
+   * @param uuid - サーバーUUID
+   * @param limit - 取得する最大ログ数（デフォルト: 1000）
+   * @returns ログエントリの配列
+   */
+  public getServerLogs(uuid: string, limit: number = 1000): LogEntry[] {
+    return this.logManager.getLogs(uuid, limit);
+  }
+
+  /**
+   * サーバーのログをクリア
+   * 
+   * @param uuid - サーバーUUID
+   */
+  public clearServerLogs(uuid: string): void {
+    this.logManager.clearLogs(uuid);
+  }
+
+  /**
+   * サーバーのログ数を取得
+   * 
+   * @param uuid - サーバーUUID
+   * @returns ログ数
+   */
+  public getServerLogCount(uuid: string): number {
+    return this.logManager.getLogCount(uuid);
   }
 
   /**
