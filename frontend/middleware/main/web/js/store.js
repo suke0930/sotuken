@@ -63,6 +63,7 @@ export function createStore() {
                 formSubmitting: false,
                 usedPorts: [],
                 portWarning: '',
+                serverNameWarning: '',
                 jdkInstalled: false,
                 jdkCheckLoading: false,
 
@@ -136,9 +137,6 @@ export function createStore() {
                 jdkToDelete: null,
                 showDeleteJdkModal: false,
 
-                // Duplicate Server Name Warning
-                showDuplicateNameModal: false,
-                duplicateServerName: '',
 
                 // Server Console/Terminal
                 consoleModal: {
@@ -229,15 +227,10 @@ export function createStore() {
                                          form.serverSoftware &&
                                          form.jdkVersion &&
                                          form.port;
-                const noWarnings = !this.portWarning;
+                const noWarnings = !this.portWarning && !this.serverNameWarning;
                 const notLoading = !this.formSubmitting && !this.isFetchingServerList;
 
-                // Check for duplicate name (skip if editing)
-                const noDuplicateName = this.editingServer || !this.servers.some(server => 
-                    server.name.toLowerCase() === (form.serverName || '').toString().trim().toLowerCase()
-                );
-
-                return hasRequiredFields && noWarnings && notLoading && noDuplicateName;
+                return hasRequiredFields && noWarnings && notLoading;
             },
 
             requiredJdkVersion() {

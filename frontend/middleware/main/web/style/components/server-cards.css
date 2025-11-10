@@ -58,6 +58,12 @@
     color: var(--status-stopped-text);
 }
 
+.server-status.crashed {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
 .server-name {
     font-size: 1.2rem;
     font-weight: 700;

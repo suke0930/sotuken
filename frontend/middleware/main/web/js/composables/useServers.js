@@ -57,36 +57,30 @@ export function createServerMethods() {
 
         checkServerNameAvailability(name) {
             const serverName = (name || '').toString().trim();
-            
+
             // Check if server name is empty
             if (!serverName) {
                 return true;  // Allow empty (required validation handles this)
             }
-            
+
             // Skip check if editing an existing server
             if (this.editingServer) {
                 return true;
             }
-            
+
             // Check if name already exists (case-insensitive)
-            const existingServer = this.servers.find(server => 
+            const existingServer = this.servers.find(server =>
                 server.name.toLowerCase() === serverName.toLowerCase()
             );
-            
+
             if (existingServer) {
-                // Store the duplicate name and show modal
-                this.duplicateServerName = serverName;
-                this.showDuplicateNameModal = true;
+                // Show inline warning instead of modal
+                this.serverNameWarning = `サーバー名 "${serverName}" は既に使用されています`;
                 return false;
             }
-            
-            return true;
-        },
 
-        closeDuplicateNameModal() {
-            this.showDuplicateNameModal = false;
-            this.duplicateServerName = '';
-            // Don't clear the field - let user edit the existing name
+            this.serverNameWarning = '';
+            return true;
         },
 
         findAvailablePort() {
@@ -349,7 +343,7 @@ export function createServerMethods() {
                 message,
                 type
             });
-            
+
             // Auto-scroll to bottom after Vue updates the DOM
             this.$nextTick(() => {
                 const logsContainer = this.$refs.creationLogsContainer;
@@ -538,11 +532,18 @@ export function createServerMethods() {
                         this.addLog(`✗ ダウンロードエラー: ${message.data?.error}`, 'error');
                         reject(new Error(message.data?.error || 'ダウンロードエラー'));
                     } else if (message.type === 'download_progress' && message.data?.filename === filename) {
-                        // Update progress log
+                        // Update progress log and modal display
                         const progress = Math.floor(message.data.percentage || 0);
                         const downloadedMB = (message.data.downloadedBytes / (1024 * 1024)).toFixed(2);
                         const totalMB = (message.data.totalBytes / (1024 * 1024)).toFixed(2);
                         const speedKB = ((message.data.speed || 0) / 1024).toFixed(2);
+
+                        // Update current operation with progress details
+                        const currentOp = this.creationModal.operations.find(op => op.status === 'running');
+                        if (currentOp) {
+                            currentOp.progress = progress;
+                            currentOp.message = `${downloadedMB}MB / ${totalMB}MB (${speedKB} KB/s)`;
+                        }
 
                         // Only log every 10% to reduce spam
                         if (progress - lastProgress >= 10 || progress === 100) {
@@ -690,9 +691,8 @@ export function createServerMethods() {
             };
             this.availableVersions = [];
             this.portWarning = '';
+            this.serverNameWarning = '';
             this.jdkInstalled = false;
-            this.showDuplicateNameModal = false;
-            this.duplicateServerName = '';
         },
 
         lockServerFormControls() {
@@ -703,6 +703,8 @@ export function createServerMethods() {
             this.serverForm.minecraftVersion = '';
             this.serverForm.jdkVersion = '';
             this.availableVersions = [];
+            this.portWarning = '';
+            this.serverNameWarning = '';
         },
 
         unlockServerFormControls() {
@@ -842,7 +844,7 @@ export function createServerMethods() {
 
                 // Check if any changes were made
                 if (Object.keys(payload).length === 0) {
-                    this.showError('変更がありません');
+                    this.updateModal.error = '変更がありません';
                     return;
                 }
 
@@ -850,7 +852,7 @@ export function createServerMethods() {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ updates: payload })
                 });
 
                 const data = await validateJsonResponse(response);
@@ -860,7 +862,8 @@ export function createServerMethods() {
                     this.closeUpdateModal();
                     await this.loadServers();
                 } else {
-                    this.updateModal.error = data.message || 'サーバーの更新に失敗しました';
+                    // Display error details from response
+                    this.updateModal.error = data.error || data.message || 'サーバーの更新に失敗しました';
                 }
 
             } catch (error) {

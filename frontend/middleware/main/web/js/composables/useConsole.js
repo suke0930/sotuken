@@ -4,7 +4,7 @@ import { validateJsonResponse } from '../utils/helpers.js';
 
 export function createConsoleMethods() {
     return {
-        openConsole(server) {
+        async openConsole(server) {
             this.consoleModal = {
                 visible: true,
                 serverUuid: server.uuid,
@@ -12,20 +12,109 @@ export function createConsoleMethods() {
                 logs: [],
                 command: '',
                 isServerRunning: server.status === 'running',
-                autoScroll: true
+                autoScroll: true,
+                showTimestamp: true,  // Toggle for timestamp/log level display
+                totalLogCount: 0
             };
 
-            // Subscribe to this server's output
+            // Subscribe to this server's output for real-time updates
             this.subscribeToServer(server.uuid);
 
-            // Add initial message
-            this.addConsoleLog(`=== Console for "${server.name}" ===\n`, 'system');
-            this.addConsoleLog(`Server UUID: ${server.uuid}\n`, 'system');
-            this.addConsoleLog(`Status: ${server.status}\n\n`, 'system');
+            // Load existing logs from backend
+            await this.loadExistingLogs(server.uuid);
 
-            if (server.status !== 'running') {
-                this.addConsoleLog('--- サーバーは現在停止しています ---\n', 'warning');
+            // Add initial message if no logs loaded
+            if (this.consoleModal.logs.length === 0) {
+                this.addConsoleLog(`=== Console for "${server.name}" ===\n`, 'system');
+                this.addConsoleLog(`Server UUID: ${server.uuid}\n`, 'system');
+                this.addConsoleLog(`Status: ${server.status}\n\n`, 'system');
+
+                if (server.status !== 'running') {
+                    this.addConsoleLog('--- サーバーは現在停止しています ---\n', 'warning');
+                }
             }
+        },
+
+        async loadExistingLogs(serverUuid) {
+            try {
+                const response = await fetch(API_ENDPOINTS.server.logs(serverUuid) + '?limit=1000', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const result = await validateJsonResponse(response);
+
+                if (result.ok && result.data.logs) {
+                    // Load existing logs
+                    this.consoleModal.logs = result.data.logs.map(log => ({
+                        id: Date.now() + Math.random(),
+                        line: log.line,
+                        type: log.type,
+                        timestamp: log.timestamp,
+                        rawLine: log.line  // Store original line for filtering
+                    }));
+
+                    this.consoleModal.totalLogCount = result.data.totalLogCount;
+
+                    // Auto-scroll to bottom
+                    this.$nextTick(() => {
+                        const terminal = document.querySelector('.console-terminal');
+                        if (terminal) {
+                            terminal.scrollTop = terminal.scrollHeight;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load existing logs:', error);
+                this.addConsoleLog(`ログの読み込みに失敗しました: ${error.message}\n`, 'error');
+            }
+        },
+
+        async clearServerLogs() {
+            if (!confirm('サーバーログをクリアしますか？この操作は元に戻せません。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(API_ENDPOINTS.server.clearLogs(this.consoleModal.serverUuid), {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                const result = await validateJsonResponse(response);
+
+                if (result.ok) {
+                    this.consoleModal.logs = [];
+                    this.consoleModal.totalLogCount = 0;
+                    this.addConsoleLog('--- ログがクリアされました ---\n', 'system');
+                    this.showSuccess(result.message || 'ログをクリアしました');
+                } else {
+                    this.addConsoleLog(`ログのクリアに失敗: ${result.message}\n`, 'error');
+                }
+            } catch (error) {
+                console.error('Failed to clear logs:', error);
+                this.addConsoleLog(`ログのクリアエラー: ${error.message}\n`, 'error');
+            }
+        },
+
+        toggleTimestampDisplay() {
+            this.consoleModal.showTimestamp = !this.consoleModal.showTimestamp;
+        },
+
+        formatLogLine(log) {
+            if (!log.rawLine) {
+                return log.line;
+            }
+
+            // If showing timestamp/log level, return original line
+            if (this.consoleModal.showTimestamp) {
+                return log.line;
+            }
+
+            // Remove timestamp and log level patterns like [01:09:36 INFO]:
+            const line = log.line;
+            const pattern = /^\[([\d:]+)\s+(INFO|WARN|ERROR|DEBUG|TRACE)\]:\s*/;
+            return line.replace(pattern, '');
         },
 
         closeConsole() {
@@ -46,7 +135,8 @@ export function createConsoleMethods() {
                 id: Date.now() + Math.random(),
                 line: line,
                 type: type, // 'stdout', 'stderr', 'system', 'warning', 'error'
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                rawLine: line  // Store original line for filtering
             });
 
             // Keep only last 1000 lines for performance

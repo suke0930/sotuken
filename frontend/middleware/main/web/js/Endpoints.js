@@ -20,12 +20,13 @@ export const API_ENDPOINTS = {
     server: {
         list: '/api/mc/list',
         create: '/api/mc/add',
-        update: (id) => `/api/servers/${id}`,
+        update: (id) => `/api/mc/update/${id}`,
         delete: (id) => `/api/mc/remove/${id}`,
         run: (id) => `/api/mc/run/${id}`,
         stop: (id) => `/api/mc/stop/${id}`,
         command: (id) => `/api/mc/command/${id}`,
-        update: (id) => `/api/update/${id}`
+        logs: (id) => `/api/mc/logs/${id}`,
+        clearLogs: (id) => `/api/mc/logs/${id}`
     },
 
     // List endpoints
