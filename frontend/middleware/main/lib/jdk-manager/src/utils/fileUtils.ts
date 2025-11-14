@@ -11,7 +11,7 @@ import * as crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import AdmZip from 'adm-zip';
-import tar from 'tar';
+import * as tar from 'tar';
 import { Result } from '../types/jdk-registry.types';
 
 const execAsync = promisify(exec);
@@ -109,7 +109,7 @@ export async function extractTarGz(tarPath: string, destPath: string): Promise<v
 export async function extractArchive(archivePath: string, destPath: string): Promise<Result<void>> {
   try {
     const ext = path.extname(archivePath).toLowerCase();
-    
+
     if (ext === '.zip') {
       await extractZip(archivePath, destPath);
     } else if (ext === '.gz' || archivePath.endsWith('.tar.gz')) {
@@ -123,6 +123,7 @@ export async function extractArchive(archivePath: string, destPath: string): Pro
 
     return { success: true, data: undefined };
   } catch (error: any) {
+    console.warn(error);
     return {
       success: false,
       error: `Failed to extract archive: ${error.message}`
@@ -173,7 +174,7 @@ export async function getJavaVersion(javaPath: string): Promise<Result<number>> 
     // 例: "openjdk version "1.8.0_462"" から 8 を抽出
     // 例: "openjdk version "21.0.5"" から 21 を抽出
     const match = output.match(/version "(\d+)\.?(\d+)?\.?(\d+)?/);
-    
+
     if (match) {
       const major = parseInt(match[1]);
       const version = major === 1 ? parseInt(match[2]) : major; // Java 8以前は "1.8" 形式

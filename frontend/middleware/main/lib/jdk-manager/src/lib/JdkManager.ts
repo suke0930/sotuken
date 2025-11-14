@@ -397,7 +397,7 @@ class EntryManager {
     if (archiveOS && archiveOS !== serverOS) {
       // macOSの特別なケース: 'mac' と 'macos' は同一視
       const isMacOSMatch = (serverOS === 'macos' && archiveOS === 'mac') ||
-                           (serverOS === 'mac' && archiveOS === 'macos');
+        (serverOS === 'mac' && archiveOS === 'macos');
 
       if (!isMacOSMatch) {
         this.manager.getLogger()?.warn(
