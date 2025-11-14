@@ -266,3 +266,61 @@ export async function findJdkRoot(extractedPath: string): Promise<string> {
 
   return jdkRoot;
 }
+
+/**
+ * アーカイブファイル名からOSを検出
+ * @param archivePath アーカイブファイルのパス
+ * @returns 検出されたOS ('windows' | 'linux' | 'macos') または null
+ */
+export function detectArchiveOS(archivePath: string): string | null {
+  const fileName = path.basename(archivePath).toLowerCase();
+  const ext = path.extname(archivePath).toLowerCase();
+
+  // ファイル名から検出（jdk.jsonの命名規則に基づく）
+  // 例: OpenJDK21U-jdk_x64_windows_hotspot_21.0.9_10.zip
+  // 例: OpenJDK21U-jdk_x64_linux_hotspot_21.0.9_10.tar.gz
+  // 例: OpenJDK21U-jdk_x64_mac_hotspot_21.0.9_10.tar.gz
+  if (fileName.includes('windows')) return 'windows';
+  if (fileName.includes('linux')) return 'linux';
+  if (fileName.includes('macos') || fileName.includes('mac')) return 'macos';
+
+  // ファイル名から検出できない場合、拡張子から推測
+  if (ext === '.zip') return 'windows';
+  if (ext === '.gz' || archivePath.endsWith('.tar.gz')) {
+    // tar.gzはlinuxまたはmacOSだが、ここではlinuxとして扱う
+    // より正確な判定はファイル名に依存
+    return 'linux';
+  }
+
+  return null;
+}
+
+/**
+ * JDKバイナリが現在のOSで実行可能かを検証
+ * @param javaPath Javaバイナリのパス
+ * @param expectedOS 期待されるOS
+ * @returns 検証結果
+ */
+export async function validateJdkExecutable(
+  javaPath: string,
+  expectedOS: string
+): Promise<Result<void>> {
+  try {
+    // java -version を実際に実行して実行可能性を確認
+    const versionResult = await getJavaVersion(javaPath);
+
+    if (!versionResult.success) {
+      return {
+        success: false,
+        error: `JDKバイナリが${expectedOS}上で実行できません。クロスプラットフォームインストールの問題の可能性があります: ${versionResult.error}`
+      };
+    }
+
+    return { success: true, data: undefined };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: `JDKバイナリの検証に失敗しました: ${error.message}`
+    };
+  }
+}

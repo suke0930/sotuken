@@ -122,8 +122,19 @@ export class JDKManagerAPP {
         if (!req.body.archivePath || !req.body.majorVersion) { res.json({ ok: false, message: "パラメータがありません" }); return; };
 
         if (isNaN(Number(req.body.majorVersion))) { res.json({ ok: false, message: "バージョンが数値ではありません" }); return; }
+
+        // アーカイブのフルパスを構築
+        const archivePath = DOWNLOAD_TEMP_PATH + "/" + req.body.archivePath;
+
+        // インストール試行ログを出力
+        this.logger.info({
+            action: 'jdk_install_attempt',
+            archivePath: req.body.archivePath,
+            majorVersion: req.body.majorVersion
+        }, 'JDKインストール試行');
+
         try {
-            const list = await this.app.Entrys.add({ archivePath: DOWNLOAD_TEMP_PATH + "/" + req.body.archivePath, majorVersion: req.body.majorVersion });
+            const list = await this.app.Entrys.add({ archivePath, majorVersion: req.body.majorVersion });
             res.json(list);
             await this.app.Data.save();
         } catch (error) {

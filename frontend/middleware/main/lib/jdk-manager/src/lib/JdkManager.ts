@@ -32,7 +32,9 @@ import {
   generateId,
   getCurrentOS,
   removeDirectory,
-  moveDirectory
+  moveDirectory,
+  validateJdkExecutable,
+  detectArchiveOS
 } from '../utils/fileUtils';
 import { JDKEntry } from './JDKEntry';
 
@@ -388,6 +390,26 @@ class EntryManager {
       };
     }
 
+    // OS検証: アーカイブのOSがサーバーOSと一致するかチェック
+    const serverOS = getCurrentOS();
+    const archiveOS = detectArchiveOS(params.archivePath);
+
+    if (archiveOS && archiveOS !== serverOS) {
+      // macOSの特別なケース: 'mac' と 'macos' は同一視
+      const isMacOSMatch = (serverOS === 'macos' && archiveOS === 'mac') ||
+                           (serverOS === 'mac' && archiveOS === 'macos');
+
+      if (!isMacOSMatch) {
+        this.manager.getLogger()?.warn(
+          `OS mismatch detected: Server is ${serverOS} but archive is for ${archiveOS} (${params.archivePath})`
+        );
+        return {
+          success: false,
+          error: `OSが一致しません: サーバーは${serverOS}ですが、アーカイブは${archiveOS}用です。正しいOS用のJDKをダウンロードしてください。`
+        };
+      }
+    }
+
     // ロック取得
     this.manager.setInstallLock(true);
 
@@ -461,6 +483,14 @@ class EntryManager {
           `Version mismatch: expected ${params.majorVersion}, got ${versionResult.data}`
         );
       }
+
+      // バイナリの実行可能性を検証
+      this.manager.getLogger()?.info('Validating JDK executable...');
+      const executableResult = await validateJdkExecutable(javaPath, getCurrentOS());
+      if (!executableResult.success) {
+        throw new Error(executableResult.error);
+      }
+      this.manager.getLogger()?.info('JDK executable validation passed');
 
       // チェックサム計算
       this.manager.getLogger()?.info('Calculating checksums...');

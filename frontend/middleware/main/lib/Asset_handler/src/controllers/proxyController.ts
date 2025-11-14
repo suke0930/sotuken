@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import axios from 'axios';
 import { ApiResponse } from '../types';
 import { backendURL } from '../app';
+import { getCurrentOS } from '../../../jdk-manager/src/utils/fileUtils';
 // Asset サーバーのベースURL（環境変数または設定から取得）
 /**
  * Assetサーバーからサーバーリストを取得
@@ -44,9 +45,28 @@ export const getJDKList = async (req: Request, res: Response): Promise<void> => 
 
     const response = await axios.get(`${backendURL}/api/v1/jdk`);
 
+    // 現在のサーバーOSを取得
+    const serverOS = getCurrentOS();
+
+    // 各JDKのダウンロードにrecommendedフラグを追加
+    const enrichedData = response.data.data.map((jdk: any) => ({
+      ...jdk,
+      downloads: jdk.downloads.map((download: any) => {
+        // macOSの場合は'mac'も'macos'も推奨とする
+        const isRecommended = download.os === serverOS ||
+                            (serverOS === 'macos' && download.os === 'mac') ||
+                            (serverOS === 'mac' && download.os === 'macos');
+
+        return {
+          ...download,
+          recommended: isRecommended
+        };
+      })
+    }));
+
     const apiResponse: ApiResponse = {
       success: true,
-      data: response.data.data,
+      data: enrichedData,
       timestamp: new Date().toISOString(),
     };
 
