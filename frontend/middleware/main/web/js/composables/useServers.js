@@ -461,7 +461,7 @@ export function createServerMethods() {
                 if (!jdk) return null;
 
                 // Get the first available download (prefer windows for now)
-                const download = jdk.downloads.find(d => d.os === 'windows') || jdk.downloads[0];
+                const download = jdk.downloads.find(d => d.recommended) || jdk.downloads[0];
                 return download ? download.downloadUrl : null;
             } catch (error) {
                 console.error('Error getting JDK download URL:', error);
