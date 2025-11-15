@@ -785,7 +785,7 @@ export class ServerManager {
   /**
    * ServerPropertiesManagerを取得（使い捨てインスタンス）
    */
-  public getServerPropertiesManager(uuid: string): ServerPropertiesManager | undefined {
+  private getServerPropertiesManager(uuid: string): ServerPropertiesManager | undefined {
     const wrapper = this.instances.get(uuid);
     if (!wrapper) return undefined;
 
@@ -793,6 +793,25 @@ export class ServerManager {
     const filePath = path.join(serverDir, 'server.properties');
 
     return new ServerPropertiesManager(filePath, this.logger);
+  }
+
+  /**
+   * サーバーのプロパティをすべて取得
+   *
+   * @param uuid - サーバーUUID
+   * @returns プロパティの連想配列（ファイルが存在しない場合はnull）
+   */
+  public async getServerProperties(uuid: string): Promise<Record<string, string> | null> {
+    try {
+      const propManager = this.getServerPropertiesManager(uuid);
+      if (!propManager) {
+        this.logger.warn({ uuid }, 'Instance not found for properties retrieval');
+        return null;
+      }
+      return await propManager.getAll();
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**

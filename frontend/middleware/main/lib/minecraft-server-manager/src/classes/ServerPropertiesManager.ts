@@ -171,12 +171,47 @@ export class ServerPropertiesManager {
 
   /**
    * ポートを取得
-   * 
+   *
    * @returns ポート番号（存在しない場合undefined）
    */
   public async getPort(): Promise<number | undefined> {
     const value = await this.get('server-port');
     return value ? parseInt(value, 10) : undefined;
+  }
+
+  /**
+   * すべてのプロパティを取得
+   *
+   * @returns プロパティの連想配列（ファイルが存在しない場合はnull）
+   * @throws ファイルの読み込みに失敗した場合
+   */
+  public async getAll(): Promise<Record<string, string> | null> {
+    // ファイルが存在しない場合はnullを返す
+    if (!this.exists()) {
+      this.logger.warn({ file: this.filePath }, 'server.properties does not exist');
+      return null;
+    }
+    try {
+      // 既存のread()メソッドを使ってMapを取得
+      const properties = await this.read();
+
+      // MapをRecord<string, string>に変換
+      const result: Record<string, string> = {};
+      properties.forEach((value, key) => {
+        result[key] = value;
+      });
+
+      this.logger.info({
+        file: this.filePath,
+        count: properties.size
+      }, 'Retrieved all properties');
+
+      return result;
+    } catch (error) {
+      // 読み込み失敗時は例外をthrow（既存のread()と同じ挙動）
+      this.logger.error({ err: error }, 'Failed to get all properties');
+      throw error;
+    }
   }
 
   /**
