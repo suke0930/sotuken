@@ -1,5 +1,6 @@
 // UI Control Logic
 import { formatDate, formatTime } from '../utils/helpers.js';
+import { helpContent } from '../utils/helpContent.js';
 
 export function createUIMethods() {
     return {
@@ -71,6 +72,30 @@ export function createUIMethods() {
             setTimeout(() => {
                 this.successMessage = '';
             }, 5000);
+        },
+
+        openHelpModal(topicKey) {
+            const topic = helpContent[topicKey];
+            if (!topic) {
+                console.error(`Help topic not found: ${topicKey}`);
+                return;
+            }
+
+            this.helpModal.title = topic.title;
+            // Use marked.js to parse markdown to HTML
+            if (typeof marked !== 'undefined') {
+                this.helpModal.content = marked.parse(topic.content);
+            } else {
+                // Fallback if marked.js is not loaded
+                this.helpModal.content = topic.content.replace(/\n/g, '<br>');
+            }
+            this.helpModal.visible = true;
+        },
+
+        closeHelpModal() {
+            this.helpModal.visible = false;
+            this.helpModal.title = '';
+            this.helpModal.content = '';
         },
 
         formatDate,

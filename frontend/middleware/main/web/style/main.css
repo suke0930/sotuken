@@ -18,6 +18,7 @@
 @import './components/modal.css';
 @import './components/console.css';
 @import './components/notifications.css';
+@import './components/help-modal.css';
 
 /* Responsive */
 @import './components/responsive.css';

@@ -156,7 +156,14 @@ export function createStore() {
                 notifications: [],
                 unreadNotificationCount: 0,
                 showNotificationPanel: false,
-                toasts: []
+                toasts: [],
+
+                // Help Modal
+                helpModal: {
+                    visible: false,
+                    title: '',
+                    content: ''
+                }
             };
         },
 
