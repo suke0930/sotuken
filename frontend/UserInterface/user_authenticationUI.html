@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <auth-component></auth-component>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        const AuthComponent = {
+            data() {
+                return {
+                    isLoginMode: true,
+                    formData: {
+                        email: '',
+                        password: '',
+                        confirmPassword: ''
+                    }
+                };
+            },
+            computed: {
+                formTitle() {
+                    return this.isLoginMode ? 'Log In' : 'Sign Up';
+                },
+                submitButtonText() {
+                    return this.isLoginMode ? 'Log In' : 'Sign Up';
+                },
+                toggleButtonText() {
+                    return this.isLoginMode ? 'Switch to Sign Up' : 'Switch to Log In';
+                },
+                togglePromptText() {
+                    return this.isLoginMode 
+                        ? "Don't have an account?" 
+                        : "Already have an account?";
+                }
+            },
+            methods: {
+                toggleMode() {
+                    this.isLoginMode = !this.isLoginMode;
+                    // Clear form data when switching modes
+                    this.formData = {
+                        email: '',
+                        password: '',
+                        confirmPassword: ''
+                    };
+                },
+                handleSubmit() {
+                    if (this.isLoginMode) {
+                        this.handleLogin();
+                    } else {
+                        this.handleSignUp();
+                    }
+                },
+                handleLogin() {
+                    // Login logic would go here
+                    console.log('Login attempt:', {
+                        email: this.formData.email,
+                        password: this.formData.password
+                    });
+                    alert(`Login attempt for: ${this.formData.email}`);
+                },
+                handleSignUp() {
+                    // Basic password confirmation validation
+                    if (this.formData.password !== this.formData.confirmPassword) {
+                        alert('Passwords do not match!');
+                        return;
+                    }
+                    
+                    // Sign-up logic would go here
+                    console.log('Sign-up attempt:', {
+                        email: this.formData.email,
+                        password: this.formData.password
+                    });
+                    alert(`Sign-up attempt for: ${this.formData.email}`);
+                }
+            },
+            template: `
+                <div class="auth-container">
+                    <transition name="fade" mode="out-in">
+                        <h2 :key="formTitle" class="form-title">{{ formTitle }}</h2>
+                    </transition>
+                    
+                    <form @submit.prevent="handleSubmit">
+                        <div class="form-group">
+                            <label for="email" class="form-label">Email</label>
+                            <input 
+                                type="email" 
+                                id="email"
+                                v-model="formData.email"
+                                class="form-input"
+                                placeholder="Enter your email"
+                                required
+                            />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password" class="form-label">Password</label>
+                            <input 
+                                type="password" 
+                                id="password"
+                                v-model="formData.password"
+                                class="form-input"
+                                placeholder="Enter your password"
+                                required
+                            />
+                        </div>
+                        
+                        <transition name="fade">
+                            <div v-if="!isLoginMode" class="form-group">
+                                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                <input 
+                                    type="password" 
+                                    id="confirmPassword"
+                                    v-model="formData.confirmPassword"
+                                    class="form-input"
+                                    placeholder="Confirm your password"
+                                    required
+                                />
+                            </div>
+                        </transition>
+                        
+                        <button type="submit" class="submit-btn">
+                            {{ submitButtonText }}
+                        </button>
+                    </form>
+                    
+                    <div class="toggle-section">
+                        <p class="toggle-text">{{ togglePromptText }}</p>
+                        <button 
+                            type="button" 
+                            class="toggle-btn"
+                            @click="toggleMode"
+                        >
+                            {{ toggleButtonText }}
+                        </button>
+                    </div>
+                </div>
+            `
+        };
+
+        createApp({
+            components: {
+                'auth-component': AuthComponent
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

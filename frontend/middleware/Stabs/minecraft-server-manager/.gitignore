@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Logs
+logs/*.log
+*.log
+
+# Test output
+coverage/
+
+# Config files (generated)
+config/server-manager.json
+
+# Server directories (runtime)
+servers/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
