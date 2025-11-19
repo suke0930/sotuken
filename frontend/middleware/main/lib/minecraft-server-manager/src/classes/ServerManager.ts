@@ -814,6 +814,28 @@ export class ServerManager {
     }
   }
 
+
+  /**
+   * サーバーのプロパティを設定
+   *
+   * @param uuid - サーバーUUID
+   * @param updates - 更新するプロパティの連想配列
+   * @returns 処理結果
+   */
+  public async setServerProperties(uuid: string, updates: Record<string, string>): Promise<VoidResult> {
+    try {
+      const propManager = this.getServerPropertiesManager(uuid);
+      if (!propManager) {
+        this.logger.warn({ uuid }, 'Instance not found for properties update');
+        return { success: false, error: ServerManagerErrors.INSTANCE_NOT_FOUND };
+      }
+      await propManager.updateMultiple(updates);
+      return { success: true, data: undefined };
+    } catch (error) {
+      this.logger.error({ err: error, uuid }, 'Failed to set server properties');
+      return { success: false, error: `Failed to set server properties: ${error}` };
+    }
+  }
   /**
  * 稼働時間追跡を開始
  */

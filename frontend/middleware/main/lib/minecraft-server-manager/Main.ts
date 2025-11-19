@@ -416,5 +416,51 @@ export class MCserverManagerAPP {
             return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : "プロパティの取得に失敗しました" });
         }
     }
+    /**
+     * サーバのProperty設定
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+    public SetPropties: express.RequestHandler = async (req, res) => {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({ ok: false, message: "IDがありません" });
+        }
+
+        const updates = req.body?.data;
+
+        // body.dataの存在と形式をチェック
+        if (!req.body || !updates || typeof updates !== 'object' || Array.isArray(updates)) {
+            return res.status(400).json({ ok: false, message: "更新データ(data)の形式が正しくありません。オブジェクトを指定してください。" });
+        }
+
+        // Map<string, string>に変換できるかバリデーション
+        for (const [key, value] of Object.entries(updates)) {
+            if (typeof key !== 'string' || typeof value !== 'string') {
+                return res.status(400).json({ ok: false, message: `プロパティのキーと値は文字列である必要があります: key=${key}` });
+            }
+        }
+
+        try {
+            // サーバーがレジストリに存在するかチェック
+            const instance = this.servermanager.getInstanceData(id);
+            if (!instance) {
+                return res.status(404).json({ ok: false, message: "指定されたIDのサーバーが見つかりません。" });
+            }
+
+            const result = await this.servermanager.setServerProperties(id, updates);
+
+            if (result.success) {
+                return res.json({ ok: true, message: "サーバープロパティを更新しました。" });
+            } else {
+                // setServerProperties内でエラーが発生した場合
+                return res.status(500).json({ ok: false, error: result.error || "プロパティの設定に失敗しました" });
+            }
+        } catch (error) {
+            console.error(`Failed to set properties for ${id}:`, error);
+            return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : "プロパティの設定中にサーバー内部でエラーが発生しました" });
+        }
+    }
 
 };
