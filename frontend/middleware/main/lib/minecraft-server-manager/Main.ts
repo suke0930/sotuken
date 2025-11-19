@@ -5,6 +5,11 @@ import { ProcessStdCallbacks, ServerManager } from "./src";
 import express from "express";
 import { MCServerWebSocketManager } from "./src/websocket/MCServerWebSocketManager";
 import { boolean } from "zod";
+import { createModuleLogger } from '../logger';
+import type { Logger } from 'pino';
+import { createErrorResponse, createSuccessResponse } from '../types/api-responses';
+import { ERROR_CODES, ERROR_MESSAGES, SUCCESS_MESSAGES, INFO_MESSAGES } from '../constants/api-messages';
+import { sanitizePropertyUpdates } from '../utils/sanitization';
 
 export class MCserverManagerAPP {
     private jdkmanager: JdkManager
@@ -12,8 +17,10 @@ export class MCserverManagerAPP {
     private watchinglist: Map<string, ProcessStdCallbacks>
     private download_dir: string;
     private wsManager?: MCServerWebSocketManager;
+    private logger: Logger;
 
     constructor(jdkmanager: JDKManagerAPP, DownloadPath: string, mcdatadir: string) {
+        this.logger = createModuleLogger('mc-server-api');
         this.jdkmanager = jdkmanager.app;
         this.setup(mcdatadir);
         this.download_dir = DownloadPath;
@@ -386,81 +393,184 @@ export class MCserverManagerAPP {
 
     /**
      * サーバのProperty問い合わせ
-     * @param req 
-     * @param res 
-     * @returns 
+     * @param req
+     * @param res
+     * @returns
      */
-    public getPropties: express.RequestHandler = async (req, res) => {
+    public getProperties: express.RequestHandler = async (req, res) => {
+        const { id } = req.params;
+
+        // IDパラメータの検証
+        if (!id) {
+            return res.status(400).json(
+                createErrorResponse(ERROR_CODES.MISSING_SERVER_ID, ERROR_MESSAGES.MISSING_SERVER_ID)
+            );
+        }
+
+        // サーバーインスタンスの存在確認
+        const instance = this.servermanager.getInstanceData(id);
+        if (!instance) {
+            this.logger.warn({ serverId: id }, 'Server instance not found for properties retrieval');
+            return res.status(404).json(
+                createErrorResponse(ERROR_CODES.INSTANCE_NOT_FOUND, ERROR_MESSAGES.INSTANCE_NOT_FOUND)
+            );
+        }
+
         try {
-            const { id } = req.params;
-            if (!id) {
-                return res.status(400).json({ ok: false, message: "IDがありません" });
-            }
-
-            // サーバーがレジストリに存在するかチェック
-            const instance = this.servermanager.getInstanceData(id);
-            if (!instance) {
-                return res.status(404).json({ ok: false, message: "指定されたIDのサーバーが見つかりません。" });
-            }
-
             const properties = await this.servermanager.getServerProperties(id);
 
             if (properties === null) {
-                // server.propertiesファイルが存在しない場合
-                return res.json({ ok: true, data: {}, message: "server.propertiesファイルが存在しません。" });
+                // server.propertiesファイルが存在しない場合（正常なケース）
+                this.logger.info({ serverId: id }, 'Properties file does not exist yet');
+                return res.json(
+                    createSuccessResponse({}, INFO_MESSAGES.PROPERTIES_FILE_NOT_EXISTS)
+                );
             }
 
-            return res.json({ ok: true, data: properties });
+            this.logger.debug({ serverId: id, propertyCount: Object.keys(properties).length }, 'Properties retrieved successfully');
+            return res.json(createSuccessResponse(properties));
+
         } catch (error) {
-            console.error(`Failed to get properties for ${req.params.id}:`, error);
-            return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : "プロパティの取得に失敗しました" });
+            this.logger.error({
+                err: error,
+                serverId: id,
+                endpoint: 'getProperties'
+            }, 'Failed to get server properties');
+
+            return res.status(500).json(
+                createErrorResponse(
+                    ERROR_CODES.PROPERTIES_GET_FAILED,
+                    error instanceof Error ? error.message : ERROR_MESSAGES.PROPERTIES_GET_FAILED
+                )
+            );
         }
     }
+
+    /**
+     * 後方互換性のための旧メソッド名（非推奨）
+     * @deprecated getProperties を使用してください
+     */
+    public getPropties: express.RequestHandler = this.getProperties;
     /**
      * サーバのProperty設定
-     * @param req 
-     * @param res 
-     * @returns 
+     * @param req
+     * @param res
+     * @returns
      */
-    public SetPropties: express.RequestHandler = async (req, res) => {
+    public setProperties: express.RequestHandler = async (req, res) => {
         const { id } = req.params;
+
+        // IDパラメータの検証
         if (!id) {
-            return res.status(400).json({ ok: false, message: "IDがありません" });
+            return res.status(400).json(
+                createErrorResponse(ERROR_CODES.MISSING_SERVER_ID, ERROR_MESSAGES.MISSING_SERVER_ID)
+            );
         }
 
         const updates = req.body?.data;
 
         // body.dataの存在と形式をチェック
         if (!req.body || !updates || typeof updates !== 'object' || Array.isArray(updates)) {
-            return res.status(400).json({ ok: false, message: "更新データ(data)の形式が正しくありません。オブジェクトを指定してください。" });
+            this.logger.warn({ serverId: id, bodyType: typeof req.body }, 'Invalid update data format');
+            return res.status(400).json(
+                createErrorResponse(ERROR_CODES.INVALID_UPDATE_DATA, ERROR_MESSAGES.INVALID_UPDATE_DATA)
+            );
+        }
+
+        // 空オブジェクトチェック
+        if (Object.keys(updates).length === 0) {
+            this.logger.warn({ serverId: id }, 'Empty update data provided');
+            return res.status(400).json(
+                createErrorResponse(ERROR_CODES.EMPTY_UPDATE_DATA, ERROR_MESSAGES.EMPTY_UPDATE_DATA)
+            );
+        }
+
+        // プロパティ数の上限チェック
+        if (Object.keys(updates).length > 100) {
+            this.logger.warn({ serverId: id, count: Object.keys(updates).length }, 'Too many properties in single request');
+            return res.status(400).json(
+                createErrorResponse(ERROR_CODES.TOO_MANY_PROPERTIES, ERROR_MESSAGES.TOO_MANY_PROPERTIES)
+            );
         }
 
         // Map<string, string>に変換できるかバリデーション
         for (const [key, value] of Object.entries(updates)) {
             if (typeof key !== 'string' || typeof value !== 'string') {
-                return res.status(400).json({ ok: false, message: `プロパティのキーと値は文字列である必要があります: key=${key}` });
+                this.logger.warn({ serverId: id, invalidKey: key, keyType: typeof key, valueType: typeof value }, 'Invalid property type');
+                return res.status(400).json(
+                    createErrorResponse(
+                        ERROR_CODES.INVALID_PROPERTY_TYPE,
+                        `${ERROR_MESSAGES.INVALID_PROPERTY_TYPE}: key=${key}`
+                    )
+                );
             }
+        }
+
+        // サーバーインスタンスの存在確認
+        const instance = this.servermanager.getInstanceData(id);
+        if (!instance) {
+            this.logger.warn({ serverId: id }, 'Server instance not found for properties update');
+            return res.status(404).json(
+                createErrorResponse(ERROR_CODES.INSTANCE_NOT_FOUND, ERROR_MESSAGES.INSTANCE_NOT_FOUND)
+            );
         }
 
         try {
-            // サーバーがレジストリに存在するかチェック
-            const instance = this.servermanager.getInstanceData(id);
-            if (!instance) {
-                return res.status(404).json({ ok: false, message: "指定されたIDのサーバーが見つかりません。" });
-            }
+            // 入力のサニタイゼーション
+            const sanitizedUpdates = sanitizePropertyUpdates(updates);
 
-            const result = await this.servermanager.setServerProperties(id, updates);
+            // 監査ログ（誰が・いつ・何を変更したか）
+            this.logger.info({
+                event: 'properties_update_attempt',
+                serverId: id,
+                userId: (req as any).userId || 'unknown',
+                changedKeys: Object.keys(sanitizedUpdates),
+                propertyCount: Object.keys(sanitizedUpdates).length,
+                timestamp: new Date().toISOString()
+            }, 'Attempting to update server properties');
+
+            const result = await this.servermanager.setServerProperties(id, sanitizedUpdates);
 
             if (result.success) {
-                return res.json({ ok: true, message: "サーバープロパティを更新しました。" });
+                this.logger.info({
+                    event: 'properties_updated',
+                    serverId: id,
+                    userId: (req as any).userId || 'unknown',
+                    changedKeys: Object.keys(sanitizedUpdates),
+                    timestamp: new Date().toISOString()
+                }, 'Server properties updated successfully');
+
+                return res.json(createSuccessResponse(undefined, SUCCESS_MESSAGES.PROPERTIES_UPDATED));
             } else {
                 // setServerProperties内でエラーが発生した場合
-                return res.status(500).json({ ok: false, error: result.error || "プロパティの設定に失敗しました" });
+                this.logger.error({ serverId: id, error: result.error }, 'ServerManager returned error');
+                return res.status(500).json(
+                    createErrorResponse(
+                        ERROR_CODES.PROPERTIES_SET_FAILED,
+                        result.error || ERROR_MESSAGES.PROPERTIES_SET_FAILED
+                    )
+                );
             }
         } catch (error) {
-            console.error(`Failed to set properties for ${id}:`, error);
-            return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : "プロパティの設定中にサーバー内部でエラーが発生しました" });
+            this.logger.error({
+                err: error,
+                serverId: id,
+                endpoint: 'setProperties'
+            }, 'Failed to set server properties');
+
+            return res.status(500).json(
+                createErrorResponse(
+                    ERROR_CODES.INTERNAL_ERROR,
+                    error instanceof Error ? error.message : ERROR_MESSAGES.INTERNAL_ERROR
+                )
+            );
         }
     }
+
+    /**
+     * 後方互換性のための旧メソッド名（非推奨）
+     * @deprecated setProperties を使用してください
+     */
+    public SetPropties: express.RequestHandler = this.setProperties;
 
 };
