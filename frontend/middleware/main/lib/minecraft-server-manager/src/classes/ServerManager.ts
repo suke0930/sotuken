@@ -815,8 +815,8 @@ export class ServerManager {
   }
 
   /**
-   * 稼働時間追跡を開始
-   */
+ * 稼働時間追跡を開始
+ */
   private startUptimeTracking(uuid: string): void {
     // 既存のタイマーをクリア
     const existingTimer = this.uptimeIntervals.get(uuid);

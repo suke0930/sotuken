@@ -154,7 +154,7 @@ export class MCserverManagerAPP {
     public del: express.RequestHandler = async (req, res) => {
         try {
             if (!req.params.id) { res.json({ ok: false, message: "IDがありません" }); return; }
-            
+
             // 削除前にリスナーをクリーンアップ（メモリリーク防止）
             const watcher = this.watchinglist.get(req.params.id);
             if (watcher) {
@@ -165,7 +165,7 @@ export class MCserverManagerAPP {
                 }
                 this.watchinglist.delete(req.params.id);
             }
-            
+
             const trydel = await this.servermanager.removeInstance(req.params.id);
             if (!trydel.success) {
                 res.json({ ok: false, error: trydel.error });
@@ -201,7 +201,7 @@ export class MCserverManagerAPP {
     public runserver: express.RequestHandler = async (req, res) => {
         try {
             if (!req.params.id) { res.json({ ok: false, message: "IDがありません" }); return; }
-            
+
             // メモリリーク防止: 既存のリスナーがあれば削除
             const existingWatcher = this.watchinglist.get(req.params.id);
             if (existingWatcher) {
@@ -212,7 +212,7 @@ export class MCserverManagerAPP {
                     console.warn(`Failed to close existing process std for ${req.params.id}:`, err);
                 }
             }
-            
+
             const trydel = await this.servermanager.startServer(req.params.id);
             if (!trydel.success) {
                 res.json({ ok: false, error: trydel.error });
@@ -328,17 +328,17 @@ export class MCserverManagerAPP {
 
             // limitのバリデーション
             if (isNaN(limit) || limit < 1 || limit > 10000) {
-                return res.status(400).json({ 
-                    ok: false, 
-                    message: "limitは1から10000の間の数値である必要があります" 
+                return res.status(400).json({
+                    ok: false,
+                    message: "limitは1から10000の間の数値である必要があります"
                 });
             }
 
             const logs = this.servermanager.getServerLogs(req.params.id, limit);
             const logCount = this.servermanager.getServerLogCount(req.params.id);
 
-            return res.json({ 
-                ok: true, 
+            return res.json({
+                ok: true,
                 data: {
                     uuid: req.params.id,
                     logs: logs,
@@ -348,9 +348,9 @@ export class MCserverManagerAPP {
             });
         } catch (error) {
             console.error('Failed to get logs:', error);
-            return res.status(500).json({ 
-                ok: false, 
-                error: error instanceof Error ? error.message : "ログの取得に失敗しました" 
+            return res.status(500).json({
+                ok: false,
+                error: error instanceof Error ? error.message : "ログの取得に失敗しました"
             });
         }
     }
@@ -370,16 +370,51 @@ export class MCserverManagerAPP {
             const logCount = this.servermanager.getServerLogCount(req.params.id);
             this.servermanager.clearServerLogs(req.params.id);
 
-            return res.json({ 
-                ok: true, 
-                message: `${logCount}件のログをクリアしました` 
+            return res.json({
+                ok: true,
+                message: `${logCount}件のログをクリアしました`
             });
         } catch (error) {
             console.error('Failed to clear logs:', error);
-            return res.status(500).json({ 
-                ok: false, 
-                error: error instanceof Error ? error.message : "ログのクリアに失敗しました" 
+            return res.status(500).json({
+                ok: false,
+                error: error instanceof Error ? error.message : "ログのクリアに失敗しました"
             });
         }
     }
-}
+
+
+    /**
+     * サーバのProperty問い合わせ
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+    public getPropties: express.RequestHandler = async (req, res) => {
+        try {
+            const { id } = req.params;
+            if (!id) {
+                return res.status(400).json({ ok: false, message: "IDがありません" });
+            }
+
+            // サーバーがレジストリに存在するかチェック
+            const instance = this.servermanager.getInstanceData(id);
+            if (!instance) {
+                return res.status(404).json({ ok: false, message: "指定されたIDのサーバーが見つかりません。" });
+            }
+
+            const properties = await this.servermanager.getServerProperties(id);
+
+            if (properties === null) {
+                // server.propertiesファイルが存在しない場合
+                return res.json({ ok: true, data: {}, message: "server.propertiesファイルが存在しません。" });
+            }
+
+            return res.json({ ok: true, data: properties });
+        } catch (error) {
+            console.error(`Failed to get properties for ${req.params.id}:`, error);
+            return res.status(500).json({ ok: false, error: error instanceof Error ? error.message : "プロパティの取得に失敗しました" });
+        }
+    }
+
+};
