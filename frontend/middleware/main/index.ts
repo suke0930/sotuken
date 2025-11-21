@@ -7,12 +7,28 @@ import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
 import { MiddlewareManager } from './lib/middleware-manager';
-import { ApiRouter, AssetManager, DownloadManager, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
+import { ApiRouter, AssetManagerRouter, DownloadWebsocket, JdkmanagerRoute, MCmanagerRoute, MCServerWebSocket, MinecraftServerRouter, SampleApiRouter } from './lib/api-router';
 import { SSLCertificateManager } from './lib/ssl/SSLCertificateManager';
+import { createModuleLogger } from './lib/logger';
+const log = createModuleLogger('main');
+import { JdkManager, JDKManagerAPP } from './lib/jdk-manager/src/Main';
 import path from 'path';
+import { SetupUserdata } from './lib/setup-dir';
+import { MCserverManagerAPP } from './lib/minecraft-server-manager/Main';
+
+
 //ダウンロードパス
+
 const DOWNLOAD_TEMP_PATH: string = path.join(__dirname, 'temp', 'download');
 export { DOWNLOAD_TEMP_PATH };
+//ユーザーデータ確定
+const UserDataPath = {
+    basedir: path.join(__dirname, "userdata"),
+    Javadir: path.join(__dirname, "userdata", "jdk"),
+    MCdatadir: path.join(__dirname, "userdata", "minecraftServ"),
+}
+SetupUserdata(UserDataPath.basedir, [UserDataPath.Javadir, UserDataPath.MCdatadir]);
+
 /**
  * アプリケーションのエントリーポイント
  */
@@ -34,7 +50,7 @@ async function main(port: number): Promise<void> {
 
     // 5. WebSocketサーバーの初期化（ミドルウェア設定の前に実行）
     const wsInstance = expressWs(app, server);
-    console.log('✅ express-ws initialized');
+    log.info('express-ws initialized');
 
     // 6. ミドルウェアのセットアップ
     const middlewareManager = new MiddlewareManager(app, !!sslOptions);
@@ -55,47 +71,58 @@ async function main(port: number): Promise<void> {
     app.use('/api/servers', mcServerRouter.router);
 
     // 7.3 Assetproxyのセットアップ
-    const assetProxy = new AssetManager(middlewareManager.authMiddleware);
+    const assetProxy = new AssetManagerRouter(middlewareManager.authMiddleware);
     app.use('/api/assets', assetProxy.router);
 
     // 7.4 WebSocketマネージャーのセットアップ（wsInstanceを渡す）
-    new DownloadManager(middlewareManager, wsInstance, DOWNLOAD_TEMP_PATH, "/ws");
+    new DownloadWebsocket(middlewareManager, wsInstance, DOWNLOAD_TEMP_PATH, "/ws");
 
-
-
-
-
-
-
+    //8 JDKmanagerのセットアップ
+    const JDKmanager = new JDKManagerAPP(new JdkManager(UserDataPath.Javadir));
+    //ルーティングセットアップ
+    const JDKrouter = new JdkmanagerRoute(middlewareManager.authMiddleware, JDKmanager);
+    app.use('/api/jdk', JDKrouter.router);
 
     // 8. エラーハンドリングミドルウェアのセットアップ (ルーティングの後)
     middlewareManager.setupErrorHandlers();
+    // 9.MCサーバーのセットアップ
+    const MCmanager = new MCserverManagerAPP(JDKmanager, DOWNLOAD_TEMP_PATH, UserDataPath.MCdatadir);
+    const MCrouter = new MCmanagerRoute(middlewareManager.authMiddleware, MCmanager, JDKmanager);
+    app.use('/api/mc', MCrouter.router);
 
-    // 9. サーバーの起動
+    // 9.1 MCServer WebSocketマネージャーのセットアップ
+    new MCServerWebSocket(middlewareManager, wsInstance, "/ws/mcserver", MCmanager);
+    // 10. サーバーの起動
     server.listen(port, '0.0.0.0', () => {
         const protocol = sslOptions ? 'https' : 'http';
         const wsProtocol = sslOptions ? 'wss' : 'ws';
 
-        console.log(`=== Front Driver Server Started ===`);
-        console.log(`Protocol: ${protocol.toUpperCase()}`);
-        console.log(`Port: ${port}`);
-        console.log(`URL: ${protocol}://127.0.0.1:${port}/`);
-        console.log(`Sample API: ${protocol}://127.0.0.1:${port}/api/sample/public-info`);
-        console.log(`WebSocket: ${wsProtocol}://127.0.0.1:${port}/ws`);
-        console.log(`Session Secret: ${SESSION_SECRET.substring(0, 10)}...`);
-        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        log.info({
+            event: 'server_started',
+            protocol: protocol.toUpperCase(),
+            port,
+            endpoints: {
+                main: `${protocol}://127.0.0.1:${port}/`,
+                sampleApi: `${protocol}://127.0.0.1:${port}/api/sample/public-info`,
+                downloadWebSocket: `${wsProtocol}://127.0.0.1:${port}/ws`,
+                mcServerWebSocket: `${wsProtocol}://127.0.0.1:${port}/ws/mcserver`
+            },
+            sessionSecret: SESSION_SECRET.substring(0, 10) + '...',
+            environment: process.env.NODE_ENV || 'development',
+            sslEnabled: !!sslOptions
+        }, 'Front Driver Server Started');
 
         if (!sslOptions) {
-            console.log(`⚠️  WARNING: Running in HTTP mode (SSL certificate generation failed)`);
-            console.log(`   This is insecure for production use!`);
+            log.warn({
+                event: 'ssl_disabled',
+                reason: 'certificate_generation_failed'
+            }, 'WARNING: Running in HTTP mode - insecure for production');
         }
-
-        console.log(`=====================================`);
     });
 }
 
 // サーバー起動
 main(DEFAULT_SERVER_PORT).catch((error) => {
-    console.error("Failed to start server:", error);
+    log.error(error, "Failed to start server");
     process.exit(1);
 });

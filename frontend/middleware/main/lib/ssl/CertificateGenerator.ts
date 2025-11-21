@@ -10,6 +10,9 @@ import {
   organization
 } from '../constants';
 import { NetworkUtils } from './NetworkUtils';
+import { createModuleLogger } from '../logger';
+
+const log = createModuleLogger('ssl:generator');
 
 /**
  * 証明書情報のメタデータ
@@ -33,7 +36,12 @@ export class CertificateGenerator {
    * 自己署名証明書を生成
    */
   public static async generate(): Promise<void> {
-    console.log('🔐 Generating new SSL certificate...');
+    log.info({
+      commonName,
+      organization,
+      validityDays: CERT_VALIDITY_DAYS,
+      keyAlgorithm: 'RSA 4096'
+    }, '🔐 Generating new SSL certificate...');
 
     try {
       // ディレクトリが存在しない場合は作成
@@ -44,15 +52,10 @@ export class CertificateGenerator {
       // SANを構築
       const subjectAltNames = NetworkUtils.buildSubjectAltNames();
 
-
-      console.log('  - Common Name:', commonName);
-      console.log('  - Organization:', organization);
-      console.log('  - Validity:', CERT_VALIDITY_DAYS, 'days');
-      console.log('  - Key Algorithm: RSA 4096 (Ed25519 equivalent security)');
       // RSA 4096bit鍵ペアを生成（Ed25519と同等のセキュリティ強度）
-      console.log('  ⏳ Generating RSA 4096-bit key pair (this may take a moment)...');
+      log.info('Generating RSA 4096-bit key pair (this may take a moment)...');
       const keys = forge.pki.rsa.generateKeyPair(4096);
-      console.log('  ✅ Key pair generated');
+      log.info('Key pair generated');
 
       // 証明書を作成
       const cert = forge.pki.createCertificate();
@@ -144,12 +147,14 @@ export class CertificateGenerator {
 
       fs.writeFileSync(SSL_INFO_FILE, JSON.stringify(certInfo, null, 2));
 
-      console.log('✅ Certificate generated successfully');
-      console.log(`  - Saved to: ${SSL_CERT_DIR}`);
-      console.log(`  - Expires: ${notAfter.toISOString()}`);
+      log.info({
+        certDir: SSL_CERT_DIR,
+        expiresAt: notAfter.toISOString(),
+        serialNumber: cert.serialNumber
+      }, 'Certificate generated successfully');
 
     } catch (error) {
-      console.error('❌ Failed to generate certificate:', error);
+      log.error({ err: error }, 'Failed to generate certificate');
       throw error;
     }
   }

@@ -1,0 +1,274 @@
+/* Help Icon and Modal Styles */
+
+/* Help Icon Button */
+.help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 8px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--theme-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+    opacity: 0.7;
+}
+
+.help-icon:hover {
+    opacity: 1;
+    transform: scale(1.15);
+    color: var(--theme-primary);
+}
+
+.help-icon:active {
+    transform: scale(1.05);
+}
+
+.help-icon i {
+    font-size: 16px;
+}
+
+/* Help Modal Specific Styles */
+.help-modal {
+    animation: slideInFromTop 0.3s ease;
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Help Modal Body */
+.help-modal-body {
+    padding: 24px;
+    max-height: calc(85vh - 180px);
+    overflow-y: auto;
+}
+
+/* Help Content Markdown Styles */
+.help-content {
+    color: var(--theme-text);
+    line-height: 1.8;
+    font-size: 15px;
+}
+
+.help-content h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--theme-text);
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--theme-primary);
+}
+
+.help-content h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--theme-text);
+    margin-top: 32px;
+    margin-bottom: 16px;
+}
+
+.help-content h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--theme-text);
+    margin-top: 24px;
+    margin-bottom: 12px;
+}
+
+.help-content h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--theme-text-secondary);
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.help-content p {
+    margin-bottom: 16px;
+    color: var(--theme-text-secondary);
+}
+
+.help-content strong {
+    color: var(--theme-text);
+    font-weight: 600;
+}
+
+.help-content em {
+    font-style: italic;
+    color: var(--theme-text);
+}
+
+.help-content ul,
+.help-content ol {
+    margin-bottom: 16px;
+    padding-left: 24px;
+}
+
+.help-content li {
+    margin-bottom: 8px;
+    color: var(--theme-text-secondary);
+}
+
+.help-content code {
+    background: var(--theme-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--theme-primary);
+    border: 1px solid var(--theme-border);
+}
+
+.help-content pre {
+    background: #1f2937;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+
+.help-content pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    color: #e5e7eb;
+}
+
+.help-content blockquote {
+    background: var(--theme-surface);
+    border-left: 4px solid var(--theme-primary);
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+.help-content blockquote p {
+    margin-bottom: 8px;
+}
+
+.help-content blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+.help-content hr {
+    border: none;
+    border-top: 2px solid var(--theme-border);
+    margin: 32px 0;
+}
+
+.help-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    background: var(--theme-surface);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.help-content table th {
+    background: var(--theme-primary);
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.help-content table td {
+    padding: 12px;
+    border-bottom: 1px solid var(--theme-border);
+    color: var(--theme-text-secondary);
+}
+
+.help-content table tr:last-child td {
+    border-bottom: none;
+}
+
+.help-content table tr:hover {
+    background: var(--theme-bg);
+}
+
+.help-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 16px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Icon styles in markdown content */
+.help-content h2::before,
+.help-content h3::before {
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* Scrollbar styling for help modal */
+.help-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.help-modal-body::-webkit-scrollbar-track {
+    background: var(--theme-bg);
+    border-radius: 4px;
+}
+
+.help-modal-body::-webkit-scrollbar-thumb {
+    background: var(--theme-border);
+    border-radius: 4px;
+}
+
+.help-modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-primary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .help-modal {
+        max-width: 95vw !important;
+        max-height: 90vh !important;
+    }
+
+    .help-modal-body {
+        padding: 16px;
+        max-height: calc(90vh - 160px);
+    }
+
+    .help-content h1 {
+        font-size: 24px;
+    }
+
+    .help-content h2 {
+        font-size: 20px;
+    }
+
+    .help-content h3 {
+        font-size: 16px;
+    }
+
+    .help-content {
+        font-size: 14px;
+    }
+
+    .help-content table {
+        font-size: 13px;
+    }
+
+    .help-content table th,
+    .help-content table td {
+        padding: 8px;
+    }
+}
+

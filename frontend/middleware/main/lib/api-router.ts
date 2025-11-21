@@ -5,9 +5,18 @@ import { MinecraftServerManager } from './minecraft-server-manager';
 import { SESSION_NAME } from './constants';
 import { AssetServerAPP, } from './Asset_handler/src/app';
 import expressWs from 'express-ws';
-import { WebSocketManager } from './Asset_handler/src/lib/WebSocketManager';
+import { DownloadWebSocketManager } from './Asset_handler/src/lib/DownloadWebSocketManager';
 import { setWebSocketManager } from './Asset_handler/src/controllers/downloadController';
 import { MiddlewareManager } from './middleware-manager';
+import { createModuleLogger } from './logger';
+import { JDKManagerAPP } from './jdk-manager/src/Main';
+import { t } from 'tar';
+import { clearScreenDown } from 'readline';
+import { MCserverManagerAPP } from './minecraft-server-manager/Main';
+import { th } from 'zod/v4/locales';
+import { threadCpuUsage } from 'process';
+
+const log = createModuleLogger('auth');
 /**
  * APIエンドポイントのルーティングを管理するクラス
  */
@@ -18,7 +27,8 @@ export class ApiRouter {
     ) { }
 
     /**
-     * すべてのAPIエンドポイントをセットアップする
+     * APIエンドポイントをセットアップを行う
+     * ラッパーもあるため要注意
      */
     public configureRoutes() {
         // 認証状態に関わらずトップページは表示する
@@ -28,7 +38,7 @@ export class ApiRouter {
             // express.staticミドルウェアが 'web' ディレクトリを配信するため、
             // このルート定義は実質的に不要になる可能性があります。
             // ただし、明示的にルートパスへの応答を定義しておくことは良い習慣です。
-            res.sendFile(path.join(__dirname, '..', 'web', 'index.html'));
+            res.sendFile(path.join(__dirname, '..', 'web', 'mainpage.html'));
         });
 
         this.app.post('/user/signup', this.signupHandler);
@@ -53,6 +63,7 @@ export class ApiRouter {
     }
 
     private signupHandler: express.RequestHandler = async (req, res) => {
+        if ((req.body.id == undefined) || (req.body.password == undefined)) return res.status(400).json({ ok: false, message: "JSONの形式が間違っています" });
         const { id, password } = req.body;
         if (!id || !password || typeof id !== 'string' || typeof password !== 'string') {
             return res.status(400).json({ ok: false, message: "IDとパスワードが必要です" });
@@ -78,12 +89,13 @@ export class ApiRouter {
 
             return res.status(201).json({ ok: true, message: "ユーザー登録とログインが完了しました", userId: id });
         } catch (error) {
-            console.error("Signup error:", error);
+            log.error({ err: error, userId: id }, "Signup error");
             return res.status(500).json({ ok: false, message: "サーバー内部エラーが発生しました" });
         }
     };
 
     private loginHandler: express.RequestHandler = async (req, res) => {
+        if (!(req.body) || (req.body.id == undefined) || (req.body.password == undefined)) return res.status(400).json({ ok: false, message: "JSONの形式が間違っています" });
         const { id, password } = req.body;
         if (!id || !password) {
             return res.status(400).json({ ok: false, message: "IDとパスワードが必要です" });
@@ -103,11 +115,15 @@ export class ApiRouter {
                     req.session.save((saveErr) => saveErr ? reject(saveErr) : resolve());
                 });
             });
-            console.log(`User logged in: ${authenticatedUserId} at ${req.session.loginAt}`);
+            log.info({
+                event: 'user_login',
+                userId: authenticatedUserId,
+                loginAt: req.session.loginAt
+            }, `User logged in: ${authenticatedUserId}`);
 
             return res.status(200).json({ ok: true, message: "ログインに成功しました", userId: authenticatedUserId });
         } catch (error) {
-            console.error("Login error:", error);
+            log.error({ err: error, userId: id }, "Login error");
             return res.status(500).json({ ok: false, message: "サーバー内部エラーが発生しました" });
         }
     };
@@ -123,7 +139,7 @@ export class ApiRouter {
         }
         // ユーザーがまだ登録されていない状態も考慮
         DevUserManager.hasUser().then(hasUser => {
-            console.log("Auth check: hasUser =", hasUser);
+            log.debug({ hasUser }, "Auth check");
             if (!hasUser) {
                 return res.status(200).json({ ok: false, reason: "no_user_registered", message: "ユーザーが登録されていません" });
             }
@@ -134,7 +150,7 @@ export class ApiRouter {
     private logoutHandler: express.RequestHandler = (req, res) => {
         req.session.destroy((err) => {
             if (err) {
-                console.error("Session destruction failed:", err);
+                log.error({ err }, "Session destruction failed");
                 return res.status(500).json({ ok: false, reason: "logout_failed", message: "ログアウト処理中にエラーが発生しました" });
             }
             res.clearCookie(SESSION_NAME);
@@ -225,10 +241,15 @@ export class MinecraftServerRouter {
 
 /**
  * アセットのProxyAPIエンドポイントのルーティングを行うクラス
+ * ただのラッパーだなぁ
+ * これだとルーティングが一望できない...
+ * ただコードの量的に可読性が著しく落ちるのでこのままで行く
+ * 
+ * 注意！実際のダウンロードAPIはこっちで管理されています
+ * 以下はwebsocketだけだよ！
  */
-export class AssetManager {
+export class AssetManagerRouter {
     public readonly router: express.Router;
-
     constructor(private authMiddleware: express.RequestHandler) {
         this.router = express.Router();
         new AssetServerAPP(this.router, this.authMiddleware, "http://localhost:3000");
@@ -237,9 +258,9 @@ export class AssetManager {
 
 
 /**
- * DownloadAPIエンドポイントのルーティングを行うクラス
+ * DownloadAPIエンドポイントのwebsocketの面倒を見るクラス
  */
-export class DownloadManager {
+export class DownloadWebsocket {
     public readonly router: express.Router;
     private wsServer: expressWs.Instance;
     private basepath: string;
@@ -252,13 +273,83 @@ export class DownloadManager {
         this.router = express.Router();
         this.wsServer = wsInstance; // 外部から渡されたインスタンスを使用
         this.middlewareManager = middlewareManager;
-        console.log('✅ DownloadManager initialized with existing wsInstance');
+        createModuleLogger('download').info('DownloadManager initialized with existing wsInstance');
         this.configureRoutes();
     }
 
     private configureRoutes() {
-        const WsManager = new WebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
+        const WsManager = new DownloadWebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
         setWebSocketManager(WsManager, this.download_dir);
     }
 }
+/**
+ * JDKManager管理クラス
+ * 可読性確保＋既存リソース活用のためルーティングのみ個々で行うこととしよう。
+ */
+export class JdkmanagerRoute {
+    public readonly router: express.Router;
+    private app: JDKManagerAPP;
+    constructor(private authMiddleware: express.RequestHandler, app: JDKManagerAPP) {
+        this.router = express.Router();
+        this.app = app;
+        this.setupRoute();
+    }
+    setupRoute() {
+        this.router.get("/installlist", this.authMiddleware, this.app.installlist);
+        this.router.get("/getbyid/:id", this.authMiddleware, this.app.getbyId);
+        this.router.get("/getbyverison/:verison", this.authMiddleware, this.app.getbyMajorVersion);
+        this.router.post("/add", this.authMiddleware, this.app.addJDK);
+        this.router.delete("/removeJDK/:id", this.authMiddleware, this.app.removeJDK);
+    }
+}
 
+export class MCmanagerRoute {
+    public readonly router: express.Router;
+    private app: MCserverManagerAPP;
+    private jdkapp: JDKManagerAPP;
+    constructor(private authMiddleware: express.RequestHandler, app: MCserverManagerAPP, jdk: JDKManagerAPP) {
+        this.router = express.Router();
+        this.app = app;
+        this.jdkapp = jdk;
+        this.setupRoute();
+    }
+    setupRoute() {
+        this.router.get("/list", this.authMiddleware, this.app.list);
+        this.router.post("/add", this.authMiddleware, this.app.addserver);
+        this.router.delete("/remove/:id", this.authMiddleware, this.app.del);
+        this.router.get("/run/:id", this.authMiddleware, this.app.runserver);
+        this.router.get("/stop/:id", this.authMiddleware, this.app.stopserver);
+        this.router.post("/command/:id", this.authMiddleware, this.app.sendcommand);
+        this.router.put("/update/:id", this.authMiddleware, this.app.update);
+        this.router.get("/logs/:id", this.authMiddleware, this.app.getLogs);
+        this.router.delete("/logs/:id", this.authMiddleware, this.app.clearLogs);
+    }
+}
+
+/**
+ * Minecraft Server WebSocket管理クラス
+ * サーバーの標準出力/エラー出力、サーバーイベントをWebSocketでリアルタイム配信
+ */
+export class MCServerWebSocket {
+    public readonly router: express.Router;
+    private wsServer: expressWs.Instance;
+    private basepath: string;
+    private middlewareManager: MiddlewareManager;
+    private mcApp: MCserverManagerAPP;
+
+    constructor(middlewareManager: MiddlewareManager, wsInstance: expressWs.Instance, basepath: string, mcApp: MCserverManagerAPP) {
+        this.basepath = basepath;
+        this.router = express.Router();
+        this.wsServer = wsInstance;
+        this.middlewareManager = middlewareManager;
+        this.mcApp = mcApp;
+        createModuleLogger('mcserver-websocket').info('MCServerWebSocket initialized');
+        this.configureRoutes();
+    }
+
+    private configureRoutes() {
+        const { MCServerWebSocketManager } = require('./minecraft-server-manager/src/websocket/MCServerWebSocketManager');
+        const wsManager = new MCServerWebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
+        this.mcApp.setWebSocketManager(wsManager);
+    }
+}
