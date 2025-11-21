@@ -1,5 +1,8 @@
 // UI Control Logic
 import { formatDate, formatTime } from '../utils/helpers.js';
+import { helpContent } from '../utils/helpContent.js';
+import { aboutUsContent } from '../content/aboutUs.js';
+import { tutorialsContent } from '../content/tutorials.js';
 
 export function createUIMethods() {
     return {
@@ -40,6 +43,10 @@ export function createUIMethods() {
                 this.prepareCreateTab();
             } else if (tabId === 'jdk-management') {
                 this.loadInstalledJdks();
+            } else if (tabId === 'about') {
+                this.renderAboutUs();
+            } else if (tabId === 'tutorials') {
+                this.renderTutorials();
             }
             // Close sidebar on mobile after selection
             if (window.innerWidth < 1024) {
@@ -71,6 +78,42 @@ export function createUIMethods() {
             setTimeout(() => {
                 this.successMessage = '';
             }, 5000);
+        },
+
+        openHelpModal(topicKey) {
+            const topic = helpContent[topicKey];
+            if (!topic) {
+                console.error(`Help topic not found: ${topicKey}`);
+                return;
+            }
+
+            this.helpModal.title = topic.title;
+            // Use marked.js to parse markdown to HTML
+            if (typeof marked !== 'undefined') {
+                this.helpModal.content = marked.parse(topic.content);
+            } else {
+                // Fallback if marked.js is not loaded
+                this.helpModal.content = topic.content.replace(/\n/g, '<br>');
+            }
+            this.helpModal.visible = true;
+        },
+
+        closeHelpModal() {
+            this.helpModal.visible = false;
+            this.helpModal.title = '';
+            this.helpModal.content = '';
+        },
+
+        renderAboutUs() {
+            if (!this.aboutUsRendered && typeof marked !== 'undefined') {
+                this.aboutUsRendered = marked.parse(aboutUsContent);
+            }
+        },
+
+        renderTutorials() {
+            if (!this.tutorialsRendered && typeof marked !== 'undefined') {
+                this.tutorialsRendered = marked.parse(tutorialsContent);
+            }
         },
 
         formatDate,
