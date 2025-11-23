@@ -1,0 +1,194 @@
+/* Content Pages (About Us, Tutorials) Markdown Styling */
+
+.markdown-content-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.content-page-markdown {
+    color: var(--theme-text);
+    line-height: 1.8;
+}
+
+/* Headings */
+.content-page-markdown h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--theme-text);
+    margin-top: 0;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 3px solid var(--theme-primary);
+}
+
+.content-page-markdown h2 {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--theme-text);
+    margin-top: 40px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.content-page-markdown h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--theme-text);
+    margin-top: 32px;
+    margin-bottom: 16px;
+}
+
+.content-page-markdown h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--theme-text-secondary);
+    margin-top: 24px;
+    margin-bottom: 12px;
+}
+
+/* Text */
+.content-page-markdown p {
+    margin-bottom: 16px;
+    color: var(--theme-text-secondary);
+}
+
+.content-page-markdown strong {
+    color: var(--theme-text);
+    font-weight: 600;
+}
+
+/* Lists */
+.content-page-markdown ul,
+.content-page-markdown ol {
+    margin-bottom: 20px;
+    padding-left: 32px;
+}
+
+.content-page-markdown li {
+    margin-bottom: 10px;
+    color: var(--theme-text-secondary);
+    line-height: 1.8;
+}
+
+/* Code */
+.content-page-markdown code {
+    background: var(--theme-bg);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 14px;
+    color: var(--theme-primary);
+    border: 1px solid var(--theme-border);
+}
+
+.content-page-markdown pre {
+    background: #1f2937;
+    padding: 20px;
+    border-radius: 12px;
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.content-page-markdown pre code {
+    background: transparent;
+    padding: 0;
+    border: none;
+    color: #e5e7eb;
+}
+
+/* Blockquotes */
+.content-page-markdown blockquote {
+    background: var(--theme-surface);
+    border-left: 4px solid var(--theme-primary);
+    padding: 16px 20px;
+    margin: 24px 0;
+    border-radius: 8px;
+}
+
+.content-page-markdown blockquote p {
+    margin-bottom: 8px;
+}
+
+.content-page-markdown blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* Horizontal Rules */
+.content-page-markdown hr {
+    border: none;
+    border-top: 2px solid var(--theme-border);
+    margin: 40px 0;
+}
+
+/* Tables */
+.content-page-markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    background: var(--theme-surface);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.content-page-markdown table th {
+    background: var(--theme-primary);
+    color: white;
+    padding: 14px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.content-page-markdown table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--theme-border);
+    color: var(--theme-text-secondary);
+}
+
+.content-page-markdown table tr:last-child td {
+    border-bottom: none;
+}
+
+.content-page-markdown table tr:hover {
+    background: var(--theme-bg);
+}
+
+/* Images */
+.content-page-markdown img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin: 20px 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .markdown-content-container {
+        padding: 16px;
+    }
+
+    .content-page-markdown h1 {
+        font-size: 26px;
+    }
+
+    .content-page-markdown h2 {
+        font-size: 22px;
+    }
+
+    .content-page-markdown h3 {
+        font-size: 18px;
+    }
+
+    .content-page-markdown table {
+        font-size: 14px;
+    }
+
+    .content-page-markdown table th,
+    .content-page-markdown table td {
+        padding: 10px;
+    }
+}
+

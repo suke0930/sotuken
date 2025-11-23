@@ -163,7 +163,11 @@ export function createStore() {
                     visible: false,
                     title: '',
                     content: ''
-                }
+                },
+
+                // Content Pages (markdown)
+                aboutUsRendered: '',
+                tutorialsRendered: ''
             };
         },
 
