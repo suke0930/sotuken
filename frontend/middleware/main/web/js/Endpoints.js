@@ -26,7 +26,11 @@ export const API_ENDPOINTS = {
         stop: (id) => `/api/mc/stop/${id}`,
         command: (id) => `/api/mc/command/${id}`,
         logs: (id) => `/api/mc/logs/${id}`,
-        clearLogs: (id) => `/api/mc/logs/${id}`
+        clearLogs: (id) => `/api/mc/logs/${id}`,
+        // Server properties endpoints
+        properties: (id) => `/api/mc/Properties/${id}`,  // GET and POST
+        getProperties: (id) => `/api/mc/Properties/${id}`,  // Explicit GET
+        setProperties: (id) => `/api/mc/Properties/${id}`   // Explicit POST
     },
 
     // List endpoints

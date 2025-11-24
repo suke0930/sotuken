@@ -785,7 +785,7 @@ export class ServerManager {
   /**
    * ServerPropertiesManagerを取得（使い捨てインスタンス）
    */
-  public getServerPropertiesManager(uuid: string): ServerPropertiesManager | undefined {
+  private getServerPropertiesManager(uuid: string): ServerPropertiesManager | undefined {
     const wrapper = this.instances.get(uuid);
     if (!wrapper) return undefined;
 
@@ -796,8 +796,49 @@ export class ServerManager {
   }
 
   /**
-   * 稼働時間追跡を開始
+   * サーバーのプロパティをすべて取得
+   *
+   * @param uuid - サーバーUUID
+   * @returns プロパティの連想配列（ファイルが存在しない場合はnull）
    */
+  public async getServerProperties(uuid: string): Promise<Record<string, string> | null> {
+    try {
+      const propManager = this.getServerPropertiesManager(uuid);
+      if (!propManager) {
+        this.logger.warn({ uuid }, 'Instance not found for properties retrieval');
+        return null;
+      }
+      return await propManager.getAll();
+    } catch (error) {
+      throw error;
+    }
+  }
+
+
+  /**
+   * サーバーのプロパティを設定
+   *
+   * @param uuid - サーバーUUID
+   * @param updates - 更新するプロパティの連想配列
+   * @returns 処理結果
+   */
+  public async setServerProperties(uuid: string, updates: Record<string, string>): Promise<VoidResult> {
+    try {
+      const propManager = this.getServerPropertiesManager(uuid);
+      if (!propManager) {
+        this.logger.warn({ uuid }, 'Instance not found for properties update');
+        return { success: false, error: ServerManagerErrors.INSTANCE_NOT_FOUND };
+      }
+      await propManager.updateMultiple(updates);
+      return { success: true, data: undefined };
+    } catch (error) {
+      this.logger.error({ err: error, uuid }, 'Failed to set server properties');
+      return { success: false, error: `Failed to set server properties: ${error}` };
+    }
+  }
+  /**
+ * 稼働時間追跡を開始
+ */
   private startUptimeTracking(uuid: string): void {
     // 既存のタイマーをクリア
     const existingTimer = this.uptimeIntervals.get(uuid);
