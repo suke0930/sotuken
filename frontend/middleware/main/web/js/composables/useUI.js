@@ -1,6 +1,8 @@
 // UI Control Logic
 import { formatDate, formatTime } from '../utils/helpers.js';
 import { helpContent } from '../utils/helpContent.js';
+import { aboutUsContent } from '../content/aboutUs.js';
+import { tutorialsContent } from '../content/tutorials.js';
 
 export function createUIMethods() {
     return {
@@ -41,6 +43,10 @@ export function createUIMethods() {
                 this.prepareCreateTab();
             } else if (tabId === 'jdk-management') {
                 this.loadInstalledJdks();
+            } else if (tabId === 'about') {
+                this.renderAboutUs();
+            } else if (tabId === 'tutorials') {
+                this.renderTutorials();
             }
             // Close sidebar on mobile after selection
             if (window.innerWidth < 1024) {
@@ -96,6 +102,18 @@ export function createUIMethods() {
             this.helpModal.visible = false;
             this.helpModal.title = '';
             this.helpModal.content = '';
+        },
+
+        renderAboutUs() {
+            if (!this.aboutUsRendered && typeof marked !== 'undefined') {
+                this.aboutUsRendered = marked.parse(aboutUsContent);
+            }
+        },
+
+        renderTutorials() {
+            if (!this.tutorialsRendered && typeof marked !== 'undefined') {
+                this.tutorialsRendered = marked.parse(tutorialsContent);
+            }
         },
 
         formatDate,
