@@ -323,6 +323,15 @@ export class MCmanagerRoute {
         this.router.put("/update/:id", this.authMiddleware, this.app.update);
         this.router.get("/logs/:id", this.authMiddleware, this.app.getLogs);
         this.router.delete("/logs/:id", this.authMiddleware, this.app.clearLogs);
+
+        // サーバープロパティエンドポイント（推奨）
+        this.router.get("/Properties/:id", this.authMiddleware, this.app.getProperties);
+        this.router.post("/Properties/:id", this.authMiddleware, this.app.setProperties);
+
+        // 後方互換性のための旧エンドポイント（非推奨）
+        // 既存のクライアントコードとの互換性を維持するため、当面は両方をサポート
+        this.router.get("/Propites/:id", this.authMiddleware, this.app.getPropties);
+        this.router.post("/Propites/:id", this.authMiddleware, this.app.SetPropties);
     }
 }
 
