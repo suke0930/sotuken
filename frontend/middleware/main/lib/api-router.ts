@@ -319,6 +319,7 @@ export class MCmanagerRoute {
         this.router.delete("/remove/:id", this.authMiddleware, this.app.del);
         this.router.get("/run/:id", this.authMiddleware, this.app.runserver);
         this.router.get("/stop/:id", this.authMiddleware, this.app.stopserver);
+        this.router.delete("/forcekill/:id", this.authMiddleware, this.app.forceKill);
         this.router.post("/command/:id", this.authMiddleware, this.app.sendcommand);
         this.router.put("/update/:id", this.authMiddleware, this.app.update);
         this.router.get("/logs/:id", this.authMiddleware, this.app.getLogs);

@@ -10,6 +10,7 @@
  */
 export const ERROR_CODES = {
   // 共通エラー
+  SERVER_NOT_RUNNING: 'SERVER_NOT_RUNNING',
   MISSING_PARAMETER: 'MISSING_PARAMETER',
   INVALID_PARAMETER: 'INVALID_PARAMETER',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -79,6 +80,7 @@ export const SUCCESS_MESSAGES = {
   SERVER_CREATED: 'サーバーを作成しました',
   SERVER_DELETED: 'サーバーを削除しました',
   SERVER_UPDATED: 'サーバー情報を更新しました',
+  SERVER_FORCE_KILLED: 'サーバーを強制終了しました',
 
   // ログ操作
   LOGS_CLEARED: 'ログをクリアしました'

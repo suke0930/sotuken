@@ -283,6 +283,46 @@ export class MCserverManagerAPP {
             res.json({ ok: false, error: error });
         }
     }
+
+    /**
+     * サーバーを強制終了
+     * @param req
+     * @param res
+     */
+    public forceKill: express.RequestHandler = async (req, res) => {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json(createErrorResponse(ERROR_CODES.MISSING_SERVER_ID, ERROR_MESSAGES.MISSING_SERVER_ID));
+        }
+
+        const instance = this.servermanager.getInstanceData(id);
+        if (!instance) {
+            this.logger.warn({ serverId: id }, 'Server instance not found for force kill');
+            return res.status(404).json(createErrorResponse(ERROR_CODES.INSTANCE_NOT_FOUND, ERROR_MESSAGES.INSTANCE_NOT_FOUND));
+        }
+
+        // サーバーが実行中でない場合はエラーを返す
+        if (instance.status !== 'running') {
+            this.logger.warn({ serverId: id, status: instance.status }, 'Attempted to force kill a non-running server');
+            return res.status(409).json(createErrorResponse(ERROR_CODES.SERVER_NOT_RUNNING, ERROR_MESSAGES.INSTANCE_NOT_RUNNING));
+        }
+
+        try {
+            this.logger.info({ serverId: id }, 'Attempting to force kill server');
+            this.servermanager.forceKillServer(id);
+            this.logger.info({ serverId: id }, 'Force kill command issued successfully');
+            return res.json(createSuccessResponse(undefined, SUCCESS_MESSAGES.SERVER_FORCE_KILLED));
+        } catch (error) {
+            this.logger.error({ err: error, serverId: id }, 'Failed to force kill server');
+            return res.status(500).json(
+                createErrorResponse(
+                    ERROR_CODES.INTERNAL_ERROR,
+                    error instanceof Error ? error.message : ERROR_MESSAGES.INTERNAL_ERROR
+                )
+            );
+        }
+    }
     /**
      * サーバーインスタンスの情報を更新します。
      * @param req 
