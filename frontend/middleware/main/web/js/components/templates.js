@@ -1,4 +1,4 @@
-/**
+ /**
  * Vue Application Template - Main Entry Point
  * 
  * This is the base template file that imports and combines all modular templates.
@@ -33,6 +33,7 @@ import { downloadsTabTemplate } from './DownloadsTabTemplate.js';
 import { contentTabsTemplate } from './ContentTabsTemplate.js';
 import { jdkManagementTabTemplate } from './JdkManagementTabTemplate.js';
 import { modalsTemplate } from './ModalsTemplate.js';
+import { propertiesModalTemplate } from './PropertiesModalTemplate.js';
 import { toastTemplate } from './ToastTemplate.js';
 
 // Combine all templates into the main application template
@@ -63,6 +64,8 @@ ${authTemplate}
     </div>
 
     ${modalsTemplate}
+
+    ${propertiesModalTemplate}
 
     ${toastTemplate}
 </main>

@@ -152,6 +152,17 @@ export function createStore() {
                 mcWebSocketConnected: false,
                 subscribedServers: new Set(),
 
+                // Server Properties Modal
+                propertiesModal: {
+                    visible: false,
+                    serverUuid: null,
+                    serverName: '',
+                    mode: 'basic', // 'basic', 'advanced', 'developer'
+                    editorTab: 'gui', // 'gui', 'raw'
+                    data: {},
+                    rawText: ''
+                },
+
                 // Event Notifications
                 notifications: [],
                 unreadNotificationCount: 0,

@@ -1,0 +1,475 @@
+/* ============================================
+   Server Properties Modal Styles
+   ============================================ */
+
+/* Properties Modal Container */
+.properties-modal .modal-body {
+    background: var(--theme-bg);
+}
+
+.properties-modal-body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================
+   Mode Toggle (Basic / Advanced / Developer)
+   ============================================ */
+.properties-mode-toggle {
+    display: flex;
+    gap: 0;
+    padding: 16px;
+    background: var(--theme-surface);
+    border-bottom: 2px solid var(--theme-border);
+}
+
+.mode-toggle-btn {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--theme-bg);
+    color: var(--theme-text-secondary);
+    border: 1px solid var(--theme-border);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.mode-toggle-btn:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+.mode-toggle-btn:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.mode-toggle-btn:not(:last-child) {
+    border-right: none;
+}
+
+.mode-toggle-btn:hover:not(.active) {
+    background: var(--theme-surface);
+    color: var(--theme-text);
+}
+
+.mode-toggle-btn.active {
+    background: var(--theme-primary);
+    color: white;
+    border-color: var(--theme-primary);
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.mode-toggle-btn i {
+    font-size: 16px;
+}
+
+/* ============================================
+   Editor Tabs (GUI / Raw Text)
+   ============================================ */
+.properties-editor-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px 0 16px;
+    background: var(--theme-surface);
+    border-bottom: 1px solid var(--theme-border);
+}
+
+.editor-tab-btn {
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--theme-text-secondary);
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.editor-tab-btn:hover:not(.active) {
+    color: var(--theme-text);
+    border-bottom-color: var(--theme-border);
+}
+
+.editor-tab-btn.active {
+    color: var(--theme-primary);
+    border-bottom-color: var(--theme-primary);
+}
+
+/* ============================================
+   Properties Content Container
+   ============================================ */
+.properties-content {
+    padding: 20px;
+    overflow-y: auto;
+}
+
+/* ============================================
+   Properties Section
+   ============================================ */
+.properties-section {
+    margin-bottom: 24px;
+    background: var(--theme-surface);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.properties-section:last-child {
+    margin-bottom: 0;
+}
+
+.properties-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--theme-border);
+    color: var(--theme-text);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.properties-section-header i {
+    font-size: 18px;
+    color: var(--theme-primary);
+}
+
+.properties-section-header.advanced i {
+    color: #f59e0b;
+}
+
+.properties-section-header.developer i {
+    color: #8b5cf6;
+}
+
+/* ============================================
+   Properties Grid Layout
+   ============================================ */
+.properties-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+/* ============================================
+   Individual Property Item
+   ============================================ */
+.property-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.property-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--theme-text);
+}
+
+.property-label i {
+    color: var(--theme-primary);
+    font-size: 14px;
+}
+
+.property-tooltip {
+    margin-left: auto;
+    color: var(--theme-text-secondary);
+    cursor: help;
+    transition: color 0.2s ease;
+}
+
+.property-tooltip:hover {
+    color: var(--theme-primary);
+}
+
+.property-input {
+    padding: 10px 12px;
+    background: var(--theme-bg);
+    border: 2px solid var(--theme-border);
+    border-radius: 8px;
+    color: var(--theme-text);
+    font-size: 14px;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.property-input:focus {
+    border-color: var(--theme-primary);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.property-input:hover:not(:focus) {
+    border-color: var(--theme-text-secondary);
+}
+
+/* Select Dropdown Styling */
+select.property-input {
+    cursor: pointer;
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3cpolyline points="6 9 12 15 18 9"%3e%3c/polyline%3e%3c/svg%3e');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+    appearance: none;
+}
+
+/* Number Input Styling */
+input[type="number"].property-input {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Validation Error Styling
+   ============================================ */
+.property-input-error {
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.property-input-error:focus {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.property-error-message {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.1);
+    border-left: 3px solid #ef4444;
+    border-radius: 4px;
+    color: #dc2626;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.property-error-message i {
+    color: #ef4444;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   Checkbox Property Item
+   ============================================ */
+.property-item-checkbox {
+    /* All items are now single column by default */
+}
+
+.property-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: var(--theme-bg);
+    border: 2px solid var(--theme-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.property-checkbox-label:hover {
+    border-color: var(--theme-primary);
+    background: var(--theme-surface);
+}
+
+.property-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--theme-primary);
+}
+
+.property-checkbox-text {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--theme-text);
+}
+
+.property-checkbox-text i {
+    color: var(--theme-primary);
+}
+
+/* ============================================
+   Raw Text Editor
+   ============================================ */
+.properties-raw-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 400px;
+}
+
+.raw-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--theme-surface);
+    border-bottom: 1px solid var(--theme-border);
+    font-size: 14px;
+    color: var(--theme-text);
+}
+
+.raw-editor-header i {
+    margin-right: 8px;
+    color: var(--theme-primary);
+}
+
+.raw-editor-textarea {
+    flex: 1;
+    padding: 20px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border: none;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    tab-size: 4;
+}
+
+.raw-editor-textarea::placeholder {
+    color: #6a6a6a;
+}
+
+/* Light mode raw editor */
+[data-theme="light"] .raw-editor-textarea {
+    background: #f5f5f5;
+    color: #333;
+}
+
+[data-theme="light"] .raw-editor-textarea::placeholder {
+    color: #999;
+}
+
+.raw-editor-footer {
+    padding: 12px 16px;
+    background: var(--theme-surface);
+    border-top: 1px solid var(--theme-border);
+    font-size: 12px;
+    color: var(--theme-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.raw-editor-footer i {
+    color: var(--theme-primary);
+}
+
+/* ============================================
+   Modal Footer Button Adjustments
+   ============================================ */
+.properties-modal .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.properties-modal .modal-footer .btn {
+    flex: 1;
+    max-width: 200px;
+}
+
+.properties-modal .modal-footer .btn:first-child {
+    margin-right: auto;
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+@media (max-width: 768px) {
+    .properties-mode-toggle {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .mode-toggle-btn {
+        border-radius: 8px !important;
+        border: 1px solid var(--theme-border) !important;
+    }
+
+    .properties-section {
+        padding: 16px;
+    }
+
+    .properties-modal .modal-footer {
+        flex-direction: column;
+    }
+
+    .properties-modal .modal-footer .btn {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .properties-content {
+        padding: 12px;
+    }
+
+    .properties-section {
+        padding: 12px;
+    }
+
+    .properties-section-header {
+        font-size: 14px;
+    }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes fadeInProperties {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.properties-section {
+    animation: fadeInProperties 0.3s ease-out;
+}
+
+/* ============================================
+   Accessibility
+   ============================================ */
+.property-input:focus-visible,
+.property-checkbox:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+}
+
+.mode-toggle-btn:focus-visible,
+.editor-tab-btn:focus-visible {
+    outline: 2px solid var(--theme-primary);
+    outline-offset: 2px;
+}
+
+
+
+
