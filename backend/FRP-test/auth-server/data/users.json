@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "username": "user_alpha",
+      "password": "password123",
+      "allowedPorts": [
+        25567,
+        22,
+        3000
+      ],
+      "role": "admin"
+    },
+    {
+      "username": "user_beta",
+      "password": "password456",
+      "allowedPorts": [
+        3000
+      ],
+      "role": "user"
+    }
+  ]
+}

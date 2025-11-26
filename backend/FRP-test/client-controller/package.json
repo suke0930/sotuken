@@ -1,0 +1,30 @@
+{
+  "name": "frp-client-controller",
+  "version": "1.0.0",
+  "description": "FRP Client Controller with JWT Authentication",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "frp",
+    "client",
+    "controller"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "extract-zip": "^2.0.1",
+    "node-fetch": "^2.7.0",
+    "tar": "^7.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/node-fetch": "^2.6.9",
+    "@types/tar": "^6.1.13",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  }
+}

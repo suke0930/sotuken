@@ -169,3 +169,10 @@ backend/Asset/JDK_JSON_Genelator/latest-jdks.json
 backend/Asset/data/jdk.json
 backend/Asset/Server_JSON_Genelator/latest-servers.json
 backend/Asset/data/servers.json
+
+
+#backend download directory
+backend/FRP-test/frps
+backend/FRP-test/client-controller/bin
+backend/FRP-test/client-controller/temp/frpc.toml
+backend/FRP-test/NUL
