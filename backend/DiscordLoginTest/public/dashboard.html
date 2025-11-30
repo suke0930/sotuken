@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Auth.js Demo</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>ダッシュボード</h1>
+            <p class="description">認証に成功しました！</p>
+
+            <div id="loading" class="loading">
+                <p>ユーザー情報を読み込み中...</p>
+            </div>
+
+            <div id="user-info" class="user-info" style="display: none;">
+                <div class="avatar-container">
+                    <img id="avatar" src="" alt="User Avatar" class="avatar">
+                </div>
+                <div class="user-details">
+                    <p><strong>ユーザー名:</strong> <span id="username"></span></p>
+                    <p><strong>メール:</strong> <span id="email"></span></p>
+                    <p><strong>ID:</strong> <span id="user-id"></span></p>
+                </div>
+            </div>
+
+            <div class="session-info" id="session-info" style="display: none;">
+                <h2>セッション情報</h2>
+                <p><strong>有効期限:</strong> <span id="expires"></span></p>
+            </div>
+
+            <div class="actions">
+                <button onclick="logout()" class="btn btn-secondary">ログアウト</button>
+            </div>
+
+            <div class="api-test">
+                <h2>API テスト</h2>
+                <button onclick="testProtectedApi()" class="btn btn-small">保護されたAPIを呼び出す</button>
+                <pre id="api-response" class="api-response"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+        // ページ読み込み時にユーザー情報を取得
+        loadUserInfo();
+    </script>
+</body>
+</html>
