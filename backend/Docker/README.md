@@ -10,7 +10,7 @@ Discord OAuth2ベースのFRP認証システムのDocker実装です。
 
 ### 既存コンテナ
 - **nginx**: リバースプロキシ (ポート 8080)
-- **asset-server**: アセット管理サーバー (内部ポート 3000)
+- **asset-server**: アセット管理サーバー (内部ポート 3000) - `backend/Asset`を直接使用
 
 ### 新規追加コンテナ (FRP認証システム)
 - **frp-authjs**: Discord OAuth2認証 + JWT発行/検証 (ポート 3002)
@@ -67,24 +67,36 @@ curl http://localhost:8080/api/frp/health
 ## ディレクトリ構造
 
 ```
-backend/Docker/
-├── docker-compose.yml          # Docker Compose設定
-├── .env.example                # 環境変数テンプレート
-├── nginx/
-│   └── nginx.conf             # Nginx設定
-├── asset-server/              # 既存アセットサーバー
-├── frp-authjs/                # Container 1: Auth.js Server
-│   ├── Dockerfile
-│   ├── src/
-│   └── data/                  # sessions.json (永続化)
-├── frp-server/                # Container 2: FRP Server
-│   ├── Dockerfile
-│   └── frps.toml
-├── frp-authz/                 # Container 3: Authorization Service
-│   ├── Dockerfile
-│   ├── src/
-│   └── data/                  # users.json (永続化)
-└── MIDDLEWARE_INTEGRATION.md  # ミドルウェア統合ガイド
+backend/
+├── Asset/                     # アセットサーバーのソースコード
+│   ├── app.ts
+│   ├── server.ts
+│   ├── package.json
+│   └── ...
+└── Docker/
+    ├── docker-compose.yml     # Docker Compose設定
+    ├── .env.example           # 環境変数テンプレート
+    ├── nginx/
+    │   └── nginx.conf         # Nginx設定
+    ├── asset-server/          # Asset Server Dockerfile
+    │   ├── Dockerfile         # backend/Assetをビルド
+    │   └── .dockerignore
+    ├── frp-authjs/            # Container 1: Auth.js Server
+    │   ├── Dockerfile
+    │   ├── src/
+    │   └── data/              # sessions.json (永続化)
+    ├── frp-server/            # Container 2: FRP Server
+    │   ├── Dockerfile
+    │   └── frps.toml
+    ├── frp-authz/             # Container 3: Authorization Service
+    │   ├── Dockerfile
+    │   ├── src/
+    │   └── data/              # users.json (永続化)
+    ├── AssetServ/             # Asset Server データディレクトリ
+    │   ├── Resource/          # ダウンロードファイル等
+    │   └── Data/              # データベース等
+    ├── README.md
+    └── MIDDLEWARE_INTEGRATION.md
 ```
 
 ## ユーザー権限管理

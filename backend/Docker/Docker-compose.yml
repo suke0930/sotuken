@@ -17,18 +17,24 @@ services:
 
   asset-server:
     build:
-      context: ./asset-server
-      dockerfile: Dockerfile
+      context: ../Asset
+      dockerfile: ../Docker/asset-server/Dockerfile
     container_name: mc-manager-asset-server
     environment:
       - NODE_ENV=production
       - PORT=3000
     volumes:
-      - ./AssetServ/Resource:/app/sotuken/backend/Asset/resources:rw
-      - ./AssetServ/Data:/app/sotuken/backend/Asset/data
+      - ./AssetServ/Resource:/app/resources:rw
+      - ./AssetServ/Data:/app/data:rw
     networks:
       - mc-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # === FRP Authentication System ===
   
