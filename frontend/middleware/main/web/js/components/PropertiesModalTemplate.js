@@ -341,7 +341,7 @@ export const propertiesModalTemplate = `
                     <!-- Line Numbers Column -->
                     <div class="raw-editor-line-numbers" style="background: var(--theme-bg-secondary, #f5f5f5); padding: 8px 4px; text-align: right; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; color: var(--theme-text-secondary, #666); border-right: 1px solid var(--theme-border, #ddd); min-width: 50px; user-select: none; overflow: hidden;">
                         <div 
-                            v-for="(line, index) in propertiesModal.rawText.split('\n')" 
+                            v-for="(line, index) in propertiesModal.rawText.split('\\n')" 
                             :key="index"
                             :class="['raw-editor-line-number', { 
                                 'has-error': hasLineError(index + 1),
