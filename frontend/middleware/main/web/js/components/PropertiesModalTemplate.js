@@ -14,11 +14,24 @@ export const propertiesModalTemplate = `
         </div>
 
         <div class="modal-body properties-modal-body" style="padding: 0; overflow-y: auto; max-height: calc(90vh - 180px);">
+            <!-- Loading Spinner -->
+            <div v-if="propertiesModal.loading" class="properties-loading-overlay" style="display: flex; align-items: center; justify-content: center; min-height: 200px; flex-direction: column; gap: 16px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 36px; color: var(--theme-primary);"></i>
+                <p style="color: var(--theme-text-secondary);">プロパティを読み込み中...</p>
+            </div>
+
+            <!-- Warning Banner for Load Errors -->
+            <div v-if="propertiesModal.loadError && !propertiesModal.loading" class="properties-warning-banner" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 16px; border-radius: 4px; color: #856404;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span style="margin-left: 8px;">サーバーからプロパティを取得できませんでした。デフォルト値またはローカルに保存されたデータを使用しています。</span>
+            </div>
+
             <!-- Mode Toggle -->
-            <div class="properties-mode-toggle">
+            <div class="properties-mode-toggle" v-show="!propertiesModal.loading">
                 <button 
                     :class="['mode-toggle-btn', { active: propertiesModal.mode === 'basic' }]"
                     @click="switchPropertiesMode('basic')"
+                    :disabled="propertiesModal.loading"
                     title="基本的な設定のみ表示"
                 >
                     <i class="fas fa-user"></i>
@@ -27,6 +40,7 @@ export const propertiesModalTemplate = `
                 <button 
                     :class="['mode-toggle-btn', { active: propertiesModal.mode === 'advanced' }]"
                     @click="switchPropertiesMode('advanced')"
+                    :disabled="propertiesModal.loading"
                     title="中級者向け設定を含む"
                 >
                     <i class="fas fa-user-cog"></i>
@@ -35,6 +49,7 @@ export const propertiesModalTemplate = `
                 <button 
                     :class="['mode-toggle-btn', { active: propertiesModal.mode === 'developer' }]"
                     @click="switchPropertiesMode('developer')"
+                    :disabled="propertiesModal.loading"
                     title="全ての設定+生テキスト編集"
                 >
                     <i class="fas fa-code"></i>
@@ -61,7 +76,7 @@ export const propertiesModalTemplate = `
             </div>
 
             <!-- GUI Editor View -->
-            <div v-show="propertiesModal.editorTab === 'gui'" class="properties-content">
+            <div v-show="propertiesModal.editorTab === 'gui' && !propertiesModal.loading" class="properties-content" :style="{ opacity: propertiesModal.loading ? 0.5 : 1, pointerEvents: propertiesModal.loading ? 'none' : 'auto' }">
                 <!-- Basic Properties Section -->
                 <div v-if="propertiesModal.mode === 'basic'" class="properties-section">
                     <div class="properties-section-header">
@@ -304,7 +319,7 @@ export const propertiesModalTemplate = `
             </div>
 
             <!-- Raw Text Editor View (Developer Only) -->
-            <div v-show="propertiesModal.mode === 'developer' && propertiesModal.editorTab === 'raw'" class="properties-raw-editor">
+            <div v-show="propertiesModal.mode === 'developer' && propertiesModal.editorTab === 'raw' && !propertiesModal.loading" class="properties-raw-editor" :style="{ opacity: propertiesModal.loading ? 0.5 : 1, pointerEvents: propertiesModal.loading ? 'none' : 'auto' }">
                 <div class="raw-editor-header">
                     <div>
                         <i class="fas fa-file-code"></i>
@@ -341,9 +356,13 @@ export const propertiesModalTemplate = `
                 <i class="fas fa-undo"></i>
                 デフォルトに戻す
             </button>
-            <button class="btn btn-primary" @click="saveServerProperties">
-                <i class="fas fa-save"></i>
-                保存
+            <button 
+                class="btn btn-primary" 
+                @click="saveServerProperties"
+                :disabled="propertiesModal.saving || propertiesModal.loading"
+            >
+                <i :class="['fas', propertiesModal.saving ? 'fa-spinner fa-spin' : 'fa-save']"></i>
+                {{ propertiesModal.saving ? '保存中...' : '保存' }}
             </button>
         </div>
     </div>

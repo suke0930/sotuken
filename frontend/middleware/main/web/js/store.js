@@ -160,7 +160,11 @@ export function createStore() {
                     mode: 'basic', // 'basic', 'advanced', 'developer'
                     editorTab: 'gui', // 'gui', 'raw'
                     data: {},
-                    rawText: ''
+                    rawText: '',
+                    errors: {}, // Validation errors
+                    loading: false, // Loading state for fetching properties
+                    saving: false, // Saving state for posting properties
+                    loadError: false // Flag for load error (show warning banner)
                 },
 
                 // Event Notifications

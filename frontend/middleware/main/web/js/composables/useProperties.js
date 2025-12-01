@@ -1,5 +1,6 @@
 // Server Properties Management Logic - Schema-Driven Version
-import { apiRequest } from '../utils/api.js';
+import { apiGet, apiPost } from '../utils/api.js';
+import { API_ENDPOINTS } from '../Endpoints.js';
 import { propertiesSchema, propertyIcons } from '../content/propertiesSchema.js';
 
 export function createPropertiesMethods() {
@@ -74,34 +75,224 @@ export function createPropertiesMethods() {
         },
 
         /**
+         * Convert API properties (all strings) to typed values for UI
+         * @param {Object} apiProperties - Properties from API (all string values)
+         * @returns {Object} Typed properties object
+         */
+        convertApiPropertiesToTyped(apiProperties) {
+            const typed = {};
+            
+            for (const [key, stringValue] of Object.entries(apiProperties)) {
+                // Find property in schema to determine type
+                let property = null;
+                for (const tier of ['basic', 'advanced', 'dev']) {
+                    if (propertiesSchema[tier][key]) {
+                        property = propertiesSchema[tier][key];
+                        break;
+                    }
+                }
+                
+                if (property) {
+                    // Convert based on schema type
+                    if (property.type === 'boolean') {
+                        typed[key] = stringValue === 'true';
+                    } else if (property.type === 'number') {
+                        const num = Number(stringValue);
+                        typed[key] = isNaN(num) ? stringValue : num;
+                    } else {
+                        // string or enum - keep as string
+                        typed[key] = stringValue;
+                    }
+                } else {
+                    // Unknown property - keep as string but try to infer type
+                    if (stringValue === 'true' || stringValue === 'false') {
+                        typed[key] = stringValue === 'true';
+                    } else if (!isNaN(stringValue) && stringValue !== '') {
+                        typed[key] = Number(stringValue);
+                    } else {
+                        typed[key] = stringValue;
+                    }
+                }
+            }
+            
+            return typed;
+        },
+
+        /**
+         * Convert typed properties to API format (all strings)
+         * @param {Object} typedProperties - Typed properties object
+         * @returns {Object} API format properties (all string values)
+         */
+        convertTypedPropertiesToApi(typedProperties) {
+            const apiFormat = {};
+            
+            for (const [key, value] of Object.entries(typedProperties)) {
+                // Convert to string based on type
+                if (typeof value === 'boolean') {
+                    apiFormat[key] = value ? 'true' : 'false';
+                } else if (typeof value === 'number') {
+                    apiFormat[key] = String(value);
+                } else if (value === null || value === undefined) {
+                    apiFormat[key] = '';
+                } else {
+                    apiFormat[key] = String(value);
+                }
+            }
+            
+            return apiFormat;
+        },
+
+        /**
+         * Merge API properties with schema defaults
+         * @param {Object} apiProperties - Properties from API (all strings)
+         * @returns {Object} Merged properties (API values override defaults)
+         */
+        mergePropertiesWithDefaults(apiProperties) {
+            const defaults = this.getDefaultProperties();
+            const typedApiProperties = this.convertApiPropertiesToTyped(apiProperties);
+            
+            // Merge: defaults first, then typed API values override
+            // Also preserve unknown properties from API (as typed)
+            const merged = {
+                ...defaults,
+                ...typedApiProperties
+            };
+            
+            // Add any unknown properties that weren't in schema
+            for (const [key, value] of Object.entries(apiProperties)) {
+                if (!merged.hasOwnProperty(key)) {
+                    // Try to infer type for unknown properties
+                    if (value === 'true' || value === 'false') {
+                        merged[key] = value === 'true';
+                    } else if (!isNaN(value) && value !== '') {
+                        merged[key] = Number(value);
+                    } else {
+                        merged[key] = value;
+                    }
+                }
+            }
+            
+            return merged;
+        },
+
+        /**
+         * Fetch properties from API
+         * @param {string} serverUuid - Server UUID
+         * @returns {Promise<Object|null>} Properties object or null if error
+         */
+        async fetchPropertiesFromAPI(serverUuid) {
+            try {
+                const url = API_ENDPOINTS.server.getProperties(serverUuid);
+                const response = await apiGet(url);
+                
+                if (response.ok && response.data) {
+                    return response.data;
+                } else {
+                    console.error('API returned error:', response);
+                    return null;
+                }
+            } catch (error) {
+                console.error('Error fetching properties from API:', error);
+                throw error;
+            }
+        },
+
+        /**
+         * Save properties to API
+         * @param {string} serverUuid - Server UUID
+         * @param {Object} properties - Properties to save (typed)
+         * @returns {Promise<boolean>} Success status
+         */
+        async savePropertiesToAPI(serverUuid, properties) {
+            try {
+                const url = API_ENDPOINTS.server.setProperties(serverUuid);
+                const apiFormatProperties = this.convertTypedPropertiesToApi(properties);
+                
+                const response = await apiPost(url, {
+                    data: apiFormatProperties
+                });
+                
+                if (response.ok) {
+                    return true;
+                } else {
+                    console.error('API returned error:', response);
+                    const errorMessage = response.error?.message || 'プロパティの保存に失敗しました';
+                    throw new Error(errorMessage);
+                }
+            } catch (error) {
+                console.error('Error saving properties to API:', error);
+                throw error;
+            }
+        },
+
+        /**
          * Open properties modal for a server
          */
-        openPropertiesModal(server) {
+        async openPropertiesModal(server) {
             if (!server) return;
 
+            // Initialize modal state
             this.propertiesModal.visible = true;
             this.propertiesModal.serverUuid = server.uuid;
             this.propertiesModal.serverName = server.name;
             this.propertiesModal.mode = 'basic'; // Default to basic mode
             this.propertiesModal.editorTab = 'gui'; // Default to GUI tab
             this.propertiesModal.errors = {}; // Initialize errors object
+            this.propertiesModal.loading = true; // Show loading state
+            this.propertiesModal.loadError = false; // Track if API load failed
 
-            // Load properties from localStorage
-            const savedProperties = this.loadServerProperties(server.uuid);
-            
-            if (savedProperties) {
-                // Merge saved properties with defaults (in case new properties were added)
-                this.propertiesModal.data = {
-                    ...this.getDefaultProperties(),
-                    ...savedProperties
-                };
-            } else {
-                // Use default values
-                this.propertiesModal.data = this.getDefaultProperties();
+            try {
+                // Step 1: Try to fetch from API
+                const apiProperties = await this.fetchPropertiesFromAPI(server.uuid);
+                
+                if (apiProperties !== null) {
+                    // Success: Merge API properties with defaults
+                    this.propertiesModal.data = this.mergePropertiesWithDefaults(apiProperties);
+                    
+                    // Save to localStorage as backup
+                    this.saveServerPropertiesToLocalStorage(server.uuid, this.propertiesModal.data);
+                } else {
+                    // API returned error, try localStorage as backup
+                    const savedProperties = this.loadServerProperties(server.uuid);
+                    
+                    if (savedProperties) {
+                        this.propertiesModal.data = {
+                            ...this.getDefaultProperties(),
+                            ...savedProperties
+                        };
+                        this.showError('サーバーからプロパティを取得できませんでした。ローカルに保存されたデータを使用します。');
+                    } else {
+                        // No backup data, use defaults
+                        this.propertiesModal.data = this.getDefaultProperties();
+                        this.showError('サーバーからプロパティを取得できませんでした。デフォルト値で表示しています。');
+                    }
+                    this.propertiesModal.loadError = true;
+                }
+            } catch (error) {
+                // Network error or other exception - try localStorage as backup
+                console.error('Failed to fetch properties from API:', error);
+                
+                const savedProperties = this.loadServerProperties(server.uuid);
+                
+                if (savedProperties) {
+                    this.propertiesModal.data = {
+                        ...this.getDefaultProperties(),
+                        ...savedProperties
+                    };
+                    this.showError('サーバーからプロパティを取得できませんでした。ローカルに保存されたデータを使用します。');
+                } else {
+                    // No backup data, use defaults
+                    this.propertiesModal.data = this.getDefaultProperties();
+                    this.showError('サーバーからプロパティを取得できませんでした。デフォルト値で表示しています。');
+                }
+                this.propertiesModal.loadError = true;
+            } finally {
+                // Hide loading state
+                this.propertiesModal.loading = false;
+                
+                // Sync to raw editor
+                this.syncGUIToRawEditor();
             }
-
-            // Sync to raw editor
-            this.syncGUIToRawEditor();
         },
 
         /**
@@ -116,6 +307,9 @@ export function createPropertiesMethods() {
             this.propertiesModal.mode = 'basic';
             this.propertiesModal.editorTab = 'gui';
             this.propertiesModal.errors = {}; // Clear errors
+            this.propertiesModal.loading = false; // Clear loading state
+            this.propertiesModal.saving = false; // Clear saving state
+            this.propertiesModal.loadError = false; // Clear error flag
         },
 
         /**
@@ -259,9 +453,29 @@ export function createPropertiesMethods() {
         },
 
         /**
-         * Save server properties to localStorage
+         * Save properties to localStorage as backup
+         * @param {string} serverUuid - Server UUID
+         * @param {Object} properties - Properties to save
          */
-        saveServerProperties() {
+        saveServerPropertiesToLocalStorage(serverUuid, properties) {
+            try {
+                const storageKey = `server-properties-${serverUuid}`;
+                const dataToSave = {
+                    version: 2,
+                    lastModified: new Date().toISOString(),
+                    properties: properties
+                };
+                localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+                // Don't throw - localStorage is just a backup
+            }
+        },
+
+        /**
+         * Save server properties to API
+         */
+        async saveServerProperties() {
             try {
                 const serverUuid = this.propertiesModal.serverUuid;
                 
@@ -285,24 +499,27 @@ export function createPropertiesMethods() {
                     };
                 }
 
-                // Save to localStorage
-                const storageKey = `server-properties-${serverUuid}`;
-                const dataToSave = {
-                    version: 2, // Updated version with new schema
-                    lastModified: new Date().toISOString(),
-                    properties: this.propertiesModal.data
-                };
+                // Set saving state
+                this.propertiesModal.saving = true;
 
-                localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+                // Save to API
+                await this.savePropertiesToAPI(serverUuid, this.propertiesModal.data);
+                
+                // Also save to localStorage as backup
+                this.saveServerPropertiesToLocalStorage(serverUuid, this.propertiesModal.data);
 
                 this.showSuccess('プロパティを保存しました');
                 this.closePropertiesModal();
 
                 // Log for debugging
-                console.log('Saved properties for server:', serverUuid, dataToSave);
+                console.log('Saved properties for server:', serverUuid);
             } catch (error) {
                 console.error('Error saving properties:', error);
-                this.showError('プロパティの保存に失敗しました');
+                const errorMessage = error.message || 'プロパティの保存に失敗しました';
+                this.showError(errorMessage);
+                
+                // Keep modal open so user can retry
+                this.propertiesModal.saving = false;
             }
         },
 
