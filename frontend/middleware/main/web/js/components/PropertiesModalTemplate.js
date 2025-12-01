@@ -328,13 +328,13 @@ export const propertiesModalTemplate = `
                     <button 
                         class="btn btn-sm btn-secondary"
                         @click="syncRawEditorToGUI"
-                        :disabled="!propertiesModal.rawTextValid || propertiesModal.saving || propertiesModal.loading"
                         title="テキストエディタの内容をGUIに反映"
                     >
                         <i class="fas fa-sync"></i>
                         GUIに反映
                     </button>
                 </div>
+<<<<<<< HEAD
                 
                 <!-- Raw Editor Container with Line Numbers -->
                 <div class="raw-editor-container" style="display: flex; position: relative; border: 1px solid var(--theme-border, #ddd); border-radius: 4px; overflow: hidden;">
@@ -415,6 +415,15 @@ export const propertiesModalTemplate = `
                 </div>
                 
                 <div class="raw-editor-footer" style="margin-top: 8px;">
+=======
+                <textarea 
+                    v-model="propertiesModal.rawText"
+                    class="raw-editor-textarea"
+                    placeholder="property=value&#10;difficulty=normal&#10;gamemode=survival&#10;..."
+                    spellcheck="false"
+                ></textarea>
+                <div class="raw-editor-footer">
+>>>>>>> parent of 03a2257 (Enhance raw text editor with validation features, including error and warning displays, and improve property syncing logic. Added functionality to validate raw text format and check for duplicates, ensuring better user feedback in the GUI.)
                     <i class="fas fa-info-circle"></i>
                     <span>形式: property=value (1行ごと)</span>
                 </div>
@@ -433,7 +442,7 @@ export const propertiesModalTemplate = `
             <button 
                 class="btn btn-primary" 
                 @click="saveServerProperties"
-                :disabled="propertiesModal.saving || propertiesModal.loading || (propertiesModal.editorTab === 'raw' && !propertiesModal.rawTextValid)"
+                :disabled="propertiesModal.saving || propertiesModal.loading"
             >
                 <i :class="['fas', propertiesModal.saving ? 'fa-spinner fa-spin' : 'fa-save']"></i>
                 {{ propertiesModal.saving ? '保存中...' : '保存' }}
