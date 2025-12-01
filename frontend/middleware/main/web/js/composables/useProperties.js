@@ -310,6 +310,10 @@ export function createPropertiesMethods() {
             this.propertiesModal.loading = false; // Clear loading state
             this.propertiesModal.saving = false; // Clear saving state
             this.propertiesModal.loadError = false; // Clear error flag
+            // Clear raw text validation state
+            this.propertiesModal.rawTextErrors = [];
+            this.propertiesModal.rawTextWarnings = [];
+            this.propertiesModal.rawTextValid = true;
         },
 
         /**
@@ -349,6 +353,8 @@ export function createPropertiesMethods() {
             // Sync current GUI data to raw editor before switching
             this.syncGUIToRawEditor();
             this.propertiesModal.editorTab = 'raw';
+            // Validate raw text when switching to raw editor
+            this.validateRawText();
         },
 
         /**
@@ -417,6 +423,15 @@ export function createPropertiesMethods() {
          * Fix: Properly restore GUI data after syncing
          */
         syncRawEditorToGUI() {
+            // Validate before syncing
+            this.validateRawText();
+            
+            // Check if there are errors
+            if (this.propertiesModal.rawTextErrors.length > 0) {
+                this.showError('エラーがあります。エラーを修正してからGUIに反映してください。');
+                return;
+            }
+            
             try {
                 const parsedProperties = this.rawTextToProperties(this.propertiesModal.rawText);
                 
@@ -426,7 +441,12 @@ export function createPropertiesMethods() {
                     ...parsedProperties
                 };
                 
-                this.showSuccess('テキストエディタの内容をGUIに反映しました');
+                const warningCount = this.propertiesModal.rawTextWarnings.length;
+                if (warningCount > 0) {
+                    this.showSuccess(`テキストエディタの内容をGUIに反映しました（警告: ${warningCount}件）`);
+                } else {
+                    this.showSuccess('テキストエディタの内容をGUIに反映しました');
+                }
                 
                 // Switch back to GUI tab
                 this.propertiesModal.editorTab = 'gui';
@@ -490,8 +510,17 @@ export function createPropertiesMethods() {
                     return;
                 }
 
-                // If in raw editor mode, sync raw to GUI first
+                // If in raw editor mode, validate and sync raw to GUI first
                 if (this.propertiesModal.mode === 'developer' && this.propertiesModal.editorTab === 'raw') {
+                    // Validate raw text
+                    this.validateRawText();
+                    
+                    // Check if there are errors
+                    if (this.propertiesModal.rawTextErrors.length > 0) {
+                        this.showError('エラーがあります。エラーを修正してから保存してください。');
+                        return;
+                    }
+                    
                     const parsedProperties = this.rawTextToProperties(this.propertiesModal.rawText);
                     this.propertiesModal.data = {
                         ...this.getDefaultProperties(),
@@ -600,7 +629,14 @@ export function createPropertiesMethods() {
             }
             
             // Validate based on type and constraints
-            if (property.type === 'number') {
+            if (property.type === 'boolean') {
+                // For raw text validation, value is a string "true" or "false"
+                const stringValue = String(value).toLowerCase();
+                if (stringValue !== 'true' && stringValue !== 'false') {
+                    const label = property.explanation.ja.split('を')[0].split('に')[0].split('で')[0];
+                    return { valid: false, message: `${label}は "true" または "false" で入力してください` };
+                }
+            } else if (property.type === 'number') {
                 const numValue = Number(value);
                 const { min, max } = property.constraints;
                 
@@ -615,16 +651,18 @@ export function createPropertiesMethods() {
                 }
             } else if (property.type === 'string') {
                 const { minLength, maxLength } = property.constraints;
+                const stringValue = String(value);
                 
-                if (minLength !== undefined && value.length < minLength) {
+                if (minLength !== undefined && stringValue.length < minLength) {
                     return { valid: false, message: this.getJapaneseErrorMessage(key, property, 'minLength', { minLength, maxLength }) };
                 }
-                if (maxLength !== undefined && value.length > maxLength) {
+                if (maxLength !== undefined && stringValue.length > maxLength) {
                     return { valid: false, message: this.getJapaneseErrorMessage(key, property, 'maxLength', { minLength, maxLength }) };
                 }
             } else if (property.type === 'enum') {
                 const validValues = property.constraints.options.map(opt => opt.value);
-                if (!validValues.includes(value)) {
+                const stringValue = String(value);
+                if (!validValues.includes(stringValue)) {
                     return { valid: false, message: this.getJapaneseErrorMessage(key, property, 'invalid_enum') };
                 }
             }
@@ -670,6 +708,205 @@ export function createPropertiesMethods() {
                 default:
                     return `${label}の入力値が正しくありません`;
             }
+        },
+
+        /**
+         * Validate property name format
+         * @param {string} name - Property name
+         * @returns {boolean} True if valid
+         */
+        validatePropertyName(name) {
+            if (!name || name.trim().length === 0) {
+                return false;
+            }
+            // 1-255 characters, alphanumeric, dots, hyphens, underscores
+            const pattern = /^[a-zA-Z0-9._-]{1,255}$/;
+            return pattern.test(name);
+        },
+
+        /**
+         * Check for duplicate properties in raw text
+         * @param {Array} lines - Array of parsed line objects
+         * @returns {Array} Array of duplicate warnings
+         */
+        checkDuplicateProperties(lines) {
+            const warnings = [];
+            const seenProperties = new Map(); // Map<propertyName, firstLineNumber>
+            
+            lines.forEach((line, index) => {
+                if (line.property) {
+                    const lineNumber = index + 1;
+                    if (seenProperties.has(line.property)) {
+                        const firstOccurrence = seenProperties.get(line.property);
+                        warnings.push({
+                            lineNumber: lineNumber,
+                            property: line.property,
+                            type: 'duplicate',
+                            message: `プロパティ "${line.property}" が重複しています（最初の定義は行 ${firstOccurrence}）`
+                        });
+                    } else {
+                        seenProperties.set(line.property, lineNumber);
+                    }
+                }
+            });
+            
+            return warnings;
+        },
+
+        /**
+         * Validate raw text format and content
+         * @param {string} rawText - Raw text from editor
+         * @returns {Object} { errors: [], warnings: [] }
+         */
+        validateRawTextComplete(rawText) {
+            const errors = [];
+            const warnings = [];
+            const lines = rawText.split('\n');
+            const parsedLines = [];
+            
+            // First pass: Parse and format validation
+            lines.forEach((line, index) => {
+                const lineNumber = index + 1;
+                const trimmed = line.trim();
+                
+                // Skip empty lines and comments
+                if (!trimmed || trimmed.startsWith('#')) {
+                    parsedLines.push({ lineNumber, line, property: null, value: null, type: 'comment' });
+                    return;
+                }
+                
+                // Check for property=value format
+                const equalIndex = trimmed.indexOf('=');
+                if (equalIndex === -1) {
+                    errors.push({
+                        lineNumber: lineNumber,
+                        property: null,
+                        type: 'format',
+                        message: '無効な形式です。property=value の形式で入力してください'
+                    });
+                    parsedLines.push({ lineNumber, line, property: null, value: null, type: 'error' });
+                    return;
+                }
+                
+                const key = trimmed.substring(0, equalIndex).trim();
+                const value = trimmed.substring(equalIndex + 1).trim();
+                
+                // Validate property name
+                if (!this.validatePropertyName(key)) {
+                    errors.push({
+                        lineNumber: lineNumber,
+                        property: key,
+                        type: 'format',
+                        message: `プロパティ名 "${key}" が無効です。英数字、ハイフン(-)、ピリオド(.)、アンダースコア(_)のみ使用可能です（1-255文字）`
+                    });
+                    parsedLines.push({ lineNumber, line, property: key, value: value, type: 'error' });
+                    return;
+                }
+                
+                parsedLines.push({ lineNumber, line, property: key, value: value, type: 'property' });
+            });
+            
+            // Second pass: Duplicate detection
+            const duplicateWarnings = this.checkDuplicateProperties(parsedLines);
+            warnings.push(...duplicateWarnings);
+            
+            // Third pass: Schema validation for valid properties
+            parsedLines.forEach((parsedLine) => {
+                if (parsedLine.type === 'property' && parsedLine.property) {
+                    const key = parsedLine.property;
+                    const value = parsedLine.value;
+                    
+                    // Find property in schema
+                    let property = null;
+                    for (const tier of ['basic', 'advanced', 'dev']) {
+                        if (propertiesSchema[tier][key]) {
+                            property = propertiesSchema[tier][key];
+                            break;
+                        }
+                    }
+                    
+                    if (property) {
+                        // Validate against schema
+                        const validation = this.validatePropertyValue(key, value);
+                        if (!validation.valid) {
+                            errors.push({
+                                lineNumber: parsedLine.lineNumber,
+                                property: key,
+                                type: 'schema',
+                                message: validation.message
+                            });
+                        }
+                    } else {
+                        // Unknown property - warning only
+                        warnings.push({
+                            lineNumber: parsedLine.lineNumber,
+                            property: key,
+                            type: 'unknown',
+                            message: `未知のプロパティ "${key}" です。スキーマに定義されていませんが、保存は可能です`
+                        });
+                    }
+                }
+            });
+            
+            return { errors, warnings };
+        },
+
+        /**
+         * Validate raw text with debounce (called from UI)
+         * This is the main entry point for validation
+         */
+        validateRawTextDebounced() {
+            // Clear previous timeout if exists
+            if (this._rawTextValidationTimeout) {
+                clearTimeout(this._rawTextValidationTimeout);
+            }
+            
+            // Set new timeout
+            this._rawTextValidationTimeout = setTimeout(() => {
+                this.validateRawText();
+            }, 300); // 300ms debounce
+        },
+
+        /**
+         * Validate raw text immediately
+         */
+        validateRawText() {
+            const rawText = this.propertiesModal.rawText || '';
+            const validation = this.validateRawTextComplete(rawText);
+            
+            // Update state
+            this.propertiesModal.rawTextErrors = validation.errors;
+            this.propertiesModal.rawTextWarnings = validation.warnings;
+            this.propertiesModal.rawTextValid = validation.errors.length === 0;
+        },
+
+        /**
+         * Get errors/warnings for a specific line number
+         * @param {number} lineNumber - Line number (1-based)
+         * @returns {Object} { errors: [], warnings: [] }
+         */
+        getLineValidationIssues(lineNumber) {
+            const errors = this.propertiesModal.rawTextErrors.filter(e => e.lineNumber === lineNumber);
+            const warnings = this.propertiesModal.rawTextWarnings.filter(w => w.lineNumber === lineNumber);
+            return { errors, warnings };
+        },
+
+        /**
+         * Check if a line has errors
+         * @param {number} lineNumber - Line number (1-based)
+         * @returns {boolean}
+         */
+        hasLineError(lineNumber) {
+            return this.propertiesModal.rawTextErrors.some(e => e.lineNumber === lineNumber);
+        },
+
+        /**
+         * Check if a line has warnings
+         * @param {number} lineNumber - Line number (1-based)
+         * @returns {boolean}
+         */
+        hasLineWarning(lineNumber) {
+            return this.propertiesModal.rawTextWarnings.some(w => w.lineNumber === lineNumber);
         },
 
         /**

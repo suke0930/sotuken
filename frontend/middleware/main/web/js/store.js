@@ -161,10 +161,14 @@ export function createStore() {
                     editorTab: 'gui', // 'gui', 'raw'
                     data: {},
                     rawText: '',
-                    errors: {}, // Validation errors
+                    errors: {}, // Validation errors (GUI mode)
                     loading: false, // Loading state for fetching properties
                     saving: false, // Saving state for posting properties
-                    loadError: false // Flag for load error (show warning banner)
+                    loadError: false, // Flag for load error (show warning banner)
+                    // Raw text editor validation
+                    rawTextErrors: [], // Array of { lineNumber, property, type, message }
+                    rawTextWarnings: [], // Array of { lineNumber, property, type, message }
+                    rawTextValid: true // true if rawTextErrors.length === 0
                 },
 
                 // Event Notifications

@@ -328,19 +328,93 @@ export const propertiesModalTemplate = `
                     <button 
                         class="btn btn-sm btn-secondary"
                         @click="syncRawEditorToGUI"
+                        :disabled="!propertiesModal.rawTextValid || propertiesModal.saving || propertiesModal.loading"
                         title="テキストエディタの内容をGUIに反映"
                     >
                         <i class="fas fa-sync"></i>
                         GUIに反映
                     </button>
                 </div>
-                <textarea 
-                    v-model="propertiesModal.rawText"
-                    class="raw-editor-textarea"
-                    placeholder="property=value&#10;difficulty=normal&#10;gamemode=survival&#10;..."
-                    spellcheck="false"
-                ></textarea>
-                <div class="raw-editor-footer">
+                
+                <!-- Raw Editor Container with Line Numbers -->
+                <div class="raw-editor-container" style="display: flex; position: relative; border: 1px solid var(--theme-border, #ddd); border-radius: 4px; overflow: hidden;">
+                    <!-- Line Numbers Column -->
+                    <div class="raw-editor-line-numbers" style="background: var(--theme-bg-secondary, #f5f5f5); padding: 8px 4px; text-align: right; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; color: var(--theme-text-secondary, #666); border-right: 1px solid var(--theme-border, #ddd); min-width: 50px; user-select: none; overflow: hidden;">
+                        <div 
+                            v-for="(line, index) in propertiesModal.rawText.split('\n')" 
+                            :key="index"
+                            :class="['raw-editor-line-number', { 
+                                'has-error': hasLineError(index + 1),
+                                'has-warning': hasLineWarning(index + 1) && !hasLineError(index + 1)
+                            }]"
+                            style="padding: 0 8px; min-height: 21px; display: flex; align-items: center; justify-content: flex-end;"
+                        >
+                            <span style="display: inline-flex; align-items: center; gap: 4px;">
+                                <i v-if="hasLineError(index + 1)" class="fas fa-times-circle" style="color: #dc3545; font-size: 12px;"></i>
+                                <i v-else-if="hasLineWarning(index + 1)" class="fas fa-exclamation-triangle" style="color: #ffc107; font-size: 12px;"></i>
+                                <span>{{ index + 1 }}</span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Textarea -->
+                    <textarea 
+                        v-model="propertiesModal.rawText"
+                        @input="validateRawTextDebounced"
+                        class="raw-editor-textarea"
+                        placeholder="property=value&#10;difficulty=normal&#10;gamemode=survival&#10;..."
+                        spellcheck="false"
+                        style="flex: 1; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; padding: 8px; border: none; outline: none; resize: none; min-height: 300px;"
+                    ></textarea>
+                </div>
+                
+                <!-- Validation Summary Panel -->
+                <div v-if="propertiesModal.rawTextErrors.length > 0 || propertiesModal.rawTextWarnings.length > 0" class="raw-editor-validation-summary" style="margin-top: 12px; padding: 12px; background: var(--theme-bg-secondary, #f5f5f5); border-radius: 4px; border-left: 4px solid var(--theme-border, #ddd);">
+                    <div style="margin-bottom: 8px; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>検証結果</span>
+                    </div>
+                    
+                    <!-- Errors Section -->
+                    <div v-if="propertiesModal.rawTextErrors.length > 0" style="margin-bottom: 12px;">
+                        <div style="color: #dc3545; font-weight: bold; margin-bottom: 4px;">
+                            <i class="fas fa-times-circle"></i>
+                            エラー: {{ propertiesModal.rawTextErrors.length }}件
+                        </div>
+                        <div style="max-height: 150px; overflow-y: auto;">
+                            <div 
+                                v-for="(error, index) in propertiesModal.rawTextErrors" 
+                                :key="'error-' + index"
+                                style="padding: 6px 8px; margin-bottom: 4px; background: #fff; border-left: 3px solid #dc3545; border-radius: 2px; font-size: 13px;"
+                            >
+                                <strong style="color: #dc3545;">行 {{ error.lineNumber }}</strong>
+                                <span v-if="error.property" style="color: var(--theme-text-secondary, #666);"> - {{ error.property }}</span>
+                                <div style="margin-top: 2px; color: var(--theme-text, #333);">{{ error.message }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Warnings Section -->
+                    <div v-if="propertiesModal.rawTextWarnings.length > 0">
+                        <div style="color: #ffc107; font-weight: bold; margin-bottom: 4px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            警告: {{ propertiesModal.rawTextWarnings.length }}件
+                        </div>
+                        <div style="max-height: 150px; overflow-y: auto;">
+                            <div 
+                                v-for="(warning, index) in propertiesModal.rawTextWarnings" 
+                                :key="'warning-' + index"
+                                style="padding: 6px 8px; margin-bottom: 4px; background: #fff; border-left: 3px solid #ffc107; border-radius: 2px; font-size: 13px;"
+                            >
+                                <strong style="color: #ffc107;">行 {{ warning.lineNumber }}</strong>
+                                <span v-if="warning.property" style="color: var(--theme-text-secondary, #666);"> - {{ warning.property }}</span>
+                                <div style="margin-top: 2px; color: var(--theme-text, #333);">{{ warning.message }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="raw-editor-footer" style="margin-top: 8px;">
                     <i class="fas fa-info-circle"></i>
                     <span>形式: property=value (1行ごと)</span>
                 </div>
@@ -359,7 +433,7 @@ export const propertiesModalTemplate = `
             <button 
                 class="btn btn-primary" 
                 @click="saveServerProperties"
-                :disabled="propertiesModal.saving || propertiesModal.loading"
+                :disabled="propertiesModal.saving || propertiesModal.loading || (propertiesModal.editorTab === 'raw' && !propertiesModal.rawTextValid)"
             >
                 <i :class="['fas', propertiesModal.saving ? 'fa-spinner fa-spin' : 'fa-save']"></i>
                 {{ propertiesModal.saving ? '保存中...' : '保存' }}
