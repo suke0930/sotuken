@@ -1,0 +1,22 @@
+# FRP Server Configuration
+
+# Bind address and port
+bindAddr = "0.0.0.0"
+bindPort = 7000
+
+# Dashboard configuration
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "admin"
+
+# HTTP Plugin for Authorization
+[[httpPlugins]]
+name = "frp-auth-plugin"
+addr = "frp-authz:3001"
+path = "/webhook/handler"
+ops = ["Login", "NewProxy", "CloseProxy"]
+
+# Logging
+log.to = "console"
+log.level = "info"
