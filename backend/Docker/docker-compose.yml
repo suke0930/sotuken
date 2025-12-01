@@ -18,10 +18,10 @@ services:
   asset-server:
     build:
       context: ../Asset
-      dockerfile: ../Docker/asset-server/Dockerfile
+      dockerfile: Dockerfile
     container_name: mc-manager-asset-server
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3000
     volumes:
       - ./AssetServ/Resource:/app/resources:rw

@@ -17,6 +17,3 @@ addr = "frp-authz:3001"
 path = "/webhook/handler"
 ops = ["Login", "NewProxy", "CloseProxy"]
 
-# Logging
-log.to = "console"
-log.level = "info"

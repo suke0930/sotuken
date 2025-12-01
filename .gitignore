@@ -176,3 +176,6 @@ backend/FRP-test/frps
 backend/FRP-test/client-controller/bin
 backend/FRP-test/client-controller/temp/frpc.toml
 backend/FRP-test/NUL
+
+backend/Docker/AssetServ
+backend/Docker/frp-authjs/data/sessions.json

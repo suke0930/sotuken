@@ -10,14 +10,11 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm install --omit=dev
+# Install ALL dependencies (including devDependencies for tsx)
+RUN npm ci
 
 # Copy source files
 COPY src ./src
-
-# Build TypeScript
-RUN npm run build
 
 # Create data directory
 RUN mkdir -p /app/data && chown -R node:node /app/data
@@ -28,5 +25,5 @@ USER node
 # Expose port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Start in development mode with tsx
+CMD ["npm", "run", "dev"]
