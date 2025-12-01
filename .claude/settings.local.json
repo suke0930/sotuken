@@ -7,7 +7,8 @@
       "Bash(node --version:*)",
       "Bash(node:*)",
       "Bash(npx tsc:*)",
-      "Bash(NODE_ENV=development npm start:*)"
+      "Bash(NODE_ENV=development npm start:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
