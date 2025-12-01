@@ -183,6 +183,30 @@
     font-size: 14px;
 }
 
+.property-label-text {
+    flex: 1;
+}
+
+.property-help-icon {
+    margin-left: auto;
+    color: var(--theme-text-secondary);
+    /* cursor: help; */
+    font-size: 13px;
+    transition: all 0.2s ease;
+    opacity: 0.6;
+}
+
+.property-help-icon:hover {
+    color: var(--theme-primary);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.property-help-icon i {
+    color: inherit;
+}
+
+/* Legacy tooltip class (kept for compatibility) */
 .property-tooltip {
     margin-left: auto;
     color: var(--theme-text-secondary);
@@ -267,9 +291,7 @@ input[type="number"].property-input {
 /* ============================================
    Checkbox Property Item
    ============================================ */
-.property-item-checkbox {
-    /* All items are now single column by default */
-}
+/* All checkbox items are now single column by default */
 
 .property-checkbox-label {
     display: flex;
@@ -307,6 +329,25 @@ input[type="number"].property-input {
 
 .property-checkbox-text i {
     color: var(--theme-primary);
+}
+
+.property-checkbox-help-icon {
+    margin-left: auto;
+    color: var(--theme-text-secondary);
+    /* cursor: help; */
+    font-size: 13px;
+    transition: all 0.2s ease;
+    opacity: 0.6;
+}
+
+.property-checkbox-help-icon:hover {
+    color: var(--theme-primary);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.property-checkbox-help-icon i {
+    color: inherit;
 }
 
 /* ============================================

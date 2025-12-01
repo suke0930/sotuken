@@ -73,7 +73,10 @@ export const propertiesModalTemplate = `
                             <div :class="getPropertyItemClass(property)">
                                 <label v-if="property.type !== 'boolean'" class="property-label">
                                     <i :class="['fas', getPropertyIcon(key)]"></i>
-                                    {{ getPropertyLabel(property, key) }}
+                                    <span class="property-label-text">{{ getPropertyLabel(property, key) }}</span>
+                                    <span class="property-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
                                 </label>
 
                                 <!-- String Input -->
@@ -123,6 +126,9 @@ export const propertiesModalTemplate = `
                                     <span class="property-checkbox-text">
                                         <i :class="['fas', getPropertyIcon(key)]"></i>
                                         {{ getPropertyLabel(property, key) }}
+                                    </span>
+                                    <span class="property-checkbox-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
                                     </span>
                                 </label>
 
@@ -147,7 +153,10 @@ export const propertiesModalTemplate = `
                             <div :class="getPropertyItemClass(property)">
                                 <label v-if="property.type !== 'boolean'" class="property-label">
                                     <i :class="['fas', getPropertyIcon(key)]"></i>
-                                    {{ getPropertyLabel(property, key) }}
+                                    <span class="property-label-text">{{ getPropertyLabel(property, key) }}</span>
+                                    <span class="property-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
                                 </label>
 
                                 <!-- String Input -->
@@ -198,6 +207,9 @@ export const propertiesModalTemplate = `
                                         <i :class="['fas', getPropertyIcon(key)]"></i>
                                         {{ getPropertyLabel(property, key) }}
                                     </span>
+                                    <span class="property-checkbox-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
                                 </label>
 
                                 <!-- Validation Error Message -->
@@ -221,7 +233,10 @@ export const propertiesModalTemplate = `
                             <div :class="getPropertyItemClass(property)">
                                 <label v-if="property.type !== 'boolean'" class="property-label">
                                     <i :class="['fas', getPropertyIcon(key)]"></i>
-                                    {{ getPropertyLabel(property, key) }}
+                                    <span class="property-label-text">{{ getPropertyLabel(property, key) }}</span>
+                                    <span class="property-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
                                 </label>
 
                                 <!-- String Input -->
@@ -271,6 +286,9 @@ export const propertiesModalTemplate = `
                                     <span class="property-checkbox-text">
                                         <i :class="['fas', getPropertyIcon(key)]"></i>
                                         {{ getPropertyLabel(property, key) }}
+                                    </span>
+                                    <span class="property-checkbox-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
                                     </span>
                                 </label>
 
