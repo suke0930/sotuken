@@ -891,23 +891,6 @@ export function createPropertiesMethods() {
             return { errors, warnings };
         },
 
-        /**
-         * Check if a line has errors
-         * @param {number} lineNumber - Line number (1-based)
-         * @returns {boolean}
-         */
-        hasLineError(lineNumber) {
-            return this.propertiesModal.rawTextErrors.some(e => e.lineNumber === lineNumber);
-        },
-
-        /**
-         * Check if a line has warnings
-         * @param {number} lineNumber - Line number (1-based)
-         * @returns {boolean}
-         */
-        hasLineWarning(lineNumber) {
-            return this.propertiesModal.rawTextWarnings.some(w => w.lineNumber === lineNumber);
-        },
 
         /**
          * Real-time validation for property input (NEW)
