@@ -5,6 +5,8 @@ export interface Session {
   createdAt: string;
   expiresAt: string;
   lastActivity: string;
+  username: string;      // Discord username (unique)
+  avatar: string | null; // Discord avatar hash (null if no avatar)
 }
 
 export interface SessionStore {
@@ -29,6 +31,8 @@ export interface VerifyJwtResponse {
   discordId?: string;
   expiresAt?: string;
   reason?: string;
+  username?: string;     // Discord username
+  avatarUrl?: string;    // Discord avatar CDN URL
 }
 
 export interface ExchangeCodeRequest {

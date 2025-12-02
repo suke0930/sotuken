@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { JwtPayload, VerifyJwtResponse } from "../types/session.js";
 import { env } from "../config/env.js";
 import { sessionManager } from "./sessionManager.js";
+import { getAvatarUrl } from "../utils/discord.js";
 
 export class JwtService {
   generateJwt(sessionId: string, fingerprint: string): string {
@@ -58,6 +59,8 @@ export class JwtService {
         valid: true,
         sessionId: session.sessionId,
         discordId: session.discordId,
+        username: session.username,
+        avatarUrl: getAvatarUrl(session.discordId, session.avatar),
         expiresAt: session.expiresAt,
       };
     } catch (error: any) {

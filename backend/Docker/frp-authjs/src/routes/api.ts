@@ -3,7 +3,7 @@ import { discordOAuth2Service } from "../services/discordOAuth2.js";
 import { pendingAuthManager } from "../services/pendingAuthManager.js";
 import { sessionManager } from "../services/sessionManager.js";
 import { jwtService } from "../services/jwtService.js";
-import { VerifyJwtRequest } from "../types/session.js";
+import { VerifyJwtRequest, DiscordUser } from "../types/session.js";
 
 const router = express.Router();
 
@@ -25,7 +25,7 @@ router.get("/health", (_req: Request, res: Response) => {
  * POST /api/auth/init
  * Initialize authentication and return tempToken + authUrl
  */
-router.post("/api/auth/init", async (req: Request, res: Response) => {
+router.post("/auth/init", async (req: Request, res: Response) => {
   const { fingerprint } = req.body;
 
   if (!fingerprint) {
@@ -61,7 +61,7 @@ router.post("/api/auth/init", async (req: Request, res: Response) => {
  * GET /api/auth/poll
  * Poll for authentication status
  */
-router.get("/api/auth/poll", (req: Request, res: Response) => {
+router.get("/auth/poll", (req: Request, res: Response) => {
   const { tempToken } = req.query;
 
   if (!tempToken || typeof tempToken !== "string") {
@@ -108,7 +108,7 @@ router.get("/api/auth/poll", (req: Request, res: Response) => {
  * GET /api/auth/callback
  * Discord OAuth2 callback
  */
-router.get("/api/auth/callback", async (req: Request, res: Response) => {
+router.get("/auth/callback", async (req: Request, res: Response) => {
   const { code, state } = req.query;
 
   if (!code || !state || typeof code !== "string" || typeof state !== "string") {
@@ -145,10 +145,15 @@ router.get("/api/auth/callback", async (req: Request, res: Response) => {
     const tokens = await discordOAuth2Service.validateAuthorizationCode(code);
 
     // Fetch user info
-    const discordUser = await discordOAuth2Service.fetchUser(tokens.accessToken);
+    const discordUser = await discordOAuth2Service.fetchUser(tokens.accessToken) as DiscordUser;
 
-    // Create session
-    const session = sessionManager.createSession(discordUser.id, pendingAuth.fingerprint);
+    // Create session with user info
+    const session = sessionManager.createSession(
+      discordUser.id,
+      pendingAuth.fingerprint,
+      discordUser.username,
+      discordUser.avatar
+    );
 
     // Generate JWT
     const jwt = jwtService.generateJwt(session.sessionId, pendingAuth.fingerprint);
@@ -217,7 +222,7 @@ router.get("/api/auth/callback", async (req: Request, res: Response) => {
  * POST /api/verify-jwt
  * Verify JWT (unchanged from v2.0)
  */
-router.post("/api/verify-jwt", (req: Request, res: Response) => {
+router.post("/verify-jwt", (req: Request, res: Response) => {
   const { jwt: token, fingerprint } = req.body as VerifyJwtRequest;
 
   if (!token || !fingerprint) {

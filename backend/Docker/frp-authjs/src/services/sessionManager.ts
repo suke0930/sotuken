@@ -34,7 +34,12 @@ export class SessionManager {
     }
   }
 
-  createSession(discordId: string, clientFingerprint: string): Session {
+  createSession(
+    discordId: string,
+    clientFingerprint: string,
+    username: string,
+    avatar: string | null
+  ): Session {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + env.SESSION_EXPIRY * 1000);
 
@@ -45,12 +50,14 @@ export class SessionManager {
       createdAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
       lastActivity: now.toISOString(),
+      username,
+      avatar,
     };
 
     this.sessions.set(session.sessionId, session);
     this.scheduleSave();
 
-    console.log(`Session created: ${session.sessionId} for Discord ID: ${discordId}`);
+    console.log(`Session created: ${session.sessionId} for Discord ID: ${discordId} (${username})`);
     return session;
   }
 
@@ -107,12 +114,17 @@ export class SessionManager {
     try {
       const data = await fs.readFile(this.filePath, "utf-8");
       const store: SessionStore = JSON.parse(data);
-      
+
       this.sessions.clear();
       for (const session of store.sessions) {
+        // Migrate old sessions: add default values if missing
+        if (!session.username) {
+          session.username = "";
+          session.avatar = null;
+        }
         this.sessions.set(session.sessionId, session);
       }
-      
+
       console.log(`Loaded ${this.sessions.size} sessions from file`);
     } catch (error: any) {
       if (error.code === "ENOENT") {

@@ -30,14 +30,14 @@ services:
       - mc-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
   # === FRP Authentication System ===
-  
+
   frp-authjs:
     build:
       context: ./frp-authjs
@@ -46,9 +46,10 @@ services:
     ports:
       - "3002:3000"
     environment:
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_DISCORD_ID=${AUTH_DISCORD_ID}
-      - AUTH_DISCORD_SECRET=${AUTH_DISCORD_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - DISCORD_CLIENT_ID=${AUTH_DISCORD_ID}
+      - DISCORD_CLIENT_SECRET=${AUTH_DISCORD_SECRET}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
       - BASE_URL=${BASE_URL}
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=3000
@@ -58,7 +59,7 @@ services:
       - mc-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -81,7 +82,7 @@ services:
       - mc-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -103,7 +104,7 @@ services:
       - mc-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "7000"]
+      test: [ "CMD", "nc", "-z", "localhost", "7000" ]
       interval: 30s
       timeout: 10s
       retries: 3
