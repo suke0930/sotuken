@@ -1,0 +1,12 @@
+[common]
+server_addr = 127.0.0.1
+server_port = 7000
+user = suke0930
+
+meta_token ="JWT Here"
+meta_fingerprint = "finger Here"
+[ssh_demo]
+proxy_type = tcp
+local_ip = 127.0.0.1
+local_port = 22
+remote_port = 25565
