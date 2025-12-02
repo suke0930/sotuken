@@ -47,11 +47,13 @@ async function handleLogin(
   webhookReq: FrpWebhookRequest,
   res: Response
 ): Promise<void> {
-  const token = webhookReq.content.user?.metas?.token;
-  const fingerprint = webhookReq.content.user?.metas?.fingerprint;
+  const token = webhookReq.content.metas?.token;
+  const fingerprint = webhookReq.content.metas?.fingerprint;
 
   if (!token || !fingerprint) {
     console.log("Login rejected: Missing token or fingerprint");
+    console.log(webhookReq.content);
+
     res.json({
       reject: true,
       reject_reason: "Missing token or fingerprint",
@@ -88,9 +90,12 @@ async function handleNewProxy(
   const fingerprint = webhookReq.content.user?.metas?.fingerprint;
   const remotePort = webhookReq.content.remote_port;
   const proxyName = webhookReq.content.proxy_name;
-
   if (!token || !fingerprint) {
     console.log("NewProxy rejected: Missing token or fingerprint");
+    console.log(webhookReq.content);
+    console.log("Token:", token);
+    console.log("Fingerprint:", fingerprint);
+
     res.json({
       reject: true,
       reject_reason: "Missing token or fingerprint",

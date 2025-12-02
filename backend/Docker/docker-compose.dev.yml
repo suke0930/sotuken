@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: mc-manager-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - asset-server
+      - frp-authjs
+    networks:
+      - mc-network
+    restart: unless-stopped
+
+  asset-server:
+    build:
+      context: ../Asset
+      dockerfile: Dockerfile
+    container_name: mc-manager-asset-server
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    volumes:
+      - ./AssetServ/Resource:/app/resources:rw
+      - ./AssetServ/Data:/app/data:rw
+    networks:
+      - mc-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # === FRP Authentication System ===
+
+  frp-authjs:
+    build:
+      context: ./frp-authjs
+      dockerfile: Dockerfile.dev
+    container_name: frp-authjs
+    ports:
+      - "3002:3000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET}
+      - DISCORD_CLIENT_ID=${AUTH_DISCORD_ID}
+      - DISCORD_CLIENT_SECRET=${AUTH_DISCORD_SECRET}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
+      - BASE_URL=${BASE_URL}
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
+    volumes:
+      # Mount source code for hot reload
+      - ./frp-authjs/src:/app/src:ro
+      - ./frp-authjs/package.json:/app/package.json:ro
+      - ./frp-authjs/package-lock.json:/app/package-lock.json:ro
+      - ./frp-authjs/tsconfig.json:/app/tsconfig.json:ro
+      - ./frp-authjs/data:/app/data:rw
+      # Prevent node_modules from being overwritten
+      - frp-authjs-node-modules:/app/node_modules
+    networks:
+      - mc-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frp-authz:
+    build:
+      context: ./frp-authz
+      dockerfile: Dockerfile.dev
+    container_name: frp-authz
+    environment:
+      - AUTHJS_URL=${AUTHJS_INTERNAL_URL:-http://frp-authjs:3000}
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3001
+    volumes:
+      # Mount source code for hot reload
+      - ./frp-authz/src:/app/src:ro
+      - ./frp-authz/package.json:/app/package.json:ro
+      - ./frp-authz/package-lock.json:/app/package-lock.json:ro
+      - ./frp-authz/tsconfig.json:/app/tsconfig.json:ro
+      - ./frp-authz/data:/app/data:rw
+      # Prevent node_modules from being overwritten
+      - frp-authz-node-modules:/app/node_modules
+    depends_on:
+      - frp-authjs
+    networks:
+      - mc-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frp-server:
+    build:
+      context: ./frp-server
+      dockerfile: Dockerfile
+    container_name: frp-server
+    ports:
+      - "${FRP_BIND_PORT:-7000}:7000"
+      - "${FRP_DASHBOARD_PORT:-7500}:7500"
+    volumes:
+      - ./frp-server/frps.toml:/app/frps.toml:ro
+    depends_on:
+      - frp-authz
+    networks:
+      - mc-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "7000" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  mc-network:
+    driver: bridge
+
+volumes:
+  # Named volumes for node_modules to prevent being overwritten by host mounts
+  frp-authjs-node-modules:
+  frp-authz-node-modules:
