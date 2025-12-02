@@ -1,125 +1,221 @@
 import express, { Request, Response } from "express";
 import { discordOAuth2Service } from "../services/discordOAuth2.js";
+import { pendingAuthManager } from "../services/pendingAuthManager.js";
 import { sessionManager } from "../services/sessionManager.js";
 import { jwtService } from "../services/jwtService.js";
-import {
-  VerifyJwtRequest,
-  TokenRequest,
-  AuthUrlResponse,
-  TokenResponse,
-} from "../types/session.js";
+import { VerifyJwtRequest } from "../types/session.js";
 
 const router = express.Router();
 
 /**
  * GET /api/health
- * Health check endpoint
  */
 router.get("/health", (_req: Request, res: Response) => {
+  const stats = pendingAuthManager.getStats();
   res.json({
     status: "ok",
-    service: "FRP Arctic Auth Server",
+    service: "FRP Polling Auth Server",
+    version: "3.0.0",
     timestamp: new Date().toISOString(),
+    pendingAuths: stats,
   });
 });
 
 /**
- * GET /api/auth/url
- * Generate Discord OAuth2 authentication URL
- * 
- * This replaces Auth.js's /auth/signin endpoint.
- * Returns a JSON response with the auth URL instead of redirecting to HTML.
+ * POST /api/auth/init
+ * Initialize authentication and return tempToken + authUrl
  */
-router.get("/api/auth/url", async (_req: Request, res: Response) => {
+router.post("/api/auth/init", async (req: Request, res: Response) => {
+  const { fingerprint } = req.body;
+
+  if (!fingerprint) {
+    return res.status(400).json({
+      error: "Missing fingerprint",
+      message: "fingerprint is required",
+    });
+  }
+
   try {
+    // Generate auth URL and state
     const { url, state } = await discordOAuth2Service.createAuthorizationURL();
 
-    const response: AuthUrlResponse = {
-      url,
-      state,
-      message: "Open this URL in a browser to authenticate with Discord",
-    };
+    // Create pending auth entry
+    const pendingAuth = pendingAuthManager.create(state, url, fingerprint);
 
-    res.json(response);
+    return res.json({
+      tempToken: pendingAuth.tempToken,
+      authUrl: pendingAuth.authUrl,
+      expiresIn: 600, // 10 minutes
+      message: "Open authUrl in browser, then poll /api/auth/poll with tempToken",
+    });
   } catch (error: any) {
-    console.error("Error generating auth URL:", error);
-    res.status(500).json({
-      error: "Failed to generate authentication URL",
+    console.error("Error in /api/auth/init:", error);
+    return res.status(500).json({
+      error: "Failed to initialize authentication",
       message: error.message,
     });
   }
 });
 
 /**
- * POST /api/auth/token
- * Exchange Discord OAuth2 authorization code for JWT
- * 
- * This replaces the old POST /api/exchange-code endpoint.
- * 
- * Request body:
- * {
- *   code: string,      // Authorization code from Discord
- *   state: string,     // State parameter for CSRF protection
- *   fingerprint: string // Client fingerprint
- * }
+ * GET /api/auth/poll
+ * Poll for authentication status
  */
-router.post("/api/auth/token", async (req: Request, res: Response) => {
-  const { code, state, fingerprint } = req.body as TokenRequest;
+router.get("/api/auth/poll", (req: Request, res: Response) => {
+  const { tempToken } = req.query;
 
-  if (!code || !state || !fingerprint) {
+  if (!tempToken || typeof tempToken !== "string") {
     return res.status(400).json({
-      error: "Missing required parameters",
-      message: "code, state, and fingerprint are required",
+      error: "Missing tempToken",
+      message: "tempToken query parameter is required",
     });
   }
 
+  const pendingAuth = pendingAuthManager.getByTempToken(tempToken);
+
+  if (!pendingAuth) {
+    return res.status(404).json({
+      status: "not_found",
+      message: "Invalid or expired tempToken",
+    });
+  }
+
+  // Check status
+  if (pendingAuth.status === "expired") {
+    return res.status(410).json({
+      status: "expired",
+      message: "Authentication session expired. Please restart with /api/auth/init",
+    });
+  }
+
+  if (pendingAuth.status === "completed") {
+    return res.json({
+      status: "completed",
+      jwt: pendingAuth.jwt,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      discordUser: pendingAuth.discordUser,
+    });
+  }
+
+  // Still pending
+  return res.json({
+    status: "pending",
+    message: "Waiting for user authentication in browser...",
+  });
+});
+
+/**
+ * GET /api/auth/callback
+ * Discord OAuth2 callback
+ */
+router.get("/api/auth/callback", async (req: Request, res: Response) => {
+  const { code, state } = req.query;
+
+  if (!code || !state || typeof code !== "string" || typeof state !== "string") {
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Authentication Error</title></head>
+      <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+        <h1>❌ Authentication Error</h1>
+        <p>Missing code or state parameter.</p>
+      </body>
+      </html>
+    `);
+  }
+
   try {
-    // Validate state parameter (CSRF protection)
-    if (!discordOAuth2Service.validateState(state)) {
-      return res.status(400).json({
-        error: "Invalid state parameter",
-        message: "State validation failed. Please restart the authentication flow.",
-      });
+    // Find pending auth by state
+    const pendingAuth = pendingAuthManager.getByState(state);
+
+    if (!pendingAuth) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Invalid State</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+          <h1>❌ Invalid State</h1>
+          <p>Invalid or expired authentication session.</p>
+        </body>
+        </html>
+      `);
     }
 
-    // Exchange authorization code for access token
+    // Exchange code for tokens
     const tokens = await discordOAuth2Service.validateAuthorizationCode(code);
 
-    // Fetch user information from Discord
+    // Fetch user info
     const discordUser = await discordOAuth2Service.fetchUser(tokens.accessToken);
 
     // Create session
-    const session = sessionManager.createSession(discordUser.id, fingerprint);
+    const session = sessionManager.createSession(discordUser.id, pendingAuth.fingerprint);
 
     // Generate JWT
-    const jwt = jwtService.generateJwt(session.sessionId, fingerprint);
+    const jwt = jwtService.generateJwt(session.sessionId, pendingAuth.fingerprint);
 
-    const response: TokenResponse = {
-      jwt,
-      expiresAt: session.expiresAt,
-      discordUser: {
-        id: discordUser.id,
-        username: discordUser.username,
-        avatar: discordUser.avatar || "",
-        discriminator: discordUser.discriminator,
-      },
-    };
-
-    return res.json(response);
-  } catch (error: any) {
-    console.error("Error in /api/auth/token:", error);
-    return res.status(500).json({
-      error: "Authentication failed",
-      message: error.message,
+    // Complete pending auth
+    pendingAuthManager.complete(pendingAuth.tempToken, jwt, {
+      id: discordUser.id,
+      username: discordUser.username,
+      avatar: discordUser.avatar || "",
+      discriminator: discordUser.discriminator,
     });
+
+    // Return success page
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Authentication Successful</title>
+        <style>
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+          }
+          .container {
+            background: white;
+            color: #333;
+            padding: 40px;
+            border-radius: 10px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+          }
+          h1 { color: #667eea; }
+          .success-icon { font-size: 64px; margin-bottom: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="success-icon">✅</div>
+          <h1>Authentication Successful!</h1>
+          <p>Welcome, <strong>${discordUser.username}</strong>!</p>
+          <p>You can now close this window and return to your application.</p>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (error: any) {
+    console.error("Error in /api/auth/callback:", error);
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Authentication Failed</title></head>
+      <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+        <h1>❌ Authentication Failed</h1>
+        <p>${error.message}</p>
+      </body>
+      </html>
+    `);
   }
 });
 
 /**
  * POST /api/verify-jwt
- * Verify JWT and return Discord ID
- * 
- * This endpoint remains unchanged from the previous implementation.
+ * Verify JWT (unchanged from v2.0)
  */
 router.post("/api/verify-jwt", (req: Request, res: Response) => {
   const { jwt: token, fingerprint } = req.body as VerifyJwtRequest;

@@ -1,6 +1,7 @@
 import express from "express";
 import { env } from "./config/env.js";
 import { sessionManager } from "./services/sessionManager.js";
+import { pendingAuthManager } from "./services/pendingAuthManager.js";
 import apiRoutes from "./routes/api.js";
 
 const app = express();
@@ -68,6 +69,9 @@ async function main() {
   try {
     // Initialize session manager
     await sessionManager.initialize();
+
+    // Initialize pending auth manager
+    pendingAuthManager.initialize();
 
     // Start Express server
     app.listen(env.PORT, () => {
