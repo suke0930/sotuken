@@ -1,6 +1,18 @@
 # FRP Authentication System - Docker Implementation
 
+**Version:** 2.0.0 (Arctic Migration)  
+**Last Updated:** 2025-12-02
+
 Discord OAuth2ベースのFRP認証システムのDocker実装です。
+
+## 🔄 重要な更新 (v2.0)
+
+**Auth.js → Arctic 移行完了**
+
+- ✅ **軽量化**: 依存関係を大幅削減 (Auth.js → Arctic)
+- ✅ **API-First設計**: HTML不要、純粋なJSON APIとして動作
+- ✅ **ミドルウェア対応**: 外部ソフトウェアから直接呼び出し可能
+- ✅ **TypeScript**: Arctic は完全なTypeScriptサポート
 
 ## 概要
 
@@ -13,7 +25,7 @@ Discord OAuth2ベースのFRP認証システムのDocker実装です。
 - **asset-server**: アセット管理サーバー (内部ポート 3000) - `backend/Asset`を直接使用
 
 ### 新規追加コンテナ (FRP認証システム)
-- **frp-authjs**: Discord OAuth2認証 + JWT発行/検証 (ポート 3002)
+- **frp-authjs**: Arctic Discord OAuth2認証 + JWT発行/検証 (内部ポート 3000)
 - **frp-server**: FRPサーバー (ポート 7000, 7500)
 - **frp-authz**: ポート権限管理 + セッション管理 (内部ポート 3001)
 
@@ -30,10 +42,13 @@ cp .env.example .env
 `.env` を編集して以下を設定:
 
 ```env
-# Discord OAuth2アプリケーション設定
-AUTH_SECRET=<openssl rand -base64 32 で生成>
-AUTH_DISCORD_ID=<Discord Developer Portalから取得>
-AUTH_DISCORD_SECRET=<Discord Developer Portalから取得>
+# JWT設定
+JWT_SECRET=<openssl rand -base64 32 で生成>
+
+# Discord OAuth2アプリケーション設定 (Arctic)
+DISCORD_CLIENT_ID=<Discord Developer Portalから取得>
+DISCORD_CLIENT_SECRET=<Discord Developer Portalから取得>
+DISCORD_REDIRECT_URI=http://localhost:8080/api/auth/callback
 BASE_URL=http://localhost:8080
 ```
 
@@ -55,10 +70,13 @@ curl http://localhost:8080/api/frp/health
 
 ## エンドポイント
 
-### 認証関連 (nginxを経由)
-- `GET /auth/signin` - Discord OAuth2認証開始
-- `POST /api/frp/exchange-code` - Authorization Code → JWT交換
+### 認証関連 (nginxを経由) - Arctic API
+
+- `GET /auth/api/auth/url` - Discord OAuth2認証URL取得 (**NEW**)
+- `POST /auth/api/auth/token` - Authorization Code → JWT交換 (**NEW**)
 - `POST /api/frp/verify-jwt` - JWT検証
+
+**詳細なAPIドキュメント**: [API_ENDPOINTS.md](./API_ENDPOINTS.md)を参照してください。
 
 ### FRPサーバー
 - `tcp://localhost:7000` - FRPクライアント接続ポート
@@ -81,9 +99,12 @@ backend/
     ├── asset-server/          # Asset Server Dockerfile
     │   ├── Dockerfile         # backend/Assetをビルド
     │   └── .dockerignore
-    ├── frp-authjs/            # Container 1: Auth.js Server
+    ├── frp-authjs/            # Container 1: Arctic Auth Server
     │   ├── Dockerfile
     │   ├── src/
+    │   │   ├── services/      # discordOAuth2Service (Arctic)
+    │   │   ├── routes/        # API routes
+    │   │   └── types/
     │   └── data/              # sessions.json (永続化)
     ├── frp-server/            # Container 2: FRP Server
     │   ├── Dockerfile

@@ -1,51 +1,49 @@
 import express from "express";
-import { ExpressAuth } from "@auth/express";
-import { authConfig } from "./config/auth.js";
 import { env } from "./config/env.js";
 import { sessionManager } from "./services/sessionManager.js";
 import apiRoutes from "./routes/api.js";
 
 const app = express();
 
-// Trust proxy (required for Auth.js behind proxies)
+// Trust proxy (required for behind reverse proxies like Nginx)
 app.set("trust proxy", true);
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Auth.js routes - handles /auth/signin, /auth/callback/discord, etc.
-app.use("/auth/*", ExpressAuth(authConfig));
-
-// API routes
+// API routes - all API endpoints are under /api
 app.use("/api", apiRoutes);
 
 // Health check at root
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
-    service: "FRP Auth.js Server",
+    service: "FRP Arctic Auth Server",
     timestamp: new Date().toISOString(),
   });
 });
 
-// Root endpoint
+// Root endpoint - API documentation
 app.get("/", (_req, res) => {
   res.json({
-    service: "FRP Auth.js Server",
-    version: "1.0.0",
+    service: "FRP Arctic Auth Server",
+    version: "2.0.0",
+    description: "Discord OAuth2 + JWT Authentication using Arctic",
     endpoints: {
       auth: {
-        signin: "/auth/signin",
-        signout: "/auth/signout",
-        callback: "/auth/callback/discord",
+        getAuthUrl: "GET /api/auth/url - Get Discord OAuth2 authorization URL",
+        exchangeToken: "POST /api/auth/token - Exchange code for JWT",
       },
-      api: {
-        verifyJwt: "POST /api/verify-jwt",
-        exchangeCode: "POST /api/exchange-code",
-        health: "GET /api/health",
+      jwt: {
+        verifyJwt: "POST /api/verify-jwt - Verify JWT token",
+      },
+      health: {
+        apiHealth: "GET /api/health - API health check",
+        rootHealth: "GET /health - Root health check",
       },
     },
+    migration: "Migrated from Auth.js to Arctic for lightweight, API-first design",
   });
 });
 
@@ -73,15 +71,15 @@ async function main() {
 
     // Start Express server
     app.listen(env.PORT, () => {
-      console.log(`🚀 FRP Auth.js Server running on port ${env.PORT}`);
+      console.log(`🚀 FRP Arctic Auth Server running on port ${env.PORT}`);
       console.log(`📝 Environment: ${env.NODE_ENV}`);
-      console.log(`🔐 Auth endpoints:`);
-      console.log(`   - Sign in: ${env.BASE_URL}/auth/signin`);
-      console.log(`   - Sign out: ${env.BASE_URL}/auth/signout`);
-      console.log(`   - Callback: ${env.BASE_URL}/auth/callback/discord`);
-      console.log(`📡 API endpoints:`);
-      console.log(`   - Verify JWT: POST ${env.BASE_URL}/api/verify-jwt`);
-      console.log(`   - Exchange Code: POST ${env.BASE_URL}/api/exchange-code`);
+      console.log(`🌍 Base URL: ${env.BASE_URL}`);
+      console.log(`\n📡 API Endpoints:`);
+      console.log(`   - Get Auth URL:    GET  ${env.BASE_URL}/api/auth/url`);
+      console.log(`   - Exchange Token:  POST ${env.BASE_URL}/api/auth/token`);
+      console.log(`   - Verify JWT:      POST ${env.BASE_URL}/api/verify-jwt`);
+      console.log(`   - Health Check:    GET  ${env.BASE_URL}/health`);
+      console.log(`\n✨ Arctic Migration Complete!`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

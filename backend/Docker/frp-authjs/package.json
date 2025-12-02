@@ -1,7 +1,7 @@
 {
   "name": "frp-authjs",
   "version": "1.0.0",
-  "description": "FRP Auth.js Server - Discord OAuth2 + JWT Authentication",
+  "description": "FRP Arctic Auth Server - Discord OAuth2 + JWT Authentication",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -12,7 +12,7 @@
   },
   "keywords": [
     "frp",
-    "authjs",
+    "arctic",
     "discord",
     "oauth2",
     "jwt",
@@ -21,7 +21,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@auth/express": "^0.12.1",
+    "arctic": "^1.9.2",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "uuid": "^11.0.3",

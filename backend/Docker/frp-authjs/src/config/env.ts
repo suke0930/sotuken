@@ -11,15 +11,18 @@ function requireEnv(name: string): string {
 }
 
 export const env = {
-  // Auth.js Configuration
-  AUTH_SECRET: requireEnv("AUTH_SECRET"),
-  AUTH_DISCORD_ID: requireEnv("AUTH_DISCORD_ID"),
-  AUTH_DISCORD_SECRET: requireEnv("AUTH_DISCORD_SECRET"),
-  BASE_URL: process.env.BASE_URL || "http://localhost:8080",
+  // JWT Configuration
+  JWT_SECRET: requireEnv("JWT_SECRET"),
+  
+  // Discord OAuth2 Configuration (Arctic)
+  DISCORD_CLIENT_ID: requireEnv("DISCORD_CLIENT_ID"),
+  DISCORD_CLIENT_SECRET: requireEnv("DISCORD_CLIENT_SECRET"),
+  DISCORD_REDIRECT_URI: requireEnv("DISCORD_REDIRECT_URI"),
   
   // Server Configuration
   PORT: parseInt(process.env.PORT || "3000", 10),
   NODE_ENV: process.env.NODE_ENV || "development",
+  BASE_URL: process.env.BASE_URL || "http://localhost:8080",
   
   // Session Configuration
   SESSION_EXPIRY: 24 * 60 * 60, // 24 hours in seconds

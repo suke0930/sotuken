@@ -55,3 +55,32 @@ export interface DiscordUser {
   discriminator: string;
   email?: string;
 }
+
+// Arctic API Types
+export interface AuthUrlResponse {
+  url: string;
+  state: string;
+  message: string;
+}
+
+export interface TokenRequest {
+  code: string;
+  state: string;
+  fingerprint: string;
+}
+
+export interface TokenResponse {
+  jwt: string;
+  expiresAt: string;
+  discordUser: {
+    id: string;
+    username: string;
+    avatar: string;
+    discriminator: string;
+  };
+}
+
+export interface CallbackRequest {
+  code: string;
+  state: string;
+}

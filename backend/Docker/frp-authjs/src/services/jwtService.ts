@@ -14,7 +14,7 @@ export class JwtService {
       exp: now + env.SESSION_EXPIRY,
     };
 
-    const token = jwt.sign(payload, env.AUTH_SECRET, {
+    const token = jwt.sign(payload, env.JWT_SECRET, {
       algorithm: "HS256",
     });
 
@@ -24,7 +24,7 @@ export class JwtService {
   verifyJwt(token: string, fingerprint: string): VerifyJwtResponse {
     try {
       // Verify JWT signature and expiration
-      const decoded = jwt.verify(token, env.AUTH_SECRET, {
+      const decoded = jwt.verify(token, env.JWT_SECRET, {
         algorithms: ["HS256"],
       }) as JwtPayload;
 
