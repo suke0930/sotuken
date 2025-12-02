@@ -3,7 +3,10 @@ import { discordOAuth2Service } from "../services/discordOAuth2.js";
 import { pendingAuthManager } from "../services/pendingAuthManager.js";
 import { sessionManager } from "../services/sessionManager.js";
 import { jwtService } from "../services/jwtService.js";
-import { VerifyJwtRequest, DiscordUser } from "../types/session.js";
+import { VerifyJwtRequest, DiscordUser, RefreshTokenRequest, UserInfoResponse } from "../types/session.js";
+import { authenticateJwt, AuthenticatedRequest } from "../middleware/auth.js";
+import { getAvatarUrl } from "../utils/discord.js";
+import axios from "axios";
 
 const router = express.Router();
 
@@ -89,10 +92,16 @@ router.get("/auth/poll", (req: Request, res: Response) => {
   }
 
   if (pendingAuth.status === "completed") {
+    // Get session to include refresh token
+    const sessionId = pendingAuth.jwt ? jwtService.verifyJwt(pendingAuth.jwt, pendingAuth.fingerprint).sessionId : undefined;
+    const session = sessionId ? sessionManager.getSession(sessionId) : null;
+    
     return res.json({
       status: "completed",
       jwt: pendingAuth.jwt,
+      refreshToken: session?.refreshToken,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      refreshExpiresAt: session?.refreshTokenExpiresAt,
       discordUser: pendingAuth.discordUser,
     });
   }
@@ -147,12 +156,16 @@ router.get("/auth/callback", async (req: Request, res: Response) => {
     // Fetch user info
     const discordUser = await discordOAuth2Service.fetchUser(tokens.accessToken) as DiscordUser;
 
-    // Create session with user info
+    // Generate refresh token
+    const refreshToken = jwtService.generateRefreshToken();
+
+    // Create session with user info and refresh token
     const session = sessionManager.createSession(
       discordUser.id,
       pendingAuth.fingerprint,
       discordUser.username,
-      discordUser.avatar
+      discordUser.avatar,
+      refreshToken
     );
 
     // Generate JWT
@@ -239,6 +252,96 @@ router.post("/verify-jwt", (req: Request, res: Response) => {
   }
 
   return res.json(result);
+});
+
+/**
+ * POST /api/auth/refresh
+ * Refresh access token using refresh token
+ */
+router.post("/auth/refresh", (req: Request, res: Response) => {
+  const { refreshToken, fingerprint } = req.body as RefreshTokenRequest;
+
+  if (!refreshToken || !fingerprint) {
+    return res.status(400).json({
+      error: "Missing required fields",
+      message: "refreshToken and fingerprint are required",
+    });
+  }
+
+  const result = jwtService.refreshAccessToken(refreshToken, fingerprint);
+
+  // Check if result is an error
+  if ("error" in result) {
+    const statusCode = result.reason === "token_expired" ? 401 : 
+                       result.reason === "fingerprint_mismatch" ? 403 : 400;
+    return res.status(statusCode).json(result);
+  }
+
+  return res.json(result);
+});
+
+/**
+ * GET /api/user/info
+ * Get current user session information and permissions
+ */
+router.get("/user/info", authenticateJwt, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Authentication required",
+      });
+    }
+
+    const { sessionId, discordId, username, avatarUrl } = req.auth;
+
+    // Get current session details
+    const session = sessionManager.getSession(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        error: "Session not found",
+        message: "Your session has expired",
+      });
+    }
+
+    // Call frp-authz internal API to get permissions and active sessions
+    const authzUrl = process.env.AUTHZ_INTERNAL_URL || "http://frp-authz:3001";
+    let permissions = { allowedPorts: [], maxSessions: 0 };
+    let activeSessions = { total: 0, sessions: [] };
+
+    try {
+      const authzResponse = await axios.get(`${authzUrl}/internal/user/${discordId}/info`);
+      permissions = authzResponse.data.permissions;
+      activeSessions = authzResponse.data.activeSessions;
+    } catch (error: any) {
+      console.error("Failed to fetch user info from frp-authz:", error.message);
+      // Continue with empty permissions/sessions
+    }
+
+    const userInfo: UserInfoResponse = {
+      user: {
+        discordId,
+        username,
+        avatarUrl,
+      },
+      currentSession: {
+        sessionId: session.sessionId,
+        createdAt: session.createdAt,
+        expiresAt: session.expiresAt,
+        lastActivity: session.lastActivity,
+      },
+      permissions,
+      activeSessions,
+    };
+
+    return res.json(userInfo);
+  } catch (error: any) {
+    console.error("Error in /api/user/info:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
 });
 
 export default router;

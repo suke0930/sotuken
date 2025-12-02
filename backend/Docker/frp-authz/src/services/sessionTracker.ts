@@ -40,6 +40,13 @@ export class SessionTracker {
   getAllSessions(): ActiveSession[] {
     return [...this.activeSessions];
   }
+
+  /**
+   * Get all sessions for a specific Discord user
+   */
+  getUserSessions(discordId: string): ActiveSession[] {
+    return this.activeSessions.filter((s) => s.discordId === discordId);
+  }
 }
 
 export const sessionTracker = new SessionTracker();

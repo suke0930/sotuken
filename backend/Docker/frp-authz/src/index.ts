@@ -2,6 +2,7 @@ import express from "express";
 import { env } from "./types/env.js";
 import { userManager } from "./services/userManager.js";
 import webhookRoutes from "./routes/webhook.js";
+import internalRoutes from "./routes/internal.js";
 import { sessionTracker } from "./services/sessionTracker.js";
 
 const app = express();
@@ -23,13 +24,17 @@ app.get("/health", (_req, res) => {
 // Webhook routes
 app.use("/webhook", webhookRoutes);
 
+// Internal API routes (for frp-authjs)
+app.use("/internal", internalRoutes);
+
 // Root endpoint
 app.get("/", (_req, res) => {
   res.json({
     service: "FRP Authorization Service",
-    version: "1.0.0",
+    version: "1.1.0",
     endpoints: {
       webhook: "POST /webhook/handler",
+      internal: "GET /internal/user/:discordId/info",
       health: "GET /health",
     },
     activeSessions: sessionTracker.getAllSessions().length,

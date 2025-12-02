@@ -7,6 +7,8 @@ export interface Session {
   lastActivity: string;
   username: string;      // Discord username (unique)
   avatar: string | null; // Discord avatar hash (null if no avatar)
+  refreshToken?: string; // Refresh token for token renewal
+  refreshTokenExpiresAt?: string; // Refresh token expiration (7 days)
 }
 
 export interface SessionStore {
@@ -87,4 +89,51 @@ export interface TokenResponse {
 export interface CallbackRequest {
   code: string;
   state: string;
+}
+
+// Refresh Token Types
+export interface RefreshTokenRequest {
+  refreshToken: string;
+  fingerprint: string;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+  refreshExpiresAt: string;
+}
+
+export interface RefreshTokenError {
+  error: string;
+  reason: "token_expired" | "invalid_token" | "fingerprint_mismatch" | "session_not_found";
+  message: string;
+}
+
+// User Info Types
+export interface UserInfoResponse {
+  user: {
+    discordId: string;
+    username: string;
+    avatarUrl: string;
+  };
+  currentSession: {
+    sessionId: string;
+    createdAt: string;
+    expiresAt: string;
+    lastActivity: string;
+  };
+  permissions: {
+    allowedPorts: number[];
+    maxSessions: number;
+  };
+  activeSessions: {
+    total: number;
+    sessions: Array<{
+      sessionId: string;
+      remotePort: number;
+      connectedAt: string;
+      fingerprint: string;
+    }>;
+  };
 }

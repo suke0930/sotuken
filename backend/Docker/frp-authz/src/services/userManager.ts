@@ -53,6 +53,22 @@ export class UserManager {
     return user?.maxSessions || 0;
   }
 
+  /**
+   * Get user permissions (for internal API)
+   */
+  async getUserPermissions(discordId: string): Promise<{ allowedPorts: number[]; maxSessions: number } | null> {
+    const user = this.getUser(discordId);
+    
+    if (!user) {
+      return null;
+    }
+
+    return {
+      allowedPorts: user.allowedPorts,
+      maxSessions: user.maxSessions,
+    };
+  }
+
   private async loadFromFile(): Promise<void> {
     try {
       const stats = await fs.stat(this.filePath);

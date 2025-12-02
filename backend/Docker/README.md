@@ -5,10 +5,26 @@
 
 Discord OAuth2ベースのFRP認証システムのDocker実装です。
 
-## 🔄 重要な更新 (v2.0)
+## 🔄 重要な更新
 
-**Auth.js → Arctic 移行完了**
+### v3.1.0 (Test Client & Token Refresh)
 
+**新機能:**
+- ✅ **Token Refresh API**: リフレッシュトークンによる自動トークン更新
+- ✅ **User Info API**: セッション情報と権限の取得
+- ✅ **Test Client**: 統合テストクライアント実装
+- ✅ **Token Rotation**: セキュリティ向上のためのトークンローテーション
+
+### v3.0.0 (Polling-based Auth)
+
+**変更:**
+- ✅ **ポーリング認証**: ミドルウェアから完全非同期認証対応
+- ✅ **Pending Auth Manager**: 仮トークン管理システム
+- ✅ **GitHub CLI風UX**: `gh auth login`と同様のユーザー体験
+
+### v2.0.0 (Arctic Migration)
+
+**変更:**
 - ✅ **軽量化**: 依存関係を大幅削減 (Auth.js → Arctic)
 - ✅ **API-First設計**: HTML不要、純粋なJSON APIとして動作
 - ✅ **ミドルウェア対応**: 外部ソフトウェアから直接呼び出し可能
@@ -70,11 +86,19 @@ curl http://localhost:8080/api/frp/health
 
 ## エンドポイント
 
-### 認証関連 (nginxを経由) - Arctic API
+### 認証関連 (nginxを経由) - v3.1 API
 
-- `GET /auth/api/auth/url` - Discord OAuth2認証URL取得 (**NEW**)
-- `POST /auth/api/auth/token` - Authorization Code → JWT交換 (**NEW**)
-- `POST /api/frp/verify-jwt` - JWT検証
+**Polling-based Authentication:**
+- `POST /api/auth/init` - 認証初期化、仮トークン発行
+- `GET /api/auth/poll` - 認証状態ポーリング (pending/completed/expired)
+- `GET /api/auth/callback` - Discord OAuth2 callback処理
+
+**Token Management:**
+- `POST /api/auth/refresh` - アクセストークンリフレッシュ (**NEW v3.1**)
+- `POST /api/verify-jwt` - JWT検証
+
+**User Information:**
+- `GET /api/user/info` - ユーザー情報、セッション、権限取得 (**NEW v3.1**)
 
 **詳細なAPIドキュメント**: [API_ENDPOINTS.md](./API_ENDPOINTS.md)を参照してください。
 
@@ -203,11 +227,38 @@ docker-compose up --build -d
 2. 該当ユーザーの `allowedPorts` にポート番号を追加
 3. ファイルは自動で再読み込みされます（約60秒）
 
+## テストクライアント
+
+**v3.1.0で追加: 統合テストクライアント**
+
+`test-client/`ディレクトリに完全な機能を持つテストクライアントを実装しました。
+
+### 機能
+
+- **AuthClient**: Discord OAuth2認証、JWT管理、自動トークンリフレッシュ
+- **FrpClient**: FRP接続管理、設定ファイル生成
+- **TestRunner**: テストシナリオ実行、レポート生成
+
+### 使い方
+
+```bash
+cd test-client
+npm install
+npm start  # デモクライアント実行
+npm test   # テストスイート実行
+```
+
+詳細は [test-client/README.md](./test-client/README.md) を参照してください。
+
 ## 次のステップ
 
 ### ミドルウェア統合
 
 フロントエンドミドルウェアへの統合方法は [MIDDLEWARE_INTEGRATION.md](./MIDDLEWARE_INTEGRATION.md) を参照してください。
+
+### テスト
+
+統合テストの実行方法は [test-client/README.md](./test-client/README.md) を参照してください。
 
 ### セキュリティ強化
 

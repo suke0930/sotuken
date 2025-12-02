@@ -56,31 +56,123 @@ User opens the `url` in a browser and authorizes the Discord application. Discor
 http://localhost:8080/api/auth/callback?code=AUTHORIZATION_CODE&state=STATE
 ```
 
-### Step 3: Exchange Code for JWT
+### Step 3: Poll for Authentication Completion
 
-**Endpoint:** `POST /auth/api/auth/token`  
-**Nginx Route:** `http://localhost:8080/auth/api/auth/token`  
-**Target:** `frp-authjs:3000/api/auth/token`
+**Endpoint:** `GET /api/auth/poll?tempToken=xxx`  
+**Nginx Route:** `http://localhost:8080/api/auth/poll?tempToken=xxx`  
+**Target:** `frp-authjs:3000/api/auth/poll`
 
-**Request Body:**
+**Response (Pending):**
 ```json
 {
-  "code": "AUTHORIZATION_CODE",
-  "state": "STATE_FROM_STEP1",
-  "fingerprint": "client-fingerprint-hash"
+  "status": "pending",
+  "message": "Waiting for user authentication in browser..."
 }
 ```
 
-**Response:**
+**Response (Completed):**
 ```json
 {
+  "status": "completed",
   "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "a1b2c3d4e5f6g7h8...",
   "expiresAt": "2025-12-03T10:00:00Z",
+  "refreshExpiresAt": "2025-12-10T10:00:00Z",
   "discordUser": {
     "id": "123456789012345678",
     "username": "ExampleUser",
     "avatar": "a1b2c3d4e5f6",
     "discriminator": "1234"
+  }
+}
+```
+
+---
+
+## 🔄 Token Refresh
+
+### Refresh Access Token
+
+**Endpoint:** `POST /api/auth/refresh`  
+**Nginx Route:** `http://localhost:8080/api/auth/refresh`  
+**Target:** `frp-authjs:3000/api/auth/refresh`
+
+**Request Body:**
+```json
+{
+  "refreshToken": "a1b2c3d4e5f6g7h8...",
+  "fingerprint": "client-fingerprint-hash"
+}
+```
+
+**Response (Success):**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "new-refresh-token...",
+  "expiresAt": "2025-12-03T11:00:00Z",
+  "refreshExpiresAt": "2025-12-10T11:00:00Z"
+}
+```
+
+**Response (Error):**
+```json
+{
+  "error": "Refresh token expired",
+  "reason": "token_expired",
+  "message": "Refresh token has expired. Please re-authenticate."
+}
+```
+
+**Security Notes:**
+- Old refresh token is invalidated immediately (token rotation)
+- Fingerprint mismatch invalidates ALL user sessions
+- Refresh tokens expire after 7 days
+
+---
+
+## 👤 User Information
+
+### Get User Session Info
+
+**Endpoint:** `GET /api/user/info`  
+**Nginx Route:** `http://localhost:8080/api/user/info`  
+**Target:** `frp-authjs:3000/api/user/info`
+
+**Request Headers:**
+```
+Authorization: Bearer {accessToken}
+X-Fingerprint: {fingerprint}
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "discordId": "123456789012345678",
+    "username": "ExampleUser",
+    "avatarUrl": "https://cdn.discordapp.com/avatars/..."
+  },
+  "currentSession": {
+    "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+    "createdAt": "2025-12-02T10:00:00Z",
+    "expiresAt": "2025-12-03T10:00:00Z",
+    "lastActivity": "2025-12-02T10:30:00Z"
+  },
+  "permissions": {
+    "allowedPorts": [25565, 22, 3000, 8080],
+    "maxSessions": 3
+  },
+  "activeSessions": {
+    "total": 1,
+    "sessions": [
+      {
+        "sessionId": "abc-123",
+        "remotePort": 25565,
+        "connectedAt": "2025-12-02T10:15:00Z",
+        "fingerprint": "a1b2c3d4"
+      }
+    ]
   }
 }
 ```
@@ -171,28 +263,45 @@ http://localhost:8080/api/auth/callback?code=AUTHORIZATION_CODE&state=STATE
 
 ## 🧪 Testing with Postman/curl
 
-### Example 1: Get Auth URL
+### Example 1: Initialize Authentication
 
 ```bash
-curl http://localhost:8080/auth/api/auth/url
-```
-
-### Example 2: Exchange Code for JWT
-
-```bash
-curl -X POST http://localhost:8080/auth/api/auth/token \
+curl -X POST http://localhost:8080/api/auth/init \
   -H "Content-Type: application/json" \
   -d '{
-    "code": "YOUR_AUTH_CODE",
-    "state": "STATE_FROM_STEP1",
     "fingerprint": "test-fingerprint-123"
   }'
 ```
 
-### Example 3: Verify JWT
+### Example 2: Poll for Completion
 
 ```bash
-curl -X POST http://localhost:8080/api/frp/verify-jwt \
+curl "http://localhost:8080/api/auth/poll?tempToken=YOUR_TEMP_TOKEN"
+```
+
+### Example 3: Refresh Access Token
+
+```bash
+curl -X POST http://localhost:8080/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "YOUR_REFRESH_TOKEN",
+    "fingerprint": "test-fingerprint-123"
+  }'
+```
+
+### Example 4: Get User Info
+
+```bash
+curl http://localhost:8080/api/user/info \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "X-Fingerprint: test-fingerprint-123"
+```
+
+### Example 5: Verify JWT
+
+```bash
+curl -X POST http://localhost:8080/api/verify-jwt \
   -H "Content-Type: application/json" \
   -d '{
     "jwt": "YOUR_JWT_TOKEN",
@@ -204,35 +313,80 @@ curl -X POST http://localhost:8080/api/frp/verify-jwt \
 
 ## 🔧 Frontend Middleware Integration
 
-### Example: TypeScript Client
+### Example: TypeScript Client (Polling-based)
 
 ```typescript
 import axios from 'axios';
 
 const BASE_URL = 'http://localhost:8080';
+const fingerprint = generateFingerprint(); // Client-side fingerprint
 
-// Step 1: Get auth URL
-const { data } = await axios.get(`${BASE_URL}/auth/api/auth/url`);
-console.log('Open this URL:', data.url);
-
-// Step 2: User authenticates in browser and returns with code
-
-// Step 3: Exchange code for JWT
-const tokenResponse = await axios.post(`${BASE_URL}/auth/api/auth/token`, {
-  code: authorizationCode,
-  state: data.state,
-  fingerprint: generateFingerprint(), // Client-side fingerprint
+// Step 1: Initialize authentication
+const { data: initData } = await axios.post(`${BASE_URL}/api/auth/init`, {
+  fingerprint
 });
 
-const jwt = tokenResponse.data.jwt;
+console.log('Open this URL:', initData.authUrl);
+const tempToken = initData.tempToken;
 
-// Step 4: Verify JWT (optional)
-const verifyResponse = await axios.post(`${BASE_URL}/api/frp/verify-jwt`, {
-  jwt,
-  fingerprint: generateFingerprint(),
+// Step 2: Poll for completion
+let completed = false;
+let result;
+
+while (!completed) {
+  const { data: pollData } = await axios.get(
+    `${BASE_URL}/api/auth/poll?tempToken=${tempToken}`
+  );
+  
+  if (pollData.status === 'completed') {
+    result = pollData;
+    completed = true;
+  } else if (pollData.status === 'expired') {
+    throw new Error('Authentication expired');
+  } else {
+    // Still pending, wait 2 seconds
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+}
+
+// Step 3: Store tokens
+const accessToken = result.jwt;
+const refreshToken = result.refreshToken;
+localStorage.setItem('accessToken', accessToken);
+localStorage.setItem('refreshToken', refreshToken);
+
+// Step 4: Get user info
+const userInfo = await axios.get(`${BASE_URL}/api/user/info`, {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'X-Fingerprint': fingerprint
+  }
 });
 
-console.log('Discord ID:', verifyResponse.data.discordId);
+console.log('User:', userInfo.data.user.username);
+console.log('Allowed Ports:', userInfo.data.permissions.allowedPorts);
+
+// Step 5: Auto-refresh token when needed
+async function getValidToken() {
+  const expiresAt = new Date(localStorage.getItem('expiresAt'));
+  const now = new Date();
+  
+  // Refresh if expires within 5 minutes
+  if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
+    const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {
+      refreshToken: localStorage.getItem('refreshToken'),
+      fingerprint
+    });
+    
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    localStorage.setItem('expiresAt', data.expiresAt);
+    
+    return data.accessToken;
+  }
+  
+  return localStorage.getItem('accessToken');
+}
 ```
 
 ---

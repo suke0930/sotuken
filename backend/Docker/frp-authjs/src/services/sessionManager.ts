@@ -38,10 +38,14 @@ export class SessionManager {
     discordId: string,
     clientFingerprint: string,
     username: string,
-    avatar: string | null
+    avatar: string | null,
+    refreshToken?: string
   ): Session {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + env.SESSION_EXPIRY * 1000);
+    const refreshTokenExpiresAt = refreshToken 
+      ? new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+      : undefined;
 
     const session: Session = {
       sessionId: uuidv4(),
@@ -52,6 +56,8 @@ export class SessionManager {
       lastActivity: now.toISOString(),
       username,
       avatar,
+      refreshToken,
+      refreshTokenExpiresAt,
     };
 
     this.sessions.set(session.sessionId, session);
@@ -150,6 +156,68 @@ export class SessionManager {
     } catch (error) {
       console.error("Failed to save sessions to file:", error);
     }
+  }
+
+  /**
+   * Get session by refresh token
+   */
+  getSessionByRefreshToken(refreshToken: string): Session | null {
+    for (const session of this.sessions.values()) {
+      if (session.refreshToken === refreshToken) {
+        return session;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Update refresh token for a session
+   */
+  updateRefreshToken(sessionId: string, refreshToken: string, expiresAt: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session) {
+      return false;
+    }
+
+    session.refreshToken = refreshToken;
+    session.refreshTokenExpiresAt = expiresAt;
+    session.lastActivity = new Date().toISOString();
+    this.scheduleSave();
+
+    return true;
+  }
+
+  /**
+   * Invalidate all sessions for a user (security breach)
+   */
+  invalidateAllUserSessions(discordId: string): number {
+    let count = 0;
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.discordId === discordId) {
+        this.sessions.delete(sessionId);
+        count++;
+      }
+    }
+
+    if (count > 0) {
+      console.log(`⚠️  Invalidated ${count} sessions for Discord ID: ${discordId}`);
+      this.scheduleSave();
+    }
+
+    return count;
+  }
+
+  /**
+   * Get all sessions for a Discord user
+   */
+  getUserSessions(discordId: string): Session[] {
+    const sessions: Session[] = [];
+    for (const session of this.sessions.values()) {
+      if (session.discordId === discordId) {
+        sessions.push(session);
+      }
+    }
+    return sessions;
   }
 
   private scheduleSave(): void {
