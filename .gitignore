@@ -179,3 +179,4 @@ backend/FRP-test/NUL
 
 backend/Docker/AssetServ
 backend/Docker/frp-authjs/data/sessions.json
+.repomix/
