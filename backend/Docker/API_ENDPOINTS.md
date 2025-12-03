@@ -1,424 +1,89 @@
-# FRP Auth System - API Endpoints Documentation
+# FRP認証システム - APIクイックリファレンス
 
-**Version:** 2.0.0 (Arctic Migration)  
-**Last Updated:** 2025-12-02
-
----
-
-## 📋 Overview
-
-This document describes all API endpoints for the FRP Authentication System after migrating from Auth.js to Arctic. All endpoints are accessed through Nginx reverse proxy on port `8080`.
+**最終更新:** 2025-12-03  
+より詳しい背景や設計は `API_DOCUMENTATION_JA.md` を参照してください。
 
 ---
 
-## 🌐 Nginx Routing Configuration
+## 1. 基本情報
 
-### Base URL
-- **Development:** `http://localhost:8080`
-- **Production:** `https://your-domain.com`
-
-### Routing Rules
-
-| Path | Target Container | Internal Port | Description |
-|------|-----------------|---------------|-------------|
-| `/api/*` | `asset-server` | 3000 | Asset server APIs |
-| `/ws/*` | `asset-server` | 3000 | WebSocket connections |
-| `/health` | `asset-server` | 3000 | Asset server health check |
-| `/auth/*` | `frp-authjs` | 3000 | **NEW:** Arctic auth endpoints |
-| `/api/frp/*` | `frp-authjs` | 3000 | **NEW:** FRP-specific APIs |
-
-**Note:** Nginx rewrites `/api/frp/` to `/api/` when proxying to `frp-authjs`.
+- 入口 URL: `http://localhost:8080`
+- すべて Nginx 経由。`nginx/nginx.conf` が `/api/auth/*` を `frp-authjs`、`/api/assets/*` を `asset-server` へ振り分け
+- JWT・ポーリング認証: `backend/Docker/frp-authjs/src/routes/api.ts`
+- FRP バイナリ API: `backend/Asset/routes/frp.ts`
 
 ---
 
-## 🔐 Authentication Flow (Arctic)
+## 2. 認証フロー要約
 
-### Step 1: Get Authentication URL
+| ステップ | エンドポイント (HTTP) | 目的 |
+| --- | --- | --- |
+| 1 | `POST /api/auth/init` | Discord 認証用 URL と `tempToken` を取得 |
+| 2 | ユーザーが `authUrl` を開く | Discord OAuth2 認証 (コールバック先: `/api/auth/callback`) |
+| 3 | `GET /api/auth/poll?tempToken=` | 認証完了まで 1～2 秒間隔でポーリング |
+| 4 | `GET /api/user/info` | JWT + Fingerprint でユーザー情報と許可ポートを取得 |
+| 5 | `POST /api/auth/refresh` | アクセストークンをローテーション |
+| 6 | `POST /api/verify-jwt` (`/api/frp/verify-jwt`) | frp-authz から JWT を検証 |
 
-**Endpoint:** `GET /auth/api/auth/url`  
-**Nginx Route:** `http://localhost:8080/auth/api/auth/url`  
-**Target:** `frp-authjs:3000/api/auth/url`
-
-**Response:**
-```json
-{
-  "url": "https://discord.com/api/oauth2/authorize?client_id=...",
-  "state": "a1b2c3d4e5f6...",
-  "message": "Open this URL in a browser to authenticate with Discord"
-}
-```
-
-### Step 2: User Authenticates (Browser)
-
-User opens the `url` in a browser and authorizes the Discord application. Discord redirects to:
-
-```
-http://localhost:8080/api/auth/callback?code=AUTHORIZATION_CODE&state=STATE
-```
-
-### Step 3: Poll for Authentication Completion
-
-**Endpoint:** `GET /api/auth/poll?tempToken=xxx`  
-**Nginx Route:** `http://localhost:8080/api/auth/poll?tempToken=xxx`  
-**Target:** `frp-authjs:3000/api/auth/poll`
-
-**Response (Pending):**
-```json
-{
-  "status": "pending",
-  "message": "Waiting for user authentication in browser..."
-}
-```
-
-**Response (Completed):**
-```json
-{
-  "status": "completed",
-  "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "a1b2c3d4e5f6g7h8...",
-  "expiresAt": "2025-12-03T10:00:00Z",
-  "refreshExpiresAt": "2025-12-10T10:00:00Z",
-  "discordUser": {
-    "id": "123456789012345678",
-    "username": "ExampleUser",
-    "avatar": "a1b2c3d4e5f6",
-    "discriminator": "1234"
-  }
-}
-```
+すべてのリクエストは JSON。本番では HTTPS + 固定指紋で保護してください。
 
 ---
 
-## 🔄 Token Refresh
+## 3. エンドポイント一覧
 
-### Refresh Access Token
+### 3.1 frp-authjs
 
-**Endpoint:** `POST /api/auth/refresh`  
-**Nginx Route:** `http://localhost:8080/api/auth/refresh`  
-**Target:** `frp-authjs:3000/api/auth/refresh`
+| メソッド | パス | 説明 |
+| --- | --- | --- |
+| POST | `/api/auth/init` | `fingerprint` を受け取り `tempToken` と Discord 認証 URL を返す |
+| GET | `/api/auth/poll?tempToken=` | `pending` / `completed` / `expired` の状態を返答 |
+| GET | `/api/auth/callback` | Discord からのリダイレクトを処理し HTML を表示 |
+| POST | `/api/auth/refresh` | `refreshToken` と `fingerprint` でアクセストークンを再発行 |
+| GET | `/api/user/info` | `Authorization: Bearer <jwt>` と `X-Fingerprint` を用いて利用可能ポートを含むユーザー情報を取得 |
+| POST | `/api/verify-jwt` | frp-authz から呼ばれる JWT 検証 API (`/api/frp/verify-jwt` でも到達) |
+| GET | `/api/health` | サービスヘルス (pending auth 件数付き) |
 
-**Request Body:**
-```json
-{
-  "refreshToken": "a1b2c3d4e5f6g7h8...",
-  "fingerprint": "client-fingerprint-hash"
-}
-```
+### 3.2 asset-server (FRP バイナリ)
 
-**Response (Success):**
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "new-refresh-token...",
-  "expiresAt": "2025-12-03T11:00:00Z",
-  "refreshExpiresAt": "2025-12-10T11:00:00Z"
-}
-```
+| メソッド | パス | 説明 |
+| --- | --- | --- |
+| GET | `/api/assets/frp/client-binary` | frpc バイナリのダウンロード URL とメタ情報 |
+| GET | `/api/assets/frp/server-binary` | frps バイナリのダウンロード URL |
+| GET | `/api/assets/frp/info` | バージョンと利用できるエンドポイントのサマリー |
 
-**Response (Error):**
-```json
-{
-  "error": "Refresh token expired",
-  "reason": "token_expired",
-  "message": "Refresh token has expired. Please re-authenticate."
-}
-```
+### 3.3 frp-authz
 
-**Security Notes:**
-- Old refresh token is invalidated immediately (token rotation)
-- Fingerprint mismatch invalidates ALL user sessions
-- Refresh tokens expire after 7 days
+| メソッド | パス | 説明 |
+| --- | --- | --- |
+| POST | `/webhook/handler` | frps HTTP Plugin からのイベント (Login/NewProxy/CloseProxy/Ping) |
+| GET | `/internal/user/:discordId/info` | frp-authjs がユーザー情報に権限を合成するための内部 API |
+| GET | `/health` | セッション件数付きのヘルス |
 
 ---
 
-## 👤 User Information
-
-### Get User Session Info
-
-**Endpoint:** `GET /api/user/info`  
-**Nginx Route:** `http://localhost:8080/api/user/info`  
-**Target:** `frp-authjs:3000/api/user/info`
-
-**Request Headers:**
-```
-Authorization: Bearer {accessToken}
-X-Fingerprint: {fingerprint}
-```
-
-**Response:**
-```json
-{
-  "user": {
-    "discordId": "123456789012345678",
-    "username": "ExampleUser",
-    "avatarUrl": "https://cdn.discordapp.com/avatars/..."
-  },
-  "currentSession": {
-    "sessionId": "550e8400-e29b-41d4-a716-446655440000",
-    "createdAt": "2025-12-02T10:00:00Z",
-    "expiresAt": "2025-12-03T10:00:00Z",
-    "lastActivity": "2025-12-02T10:30:00Z"
-  },
-  "permissions": {
-    "allowedPorts": [25565, 22, 3000, 8080],
-    "maxSessions": 3
-  },
-  "activeSessions": {
-    "total": 1,
-    "sessions": [
-      {
-        "sessionId": "abc-123",
-        "remotePort": 25565,
-        "connectedAt": "2025-12-02T10:15:00Z",
-        "fingerprint": "a1b2c3d4"
-      }
-    ]
-  }
-}
-```
-
----
-
-## 🔑 JWT Verification
-
-### Verify JWT Token
-
-**Endpoint:** `POST /api/frp/verify-jwt`  
-**Nginx Route:** `http://localhost:8080/api/frp/verify-jwt`  
-**Target:** `frp-authjs:3000/api/verify-jwt`
-
-**Request Body:**
-```json
-{
-  "jwt": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "fingerprint": "client-fingerprint-hash"
-}
-```
-
-**Response (Success):**
-```json
-{
-  "valid": true,
-  "sessionId": "550e8400-e29b-41d4-a716-446655440000",
-  "discordId": "123456789012345678",
-  "expiresAt": "2025-12-03T10:00:00Z"
-}
-```
-
-**Response (Failure):**
-```json
-{
-  "valid": false,
-  "reason": "Token expired" | "Invalid signature" | "Fingerprint mismatch"
-}
-```
-
----
-
-## 🏥 Health Checks
-
-### Asset Server Health
-
-**Endpoint:** `GET /health`  
-**Nginx Route:** `http://localhost:8080/health`  
-**Target:** `asset-server:3000/health`
-
-### FRP Auth Server Health
-
-**Endpoint:** `GET /auth/health`  
-**Nginx Route:** `http://localhost:8080/auth/health`  
-**Target:** `frp-authjs:3000/health`
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "service": "FRP Arctic Auth Server",
-  "timestamp": "2025-12-02T10:00:00Z"
-}
-```
-
----
-
-## 🔄 Migration from Auth.js
-
-### Deprecated Endpoints (Auth.js)
-
-| Old Endpoint | Status | Replacement |
-|--------------|--------|-------------|
-| `/auth/signin` | ❌ Removed | `GET /auth/api/auth/url` |
-| `/auth/signout` | ❌ Removed | N/A (JWT-based, stateless) |
-| `/auth/callback/discord` | ❌ Removed | Client handles callback |
-| `POST /api/exchange-code` | ❌ Removed | `POST /auth/api/auth/token` |
-
-### New Endpoints (Arctic)
-
-| New Endpoint | Method | Description |
-|--------------|--------|-------------|
-| `/auth/api/auth/url` | GET | Get Discord OAuth2 authorization URL |
-| `/auth/api/auth/token` | POST | Exchange authorization code for JWT |
-| `/api/frp/verify-jwt` | POST | Verify JWT token (unchanged) |
-
----
-
-## 🧪 Testing with Postman/curl
-
-### Example 1: Initialize Authentication
+## 4. 代表的なリクエスト例
 
 ```bash
+# 1. 認証を開始
 curl -X POST http://localhost:8080/api/auth/init \
   -H "Content-Type: application/json" \
-  -d '{
-    "fingerprint": "test-fingerprint-123"
-  }'
-```
+  -d '{"fingerprint":"demo-client"}'
 
-### Example 2: Poll for Completion
+# 2. 認証完了をポーリング
+curl "http://localhost:8080/api/auth/poll?tempToken=PASTE_TEMP_TOKEN"
 
-```bash
-curl "http://localhost:8080/api/auth/poll?tempToken=YOUR_TEMP_TOKEN"
-```
-
-### Example 3: Refresh Access Token
-
-```bash
-curl -X POST http://localhost:8080/api/auth/refresh \
-  -H "Content-Type: application/json" \
-  -d '{
-    "refreshToken": "YOUR_REFRESH_TOKEN",
-    "fingerprint": "test-fingerprint-123"
-  }'
-```
-
-### Example 4: Get User Info
-
-```bash
+# 3. ユーザー情報 (JWT + 指紋)
 curl http://localhost:8080/api/user/info \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "X-Fingerprint: test-fingerprint-123"
-```
-
-### Example 5: Verify JWT
-
-```bash
-curl -X POST http://localhost:8080/api/verify-jwt \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jwt": "YOUR_JWT_TOKEN",
-    "fingerprint": "test-fingerprint-123"
-  }'
+  -H "Authorization: Bearer PASTE_JWT" \
+  -H "X-Fingerprint: demo-client"
 ```
 
 ---
 
-## 🔧 Frontend Middleware Integration
+## 5. 注意事項
 
-### Example: TypeScript Client (Polling-based)
+- `/api/frp/verify-jwt` は nginx で `/api/verify-jwt` に書き換えてから frp-authjs へ渡されます。
+- FRP バイナリの差し替えは `.env` の `FRP_BINARY_RELEASE_URL`/`FRP_VERSION` を編集し、`docker-compose restart asset-server` を行ってください。
+- frp-authz は `FRP_DASHBOARD_URL` を元に Dashboard API と同期し、ゴーストセッションを削除します。Dashboard 認証情報が一致していないと同期が失敗しログに `⚠️ Failed to sync with FRP server` が出ます。
 
-```typescript
-import axios from 'axios';
-
-const BASE_URL = 'http://localhost:8080';
-const fingerprint = generateFingerprint(); // Client-side fingerprint
-
-// Step 1: Initialize authentication
-const { data: initData } = await axios.post(`${BASE_URL}/api/auth/init`, {
-  fingerprint
-});
-
-console.log('Open this URL:', initData.authUrl);
-const tempToken = initData.tempToken;
-
-// Step 2: Poll for completion
-let completed = false;
-let result;
-
-while (!completed) {
-  const { data: pollData } = await axios.get(
-    `${BASE_URL}/api/auth/poll?tempToken=${tempToken}`
-  );
-  
-  if (pollData.status === 'completed') {
-    result = pollData;
-    completed = true;
-  } else if (pollData.status === 'expired') {
-    throw new Error('Authentication expired');
-  } else {
-    // Still pending, wait 2 seconds
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-}
-
-// Step 3: Store tokens
-const accessToken = result.jwt;
-const refreshToken = result.refreshToken;
-localStorage.setItem('accessToken', accessToken);
-localStorage.setItem('refreshToken', refreshToken);
-
-// Step 4: Get user info
-const userInfo = await axios.get(`${BASE_URL}/api/user/info`, {
-  headers: {
-    'Authorization': `Bearer ${accessToken}`,
-    'X-Fingerprint': fingerprint
-  }
-});
-
-console.log('User:', userInfo.data.user.username);
-console.log('Allowed Ports:', userInfo.data.permissions.allowedPorts);
-
-// Step 5: Auto-refresh token when needed
-async function getValidToken() {
-  const expiresAt = new Date(localStorage.getItem('expiresAt'));
-  const now = new Date();
-  
-  // Refresh if expires within 5 minutes
-  if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-    const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {
-      refreshToken: localStorage.getItem('refreshToken'),
-      fingerprint
-    });
-    
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('expiresAt', data.expiresAt);
-    
-    return data.accessToken;
-  }
-  
-  return localStorage.getItem('accessToken');
-}
-```
-
----
-
-## 🐳 Docker Network Internal URLs
-
-For container-to-container communication:
-
-| Service | Internal URL | External Port |
-|---------|--------------|---------------|
-| nginx | `nginx:80` | `8080:80` |
-| frp-authjs | `frp-authjs:3000` | Internal only |
-| frp-server | `frp-server:7000` | `7000:7000` |
-| frp-authz | `frp-authz:3001` | Internal only |
-| asset-server | `asset-server:3000` | Internal only |
-
----
-
-## ⚠️ Important Notes
-
-1. **CSRF Protection:** Always validate the `state` parameter
-2. **Fingerprint Consistency:** Use the same fingerprint for auth and verification
-3. **JWT Storage:** Store JWTs securely (in-memory preferred, avoid localStorage)
-4. **Discord Redirect URI:** Must match exactly in Discord Developer Portal
-5. **Nginx Rewrites:** `/api/frp/` is rewritten to `/api/` for `frp-authjs`
-
----
-
-## 📚 References
-
-- [Arctic Documentation](https://arctic.js.org/)
-- [Discord OAuth2 Guide](https://discord.com/developers/docs/topics/oauth2)
-- [Design Document: 設計書案2.md](../設計書案2.md)
-- [Middleware Integration Guide](./MIDDLEWARE_INTEGRATION.md)
-
+このファイルは「どの API を使えばよいか」を素早く確認する用途を想定しています。詳細なペイロードや設計判断は `API_DOCUMENTATION_JA.md` を参照してください。

@@ -7,6 +7,21 @@ Discord OAuth2ベースのFRP認証システムのDocker実装です。
 
 ## 🔄 重要な更新
 
+### v3.2.0 (FRP Binary Distribution) - 2025-12-03
+
+**新機能:**
+- ✅ **FRP Binary API**: Asset ServerからfrpcバイナリのダウンロードURL提供
+- ✅ **環境変数設定**: `FRP_BINARY_RELEASE_URL`と`FRP_VERSION`で柔軟に管理
+- ✅ **ミドルウェア統合**: FrpBinaryManagerが自動的にAPIからダウンロードURL取得
+- ✅ **軽量設計**: バイナリホスティング不要、URL情報のみ提供
+
+**エンドポイント:**
+- `GET /api/assets/frp/client-binary` - frpcバイナリ情報
+- `GET /api/assets/frp/server-binary` - frpsバイナリ情報
+- `GET /api/assets/frp/info` - FRP関連情報サマリー
+
+詳細: [FRP_BINARY_API.md](./FRP_BINARY_API.md)
+
 ### v3.1.0 (Test Client & Token Refresh)
 
 **新機能:**
@@ -33,6 +48,14 @@ Discord OAuth2ベースのFRP認証システムのDocker実装です。
 ## 概要
 
 このシステムは、FRP (Fast Reverse Proxy) にDiscord OAuth2認証とJWTベースの認可機能を統合したマイクロサービス構成です。
+
+## ドキュメントガイド
+
+- [API_DOCUMENTATION_JA.md](./API_DOCUMENTATION_JA.md): Docker環境全体の構成・ルーティング・主要APIを日本語で集約したメインドキュメント
+- [API_ENDPOINTS.md](./API_ENDPOINTS.md): 上記のクイックリファレンス。APIの位置だけすぐ確認したいときに利用
+- [FRP_BINARY_API.md](./FRP_BINARY_API.md): FRPバイナリ配信エンドポイントの詳細
+- [FRP_SYNC_IMPLEMENTATION.md](./FRP_SYNC_IMPLEMENTATION.md): frp-authz と Dashbaord のセッション同期仕様
+- [MIDDLEWARE_INTEGRATION.md](./MIDDLEWARE_INTEGRATION.md): ミドルウェアからの統合手順
 
 ## コンテナ構成
 
@@ -99,6 +122,11 @@ curl http://localhost:8080/api/frp/health
 
 **User Information:**
 - `GET /api/user/info` - ユーザー情報、セッション、権限取得 (**NEW v3.1**)
+
+**FRP Binary Distribution:** (**NEW v3.2**)
+- `GET /api/assets/frp/client-binary` - frpcバイナリダウンロード情報
+- `GET /api/assets/frp/server-binary` - frpsバイナリダウンロード情報
+- `GET /api/assets/frp/info` - FRP関連情報サマリー
 
 **詳細なAPIドキュメント**: [API_ENDPOINTS.md](./API_ENDPOINTS.md)を参照してください。
 
