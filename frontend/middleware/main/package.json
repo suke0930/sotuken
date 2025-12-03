@@ -4,7 +4,8 @@
   "description": "middle ware driver",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run test:frp",
+    "test:frp": "tsc -p tsconfig.frp-tests.json && node --test \"temp/frp-tests/lib/frp-manager/tests/**/*.test.js\"",
     "build": "tsc",
     "start": "npx ts-node index.ts",
     "dev": "npx ts-node index.ts",
