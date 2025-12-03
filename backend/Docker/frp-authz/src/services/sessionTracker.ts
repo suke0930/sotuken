@@ -1,6 +1,7 @@
 import { ActiveSession } from "../types/frp.js";
 import fs from "fs/promises";
 import path from "path";
+import { frpDashboardClient } from "./frpDashboardClient.js";
 
 export class SessionTracker {
   private activeSessions: ActiveSession[] = [];
@@ -19,6 +20,9 @@ export class SessionTracker {
 
       // Load existing sessions
       await this.loadFromFile();
+
+      // Sync with FRP server to remove ghost sessions
+      await this.syncWithFrpServer();
 
       // Clean expired sessions periodically (every 5 minutes)
       setInterval(() => {
@@ -111,6 +115,60 @@ export class SessionTracker {
    */
   getUserSessions(discordId: string): ActiveSession[] {
     return this.activeSessions.filter((s) => s.discordId === discordId);
+  }
+
+  /**
+   * Sync with FRP Dashboard API to remove ghost sessions
+   *
+   * This method is called on startup to ensure that stored sessions
+   * match the actual state of the FRP server. Sessions that don't
+   * exist in FRP are removed (ghost sessions from previous restarts).
+   */
+  private async syncWithFrpServer(): Promise<void> {
+    try {
+      console.log("🔄 Syncing with FRP server...");
+
+      // Get active ports from FRP Dashboard API
+      const activePorts = await frpDashboardClient.getActiveRemotePorts();
+      const portsSet = new Set(activePorts);
+
+      console.log(`FRP server reports ${activePorts.length} active port(s): [${activePorts.join(", ")}]`);
+      console.log(`Local storage has ${this.activeSessions.length} session(s)`);
+
+      // Remove sessions whose ports are not active in FRP
+      let removedCount = 0;
+      this.activeSessions = this.activeSessions.filter((session) => {
+        if (!portsSet.has(session.remotePort)) {
+          console.log(
+            `  ❌ Removing ghost session: ${session.sessionId} ` +
+            `(Discord: ${session.discordId}, Port: ${session.remotePort}) - not active in FRP`
+          );
+          removedCount++;
+          return false;
+        }
+        return true;
+      });
+
+      if (removedCount > 0) {
+        console.log(`✅ Synced with FRP server: removed ${removedCount} ghost session(s)`);
+        console.log(`Active sessions after sync: ${this.activeSessions.length}`);
+
+        // Save updated state
+        await this.saveToFile();
+      } else if (this.activeSessions.length > 0) {
+        console.log(`✅ Synced with FRP server: all ${this.activeSessions.length} session(s) are valid`);
+      } else {
+        console.log(`✅ Synced with FRP server: no sessions to validate`);
+      }
+    } catch (error: any) {
+      console.error("⚠️  Failed to sync with FRP server:", error.message);
+      console.log("Continuing with existing sessions from storage...");
+
+      // Log hint for debugging
+      if (error.code === "ECONNREFUSED" || error.code === "ENOTFOUND") {
+        console.log("  Hint: FRP server may not be ready yet or FRP_DASHBOARD_URL is incorrect");
+      }
+    }
   }
 
   /**

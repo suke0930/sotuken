@@ -79,6 +79,9 @@ services:
     container_name: frp-authz
     environment:
       - AUTHJS_URL=${AUTHJS_INTERNAL_URL:-http://frp-authjs:3000}
+      - FRP_DASHBOARD_URL=http://frp-server:7500
+      - FRP_DASHBOARD_USER=admin
+      - FRP_DASHBOARD_PASS=admin
       - NODE_ENV=${NODE_ENV:-development}
       - PORT=3001
     volumes:
