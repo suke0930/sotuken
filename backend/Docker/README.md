@@ -7,17 +7,25 @@ Discord OAuth2ベースのFRP認証システムのDocker実装です。
 
 ## 🔄 重要な更新
 
-### v3.2.0 (FRP Binary Distribution) - 2025-12-03
+### v3.2.0 (FRP Binary Distribution - Multi-Platform) - 2025-12-03
 
 **新機能:**
+- ✅ **マルチプラットフォーム対応**: Linux/macOS/Windows × amd64/arm64を完全サポート
 - ✅ **FRP Binary API**: Asset ServerからfrpcバイナリのダウンロードURL提供
-- ✅ **環境変数設定**: `FRP_BINARY_RELEASE_URL`と`FRP_VERSION`で柔軟に管理
-- ✅ **ミドルウェア統合**: FrpBinaryManagerが自動的にAPIからダウンロードURL取得
+- ✅ **自動URL生成**: `FRP_VERSION`環境変数1つで全プラットフォームのURL自動生成
+- ✅ **動的プラットフォーム選択**: クエリパラメータで任意のOS/アーチを指定可能
+- ✅ **ミドルウェア統合**: FrpBinaryManagerが自動的にプラットフォーム判定してAPIからダウンロードURL取得
 - ✅ **軽量設計**: バイナリホスティング不要、URL情報のみ提供
 
+**サポートプラットフォーム:**
+- Linux: amd64, arm64 (tar.gz)
+- macOS (darwin): amd64, arm64 (tar.gz)
+- Windows: amd64, arm64 (zip, .exe)
+
 **エンドポイント:**
-- `GET /api/assets/frp/client-binary` - frpcバイナリ情報
-- `GET /api/assets/frp/server-binary` - frpsバイナリ情報
+- `GET /api/assets/frp/binaries` - 全プラットフォームのバイナリ一覧
+- `GET /api/assets/frp/client-binary?platform=<os>&arch=<arch>` - frpcバイナリ情報
+- `GET /api/assets/frp/server-binary?platform=<os>&arch=<arch>` - frpsバイナリ情報
 - `GET /api/assets/frp/info` - FRP関連情報サマリー
 
 詳細: [FRP_BINARY_API.md](./FRP_BINARY_API.md)

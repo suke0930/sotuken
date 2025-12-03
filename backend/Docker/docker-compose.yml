@@ -23,7 +23,6 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
-      - FRP_BINARY_RELEASE_URL=${FRP_BINARY_RELEASE_URL:-https://github.com/fatedier/frp/releases/download/v0.65.0/frp_0.65.0_linux_amd64.tar.gz}
       - FRP_VERSION=${FRP_VERSION:-0.65.0}
     volumes:
       - ./AssetServ/Resource:/app/resources:rw

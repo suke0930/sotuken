@@ -27,20 +27,29 @@ FRP クライアント (`frpc`) をミドルウェア側で管理するための
 
 ## 最近の更新
 
-### v1.1.0 (2025-12-03) - Asset Server連携実装
+### v1.1.0 (2025-12-03) - Asset Server連携実装（マルチプラットフォーム対応）
 
 **実装完了:**
+- ✅ **マルチプラットフォーム対応**: Linux/macOS/Windows × amd64/arm64を完全サポート
 - ✅ **Asset サーバー連携**: `FrpBinaryManager` が Asset Server API (`/api/assets/frp/client-binary`) からダウンロードURLを自動取得
+- ✅ **自動プラットフォーム判定**: OS/アーキテクチャを自動検出し、適切なエンドポイントを呼び出し
 - ✅ **環境変数対応**: `FRP_BINARY_BASE_URL` でエンドポイントURLを設定可能（デフォルト: `http://localhost:8080/api/assets/frp`）
 - ✅ **フォールバック機能**: API取得失敗時は設定URLを直接使用
-- ✅ **柔軟な設定**: 環境変数 `FRPC_DOWNLOAD_URL_LINUX_X64` などで個別URL指定も可能
+- ✅ **柔軟な設定**: 環境変数 `FRPC_DOWNLOAD_URL_<PLATFORM>_<ARCH>` で個別URL指定も可能
+
+**サポートプラットフォーム:**
+- Linux: x64 (amd64), arm64
+- macOS (darwin): x64 (amd64), arm64
+- Windows (win32): x64 (amd64), arm64
 
 **動作:**
 ```typescript
 // FrpBinaryManager.ensureBinary() の動作フロー
-1. Asset Server API から downloadUrl 取得を試行
-2. 成功 → GitHub Releases から直接ダウンロード
-3. 失敗 → フォールバックURLを使用（既存動作を維持）
+1. 現在のOS/アーキテクチャを自動判定
+2. Asset Server API から downloadUrl 取得を試行
+   例: GET /api/assets/frp/client-binary?platform=windows&arch=amd64
+3. 成功 → GitHub Releases から直接ダウンロード
+4. 失敗 → フォールバックURLを使用（既存動作を維持）
 ```
 
 詳細: [backend/Docker/FRP_BINARY_API.md](../../../../backend/Docker/FRP_BINARY_API.md)

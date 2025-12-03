@@ -11,26 +11,53 @@ function resolveDataDir(): string {
 
 function resolveDownloadTargets(baseUrl: string): BinaryDownloadTarget[] {
   const targets: BinaryDownloadTarget[] = [];
-  const linuxUrl =
-    process.env.FRPC_DOWNLOAD_URL_LINUX_X64 ||
-    `${baseUrl}/frpc-linux-amd64`;
 
+  // Linux amd64
   targets.push({
     platform: "linux",
     arch: "x64",
-    url: linuxUrl,
+    url: process.env.FRPC_DOWNLOAD_URL_LINUX_X64 || `${baseUrl}/client-binary?platform=linux&arch=amd64`,
     fileName: "frpc",
   });
 
-  const darwinUrl =
-    process.env.FRPC_DOWNLOAD_URL_DARWIN_ARM64 ||
-    `${baseUrl}/frpc-darwin-arm64`;
+  // Linux arm64
+  targets.push({
+    platform: "linux",
+    arch: "arm64",
+    url: process.env.FRPC_DOWNLOAD_URL_LINUX_ARM64 || `${baseUrl}/client-binary?platform=linux&arch=arm64`,
+    fileName: "frpc",
+  });
 
+  // macOS amd64
+  targets.push({
+    platform: "darwin",
+    arch: "x64",
+    url: process.env.FRPC_DOWNLOAD_URL_DARWIN_X64 || `${baseUrl}/client-binary?platform=darwin&arch=amd64`,
+    fileName: "frpc",
+  });
+
+  // macOS arm64
   targets.push({
     platform: "darwin",
     arch: "arm64",
-    url: darwinUrl,
+    url: process.env.FRPC_DOWNLOAD_URL_DARWIN_ARM64 || `${baseUrl}/client-binary?platform=darwin&arch=arm64`,
     fileName: "frpc",
+  });
+
+  // Windows amd64
+  targets.push({
+    platform: "win32",
+    arch: "x64",
+    url: process.env.FRPC_DOWNLOAD_URL_WINDOWS_X64 || `${baseUrl}/client-binary?platform=windows&arch=amd64`,
+    fileName: "frpc.exe",
+  });
+
+  // Windows arm64
+  targets.push({
+    platform: "win32",
+    arch: "arm64",
+    url: process.env.FRPC_DOWNLOAD_URL_WINDOWS_ARM64 || `${baseUrl}/client-binary?platform=windows&arch=arm64`,
+    fileName: "frpc.exe",
   });
 
   return targets;
