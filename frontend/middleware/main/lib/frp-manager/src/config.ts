@@ -43,7 +43,7 @@ export function loadFrpManagerConfig(): FrpManagerConfig {
   const logsDir = path.join(dataDir, "logs");
 
   const baseAssetUrl =
-    process.env.FRP_BINARY_BASE_URL || "http://localhost:8080/assets/frp";
+    process.env.FRP_BINARY_BASE_URL || "http://localhost:8080/api/assets/frp";
 
   return {
     authServerUrl:

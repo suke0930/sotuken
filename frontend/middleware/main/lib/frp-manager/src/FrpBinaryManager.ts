@@ -12,6 +12,15 @@ interface BinaryMetadata {
   arch: NodeJS.Architecture;
 }
 
+interface FrpBinaryInfo {
+  downloadUrl: string;
+  version: string;
+  platform: string;
+  arch: string;
+  binaryName: string;
+  archivePath?: string;
+}
+
 export class FrpBinaryManager {
   private config: FrpManagerConfig;
   private metadataPath: string;
@@ -30,7 +39,21 @@ export class FrpBinaryManager {
     const binaryPath = path.join(this.config.binaryDir, binaryName);
 
     if (await this.needsDownload(binaryPath)) {
-      await this.downloadBinary(target.url, binaryPath);
+      // Try to get download URL from Asset Server API
+      let downloadUrl = target.url;
+      try {
+        const binaryInfo = await this.fetchBinaryInfo();
+        if (binaryInfo?.downloadUrl) {
+          downloadUrl = binaryInfo.downloadUrl;
+        }
+      } catch (error) {
+        console.warn(
+          "Failed to fetch binary info from Asset Server, using fallback URL:",
+          error
+        );
+      }
+
+      await this.downloadBinary(downloadUrl, binaryPath);
       await fs.chmod(binaryPath, 0o755);
       await this.writeMetadata({
         version: this.config.binaryVersion,
@@ -41,6 +64,27 @@ export class FrpBinaryManager {
     }
 
     return binaryPath;
+  }
+
+  private async fetchBinaryInfo(): Promise<FrpBinaryInfo | null> {
+    try {
+      // Extract base URL from downloadTargets
+      const target = resolveTargetForHost(this.config);
+      const baseUrl = target.url.replace(/\/[^/]+$/, "");
+
+      const response = await axios.get(`${baseUrl}/client-binary`, {
+        timeout: 5000,
+      });
+
+      if (response.data?.success && response.data?.data) {
+        return response.data.data;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error fetching FRP binary info:", error);
+      return null;
+    }
   }
 
   private async needsDownload(binaryPath: string): Promise<boolean> {

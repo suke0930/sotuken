@@ -25,9 +25,29 @@ FRP クライアント (`frpc`) をミドルウェア側で管理するための
 - FrpLogService の tail/ローテーション
 - FrpProcessManager をモックバイナリで実行し、起動→停止までの状態更新
 
+## 最近の更新
+
+### v1.1.0 (2025-12-03) - Asset Server連携実装
+
+**実装完了:**
+- ✅ **Asset サーバー連携**: `FrpBinaryManager` が Asset Server API (`/api/assets/frp/client-binary`) からダウンロードURLを自動取得
+- ✅ **環境変数対応**: `FRP_BINARY_BASE_URL` でエンドポイントURLを設定可能（デフォルト: `http://localhost:8080/api/assets/frp`）
+- ✅ **フォールバック機能**: API取得失敗時は設定URLを直接使用
+- ✅ **柔軟な設定**: 環境変数 `FRPC_DOWNLOAD_URL_LINUX_X64` などで個別URL指定も可能
+
+**動作:**
+```typescript
+// FrpBinaryManager.ensureBinary() の動作フロー
+1. Asset Server API から downloadUrl 取得を試行
+2. 成功 → GitHub Releases から直接ダウンロード
+3. 失敗 → フォールバックURLを使用（既存動作を維持）
+```
+
+詳細: [backend/Docker/FRP_BINARY_API.md](../../../../backend/Docker/FRP_BINARY_API.md)
+
 ## 今後のTODO・実装計画メモ
 
-1. **Asset サーバー連携**: frpc バイナリの公開 URL を確定し、`FRP_BINARY_BASE_URL` を環境ごとに設定できるようにする。Windows 版が必要なら `downloadTargets` を追加。
+1. ~~**Asset サーバー連携**~~ ✅ 完了 (v1.1.0)
 2. **API ルーター統合**: `/api/frp/auth/*` `/api/frp/connections/*` `/api/frp/logs/:id` を `lib/api-router.ts` 経由で公開し、`FrpManagerAPP` のメソッドをラップする。
 3. **AuthSessionManager の本配線**: Auth.js のエンドポイント仕様に合わせて `exchangeCode`/`refresh` の payload/レスポンスを最終化し、エラー時に WebSocket/イベントバスへ通知。
 4. **セッション情報の拡張**: `frp-authz` の `/internal/user/:discordId/info` を呼び出して、リモート側のセッション一覧をミドルウェアのレスポンスに含める。
