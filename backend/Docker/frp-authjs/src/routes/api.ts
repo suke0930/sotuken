@@ -308,14 +308,23 @@ router.get("/user/info", authenticateJwt, async (req: AuthenticatedRequest, res:
     const authzUrl = process.env.AUTHZ_INTERNAL_URL || "http://frp-authz:3001";
     let permissions = { allowedPorts: [], maxSessions: 0 };
     let activeSessions = { total: 0, sessions: [] };
+    let authzError: string | null = null;
 
     try {
-      const authzResponse = await axios.get(`${authzUrl}/internal/user/${discordId}/info`);
+      const authzResponse = await axios.get(`${authzUrl}/internal/user/${discordId}/info`, {
+        timeout: 5000, // 5 second timeout
+      });
       permissions = authzResponse.data.permissions;
       activeSessions = authzResponse.data.activeSessions;
     } catch (error: any) {
       console.error("Failed to fetch user info from frp-authz:", error.message);
-      // Continue with empty permissions/sessions
+      authzError = error.response?.data?.message || error.message || "Unknown error";
+
+      // Log detailed error for debugging
+      if (error.response) {
+        console.error(`  Status: ${error.response.status}`);
+        console.error(`  Data:`, error.response.data);
+      }
     }
 
     const userInfo: UserInfoResponse = {
@@ -333,6 +342,11 @@ router.get("/user/info", authenticateJwt, async (req: AuthenticatedRequest, res:
       permissions,
       activeSessions,
     };
+
+    // Add warning header if authz fetch failed
+    if (authzError) {
+      res.setHeader('X-Warning', `Failed to fetch permissions: ${authzError}`);
+    }
 
     return res.json(userInfo);
   } catch (error: any) {

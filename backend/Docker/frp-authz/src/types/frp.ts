@@ -2,6 +2,12 @@ export interface FrpWebhookRequest {
   version: string;
   op: "Login" | "NewProxy" | "CloseProxy" | "Ping";
   content: {
+    // Login event uses metas directly
+    metas?: {
+      token: string;
+      fingerprint: string;
+    };
+    // NewProxy and CloseProxy events use user.metas
     user?: {
       metas?: {
         token: string;

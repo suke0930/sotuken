@@ -37,7 +37,7 @@ router.get("/user/:discordId/info", async (req: Request, res: Response) => {
       sessionId: session.sessionId,
       remotePort: session.remotePort,
       connectedAt: session.connectedAt,
-      fingerprint: session.fingerprint.substring(0, 8), // Only first 8 characters
+      fingerprint: session.clientFingerprint?.substring(0, 8) || "unknown", // Only first 8 characters
     }));
 
     return res.json({

@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { watch as fsWatch } from "fs";
 import { User, UserStore } from "../types/frp.js";
 import { env } from "../types/env.js";
 
@@ -16,20 +17,48 @@ export class UserManager {
     try {
       // Ensure data directory exists
       await fs.mkdir(path.dirname(this.filePath), { recursive: true });
-      
+
       // Load users from file
       await this.loadFromFile();
-      
-      // Watch for file changes (reload every 60 seconds)
+
+      // Watch for file changes using fs.watch (real-time monitoring)
+      this.watchFileChanges();
+
+      // Fallback: Also check periodically (every 60 seconds) in case fs.watch fails
       setInterval(() => {
         this.reloadIfChanged();
       }, 60 * 1000);
-      
+
       console.log(`UserManager initialized (${this.users.size} users loaded)`);
     } catch (error) {
       console.error("Failed to initialize UserManager:", error);
       // Initialize with empty users
       this.users = new Map();
+    }
+  }
+
+  /**
+   * Watch for real-time file changes using fs.watch
+   */
+  private watchFileChanges(): void {
+    try {
+      fsWatch(this.filePath, { persistent: true }, async (eventType: string, filename: string) => {
+        if (eventType === 'change') {
+          console.log(`Users file changed (fs.watch event), reloading...`);
+          // Add a small delay to ensure file write is complete
+          setTimeout(async () => {
+            try {
+              await this.loadFromFile();
+            } catch (error) {
+              console.error("Error reloading users file:", error);
+            }
+          }, 500);
+        }
+      });
+
+      console.log(`Real-time file monitoring enabled for ${this.filePath}`);
+    } catch (error) {
+      console.error("Failed to setup fs.watch, falling back to polling:", error);
     }
   }
 

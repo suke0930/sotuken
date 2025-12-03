@@ -63,6 +63,9 @@ async function main() {
     // Initialize user manager
     await userManager.initialize();
 
+    // Initialize session tracker
+    await sessionTracker.initialize();
+
     // Start Express server
     app.listen(env.PORT, () => {
       console.log(`🚀 FRP Authorization Service running on port ${env.PORT}`);

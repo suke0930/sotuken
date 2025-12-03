@@ -1,7 +1,39 @@
 import { ActiveSession } from "../types/frp.js";
+import fs from "fs/promises";
+import path from "path";
 
 export class SessionTracker {
   private activeSessions: ActiveSession[] = [];
+  private filePath: string;
+  private saveTimer: NodeJS.Timeout | null = null;
+  private initialized: boolean = false;
+
+  constructor(dataDir: string = process.env.DATA_DIR || "/app/data") {
+    this.filePath = path.join(dataDir, "active_sessions.json");
+  }
+
+  async initialize(): Promise<void> {
+    try {
+      // Ensure data directory exists
+      await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+
+      // Load existing sessions
+      await this.loadFromFile();
+
+      // Clean expired sessions periodically (every 5 minutes)
+      setInterval(() => {
+        this.cleanExpiredSessions();
+      }, 5 * 60 * 1000);
+
+      console.log(`SessionTracker initialized (${this.activeSessions.length} active sessions loaded)`);
+      this.initialized = true;
+    } catch (error) {
+      console.error("Failed to initialize SessionTracker:", error);
+      // Initialize with empty sessions
+      this.activeSessions = [];
+      this.initialized = true;
+    }
+  }
 
   addSession(session: ActiveSession): void {
     this.activeSessions.push(session);
@@ -9,20 +41,53 @@ export class SessionTracker {
       `Session added: ${session.sessionId} (Discord ID: ${session.discordId}, Port: ${session.remotePort})`
     );
     console.log(`Total active sessions: ${this.activeSessions.length}`);
+
+    if (this.initialized) {
+      this.scheduleSave();
+    }
   }
 
   removeSession(sessionId: string): void {
     const index = this.activeSessions.findIndex((s) => s.sessionId === sessionId);
-    
+
     if (index !== -1) {
       const removed = this.activeSessions.splice(index, 1)[0];
       console.log(
         `Session removed: ${removed.sessionId} (Discord ID: ${removed.discordId}, Port: ${removed.remotePort})`
       );
       console.log(`Total active sessions: ${this.activeSessions.length}`);
+
+      if (this.initialized) {
+        this.scheduleSave();
+      }
     } else {
       console.log(`Session not found for removal: ${sessionId}`);
     }
+  }
+
+  /**
+   * Remove session by Discord ID and remote port (fallback for CloseProxy)
+   */
+  removeSessionByPort(discordId: string, remotePort: number): boolean {
+    const index = this.activeSessions.findIndex(
+      (s) => s.discordId === discordId && s.remotePort === remotePort
+    );
+
+    if (index !== -1) {
+      const removed = this.activeSessions.splice(index, 1)[0];
+      console.log(
+        `Session removed by port: ${removed.sessionId} (Discord ID: ${removed.discordId}, Port: ${removed.remotePort})`
+      );
+      console.log(`Total active sessions: ${this.activeSessions.length}`);
+
+      if (this.initialized) {
+        this.scheduleSave();
+      }
+      return true;
+    }
+
+    console.log(`Session not found for Discord ID ${discordId} on port ${remotePort}`);
+    return false;
   }
 
   countSessions(discordId: string): number {
@@ -46,6 +111,81 @@ export class SessionTracker {
    */
   getUserSessions(discordId: string): ActiveSession[] {
     return this.activeSessions.filter((s) => s.discordId === discordId);
+  }
+
+  /**
+   * Clean sessions that have been inactive for more than 24 hours
+   */
+  private cleanExpiredSessions(): void {
+    const now = new Date();
+    const expiryThreshold = 24 * 60 * 60 * 1000; // 24 hours
+    let cleanedCount = 0;
+
+    this.activeSessions = this.activeSessions.filter((session) => {
+      const timeSinceConnection = now.getTime() - session.connectedAt.getTime();
+      if (timeSinceConnection > expiryThreshold) {
+        console.log(`Expired session removed: ${session.sessionId} (age: ${Math.floor(timeSinceConnection / 1000 / 60 / 60)} hours)`);
+        cleanedCount++;
+        return false;
+      }
+      return true;
+    });
+
+    if (cleanedCount > 0) {
+      console.log(`Cleaned ${cleanedCount} expired sessions`);
+      this.scheduleSave();
+    }
+  }
+
+  private async loadFromFile(): Promise<void> {
+    try {
+      const data = await fs.readFile(this.filePath, "utf-8");
+      const parsed = JSON.parse(data);
+
+      // Convert date strings back to Date objects
+      this.activeSessions = (parsed.sessions || []).map((s: any) => ({
+        ...s,
+        connectedAt: new Date(s.connectedAt),
+      }));
+
+      console.log(`Loaded ${this.activeSessions.length} active sessions from file`);
+    } catch (error: any) {
+      if (error.code === "ENOENT") {
+        console.log("Active sessions file not found, starting with empty sessions");
+        await this.saveToFile();
+      } else {
+        console.error("Error loading sessions file:", error);
+        throw error;
+      }
+    }
+  }
+
+  private async saveToFile(): Promise<void> {
+    try {
+      const data = {
+        sessions: this.activeSessions,
+        lastSaved: new Date().toISOString(),
+      };
+
+      await fs.writeFile(
+        this.filePath,
+        JSON.stringify(data, null, 2),
+        "utf-8"
+      );
+    } catch (error) {
+      console.error("Failed to save active sessions to file:", error);
+    }
+  }
+
+  private scheduleSave(): void {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+    }
+
+    this.saveTimer = setTimeout(() => {
+      this.saveToFile();
+      this.saveTimer = null;
+    }, 5000); // Debounce: save after 5 seconds of inactivity
   }
 }
 

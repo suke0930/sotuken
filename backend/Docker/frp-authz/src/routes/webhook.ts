@@ -47,26 +47,58 @@ async function handleLogin(
   webhookReq: FrpWebhookRequest,
   res: Response
 ): Promise<void> {
-  const token = webhookReq.content.metas?.token;
-  const fingerprint = webhookReq.content.metas?.fingerprint;
+  const token = webhookReq.content?.metas?.token;
+  const fingerprint = webhookReq.content?.metas?.fingerprint;
 
   if (!token || !fingerprint) {
     console.log("Login rejected: Missing token or fingerprint");
-    console.log(webhookReq.content);
+    console.log("Webhook content:", JSON.stringify(webhookReq.content, null, 2));
 
     res.json({
       reject: true,
-      reject_reason: "Missing token or fingerprint",
+      reject_reason: "Missing token or fingerprint in metas",
+      unchange: true,
+    } as FrpWebhookResponse);
+    return;
+  }
+
+  // Validate token and fingerprint format
+  if (typeof token !== 'string' || token.length === 0) {
+    console.log("Login rejected: Invalid token format");
+    res.json({
+      reject: true,
+      reject_reason: "Invalid token format",
+      unchange: true,
+    } as FrpWebhookResponse);
+    return;
+  }
+
+  if (typeof fingerprint !== 'string' || fingerprint.length === 0) {
+    console.log("Login rejected: Invalid fingerprint format");
+    res.json({
+      reject: true,
+      reject_reason: "Invalid fingerprint format",
       unchange: true,
     } as FrpWebhookResponse);
     return;
   }
 
   // Verify JWT with Auth.js server
-  const verifyResult = await authClient.verifyJwt(token, fingerprint);
+  let verifyResult;
+  try {
+    verifyResult = await authClient.verifyJwt(token, fingerprint);
+  } catch (error: any) {
+    console.error("Login rejected: JWT verification error:", error.message);
+    res.json({
+      reject: true,
+      reject_reason: "JWT verification failed",
+      unchange: true,
+    } as FrpWebhookResponse);
+    return;
+  }
 
   if (!verifyResult.valid) {
-    console.log(`Login rejected: ${verifyResult.reason}`);
+    console.log(`Login rejected: ${verifyResult.reason || "Invalid JWT"}`);
     res.json({
       reject: true,
       reject_reason: verifyResult.reason || "JWT verification failed",
@@ -75,7 +107,7 @@ async function handleLogin(
     return;
   }
 
-  console.log(`Login accepted: Discord ID ${verifyResult.discordId}`);
+  console.log(`Login accepted: Discord ID ${verifyResult.discordId || "unknown"}`);
   res.json({
     reject: false,
     unchange: true,
@@ -86,39 +118,60 @@ async function handleNewProxy(
   webhookReq: FrpWebhookRequest,
   res: Response
 ): Promise<void> {
-  const token = webhookReq.content.user?.metas?.token;
-  const fingerprint = webhookReq.content.user?.metas?.fingerprint;
-  const remotePort = webhookReq.content.remote_port;
-  const proxyName = webhookReq.content.proxy_name;
+  const token = webhookReq.content?.user?.metas?.token;
+  const fingerprint = webhookReq.content?.user?.metas?.fingerprint;
+  const remotePort = webhookReq.content?.remote_port;
+  const proxyName = webhookReq.content?.proxy_name;
+
   if (!token || !fingerprint) {
     console.log("NewProxy rejected: Missing token or fingerprint");
-    console.log(webhookReq.content);
-    console.log("Token:", token);
-    console.log("Fingerprint:", fingerprint);
+    console.log("Webhook content:", JSON.stringify(webhookReq.content, null, 2));
 
     res.json({
       reject: true,
-      reject_reason: "Missing token or fingerprint",
+      reject_reason: "Missing token or fingerprint in user.metas",
       unchange: true,
     } as FrpWebhookResponse);
     return;
   }
 
-  if (!remotePort) {
-    console.log("NewProxy rejected: Missing remote_port");
+  if (!remotePort || typeof remotePort !== 'number') {
+    console.log("NewProxy rejected: Missing or invalid remote_port");
     res.json({
       reject: true,
-      reject_reason: "Missing remote_port",
+      reject_reason: "Missing or invalid remote_port",
+      unchange: true,
+    } as FrpWebhookResponse);
+    return;
+  }
+
+  // Validate port range
+  if (remotePort < 1 || remotePort > 65535) {
+    console.log(`NewProxy rejected: Invalid port number ${remotePort}`);
+    res.json({
+      reject: true,
+      reject_reason: `Invalid port number: ${remotePort}`,
       unchange: true,
     } as FrpWebhookResponse);
     return;
   }
 
   // Verify JWT with Auth.js server
-  const verifyResult = await authClient.verifyJwt(token, fingerprint);
+  let verifyResult;
+  try {
+    verifyResult = await authClient.verifyJwt(token, fingerprint);
+  } catch (error: any) {
+    console.error("NewProxy rejected: JWT verification error:", error.message);
+    res.json({
+      reject: true,
+      reject_reason: "JWT verification failed",
+      unchange: true,
+    } as FrpWebhookResponse);
+    return;
+  }
 
   if (!verifyResult.valid || !verifyResult.discordId) {
-    console.log(`NewProxy rejected: ${verifyResult.reason}`);
+    console.log(`NewProxy rejected: ${verifyResult.reason || "Invalid JWT"}`);
     res.json({
       reject: true,
       reject_reason: verifyResult.reason || "JWT verification failed",
@@ -131,12 +184,15 @@ async function handleNewProxy(
 
   // Check port permission
   if (!userManager.isPortAllowed(discordId, remotePort)) {
+    const user = userManager.getUser(discordId);
+    const allowedPorts = user?.allowedPorts || [];
     console.log(
       `NewProxy rejected: Port ${remotePort} not allowed for Discord ID ${discordId}`
     );
+    console.log(`  Allowed ports for this user: ${allowedPorts.join(', ') || 'none'}`);
     res.json({
       reject: true,
-      reject_reason: `Port ${remotePort} not allowed for this user`,
+      reject_reason: `Port ${remotePort} not allowed. Allowed ports: ${allowedPorts.join(', ') || 'none'}`,
       unchange: true,
     } as FrpWebhookResponse);
     return;
@@ -150,9 +206,10 @@ async function handleNewProxy(
     console.log(
       `NewProxy rejected: Max sessions (${maxSessions}) exceeded for Discord ID ${discordId}`
     );
+    console.log(`  Current sessions: ${currentSessions}`);
     res.json({
       reject: true,
-      reject_reason: `Maximum sessions (${maxSessions}) exceeded`,
+      reject_reason: `Maximum sessions (${maxSessions}) exceeded. Current: ${currentSessions}`,
       unchange: true,
     } as FrpWebhookResponse);
     return;
@@ -168,7 +225,7 @@ async function handleNewProxy(
   });
 
   console.log(
-    `NewProxy accepted: Discord ID ${discordId}, Port ${remotePort}, Proxy ${proxyName}`
+    `NewProxy accepted: Discord ID ${discordId}, Port ${remotePort}, Proxy ${proxyName || 'unnamed'}`
   );
   res.json({
     reject: false,
@@ -184,16 +241,33 @@ async function handleCloseProxy(
   const fingerprint = webhookReq.content.user?.metas?.fingerprint;
   const remotePort = webhookReq.content.remote_port;
 
-  // Try to verify JWT to get sessionId
+  let sessionRemoved = false;
+
+  // Primary method: Try to verify JWT to get sessionId
   if (token && fingerprint) {
     const verifyResult = await authClient.verifyJwt(token, fingerprint);
     if (verifyResult.valid && verifyResult.sessionId) {
       sessionTracker.removeSession(verifyResult.sessionId);
+      sessionRemoved = true;
     }
-  } else if (remotePort) {
-    // Fallback: find session by port (less reliable)
-    console.log(`CloseProxy: Attempting to find session by port ${remotePort}`);
-    // This requires enhancement to track sessions by proxy name or port
+  }
+
+  // Fallback method: Remove by port if primary method failed
+  if (!sessionRemoved && remotePort) {
+    console.log(`CloseProxy: Primary method failed, attempting to find session by port ${remotePort}`);
+
+    // Try to find and remove by port for all users
+    // This is less precise but ensures cleanup
+    const allSessions = sessionTracker.getAllSessions();
+    const matchingSession = allSessions.find(s => s.remotePort === remotePort);
+
+    if (matchingSession) {
+      sessionTracker.removeSession(matchingSession.sessionId);
+      sessionRemoved = true;
+      console.log(`CloseProxy: Session removed by port fallback (Discord ID: ${matchingSession.discordId})`);
+    } else {
+      console.log(`CloseProxy: No session found for port ${remotePort}`);
+    }
   }
 
   console.log("CloseProxy acknowledged");
