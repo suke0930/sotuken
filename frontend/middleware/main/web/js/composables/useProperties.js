@@ -299,6 +299,9 @@ export function createPropertiesMethods() {
          * Close properties modal
          */
         closePropertiesModal() {
+            // Clean up overlay resources
+            this.cleanupRawEditorOverlay();
+            
             this.propertiesModal.visible = false;
             this.propertiesModal.serverUuid = null;
             this.propertiesModal.serverName = '';
@@ -314,6 +317,7 @@ export function createPropertiesMethods() {
             this.propertiesModal.rawTextErrors = [];
             this.propertiesModal.rawTextWarnings = [];
             this.propertiesModal.rawTextValid = true;
+            this.propertiesModal.rawEditorTooltip = null; // Clear tooltip
         },
 
         /**
@@ -355,6 +359,8 @@ export function createPropertiesMethods() {
             this.propertiesModal.editorTab = 'raw';
             // Validate raw text when switching to raw editor
             this.validateRawText();
+            // Initialize overlay synchronization
+            this.initializeRawEditorOverlay();
         },
 
         /**
@@ -970,6 +976,366 @@ export function createPropertiesMethods() {
             URL.revokeObjectURL(url);
 
             this.showSuccess('server.properties をダウンロードしました');
+        },
+
+        /**
+         * Sync overlay scroll position with textarea scroll
+         * Called from @scroll directive on textarea
+         */
+        syncRawEditorOverlayScroll() {
+            // Hide tooltip when scrolling
+            this.hideTooltip();
+            
+            // Use nextTick to ensure refs are available
+            this.$nextTick(() => {
+                const textarea = this.$refs.rawTextarea;
+                const overlay = this.$refs.rawEditorOverlay;
+                
+                if (textarea && overlay) {
+                    overlay.scrollTop = textarea.scrollTop;
+                    overlay.scrollLeft = textarea.scrollLeft;
+                }
+            });
+        },
+
+        /**
+         * Initialize raw editor overlay synchronization
+         * Sets up ResizeObserver and initial scroll sync
+         */
+        initializeRawEditorOverlay() {
+            // Clean up any existing observer
+            if (this._rawEditorResizeObserver) {
+                this._rawEditorResizeObserver.disconnect();
+                this._rawEditorResizeObserver = null;
+            }
+
+            // Use nextTick to ensure DOM is ready
+            this.$nextTick(() => {
+                const textarea = this.$refs.rawTextarea;
+                const overlay = this.$refs.rawEditorOverlay;
+                const container = textarea?.parentElement;
+
+                if (!textarea || !overlay || !container) {
+                    return;
+                }
+
+                // Initial scroll sync
+                overlay.scrollTop = textarea.scrollTop;
+                overlay.scrollLeft = textarea.scrollLeft;
+
+                // Set up ResizeObserver to sync on size changes
+                this._rawEditorResizeObserver = new ResizeObserver(() => {
+                    // Sync scroll position when size changes
+                    overlay.scrollTop = textarea.scrollTop;
+                    overlay.scrollLeft = textarea.scrollLeft;
+                });
+
+                // Observe both textarea and container for size changes
+                this._rawEditorResizeObserver.observe(textarea);
+                this._rawEditorResizeObserver.observe(container);
+            });
+        },
+
+        /**
+         * Clean up raw editor overlay resources
+         */
+        cleanupRawEditorOverlay() {
+            if (this._rawEditorResizeObserver) {
+                this._rawEditorResizeObserver.disconnect();
+                this._rawEditorResizeObserver = null;
+            }
+            
+            // Clean up tooltip timeout
+            if (this._tooltipTimeout) {
+                clearTimeout(this._tooltipTimeout);
+                this._tooltipTimeout = null;
+            }
+            
+            // Reset hovered line tracking
+            this._currentHoveredLine = null;
+            
+            // Clean up measurement element
+            if (this._textMeasurementElement) {
+                document.body.removeChild(this._textMeasurementElement);
+                this._textMeasurementElement = null;
+            }
+        },
+
+        /**
+         * Calculate line position (top and left)
+         * @param {number} lineNumber - 1-based line number
+         * @returns {Object} { top, left }
+         */
+        calculateLinePosition(lineNumber) {
+            const textarea = this.$refs.rawTextarea;
+            if (!textarea) {
+                return { top: 0, left: 0 };
+            }
+
+            const lineHeight = 13 * 1.6; // 20.8px (font-size * line-height)
+            const paddingTop = 16;
+            const paddingLeft = 16;
+            
+            const top = paddingTop + (lineNumber - 1) * lineHeight;
+            const left = paddingLeft - textarea.scrollLeft;
+            
+            return { top, left };
+        },
+
+        /**
+         * Detect if a line wraps by measuring text width
+         * @param {string} lineText - The text content of the line
+         * @param {number} lineNumber - Line number for context
+         * @returns {boolean} True if line wraps
+         */
+        detectLineWrapping(lineText, lineNumber) {
+            const textarea = this.$refs.rawTextarea;
+            if (!textarea) {
+                return false;
+            }
+
+            // Create or reuse measurement element
+            if (!this._textMeasurementElement) {
+                this._textMeasurementElement = document.createElement('span');
+                this._textMeasurementElement.style.position = 'absolute';
+                this._textMeasurementElement.style.visibility = 'hidden';
+                this._textMeasurementElement.style.whiteSpace = 'pre';
+                this._textMeasurementElement.style.fontFamily = 'Consolas, Monaco, "Courier New", monospace';
+                this._textMeasurementElement.style.fontSize = '13px';
+                this._textMeasurementElement.style.padding = '0';
+                this._textMeasurementElement.style.margin = '0';
+                document.body.appendChild(this._textMeasurementElement);
+            }
+
+            // Set text and measure
+            this._textMeasurementElement.textContent = lineText;
+            const textWidth = this._textMeasurementElement.offsetWidth;
+            
+            // Calculate available width
+            const paddingLeft = 16;
+            const paddingRight = 16;
+            const scrollbarWidth = textarea.offsetWidth - textarea.clientWidth;
+            const availableWidth = textarea.clientWidth - paddingLeft - paddingRight - (scrollbarWidth > 0 ? scrollbarWidth : 0);
+            
+            return textWidth > availableWidth;
+        },
+
+        /**
+         * Get line text content for a specific line number
+         * @param {number} lineNumber - 1-based line number
+         * @returns {string} Line text content
+         */
+        getLineText(lineNumber) {
+            const rawText = this.propertiesModal.rawText || '';
+            const lines = rawText.split('\n');
+            return lines[lineNumber - 1] || '';
+        },
+
+        /**
+         * Check if line is empty (only whitespace)
+         * @param {string} lineText - Line text content
+         * @returns {boolean} True if line is empty or whitespace only
+         */
+        isLineEmpty(lineText) {
+            return !lineText || lineText.trim().length === 0;
+        },
+
+        /**
+         * Get CSS styles for error/warning line indicator
+         * @param {Object} line - Line object with lineNumber, type, messages
+         * @returns {Object} CSS style object
+         */
+        getLineIndicatorStyle(line) {
+            const { top, left } = this.calculateLinePosition(line.lineNumber);
+            const lineText = this.getLineText(line.lineNumber);
+            const isEmpty = this.isLineEmpty(lineText);
+            const isWrapped = !isEmpty && this.detectLineWrapping(lineText, line.lineNumber);
+            
+            const textarea = this.$refs.rawTextarea;
+            if (!textarea) {
+                return {};
+            }
+
+            const paddingLeft = 16;
+            const paddingRight = 16;
+            const scrollbarWidth = textarea.offsetWidth - textarea.clientWidth;
+            const availableWidth = textarea.clientWidth - paddingLeft - paddingRight - (scrollbarWidth > 0 ? scrollbarWidth : 0);
+            
+            const lineHeight = 13 * 1.6; // 20.8px
+            
+            // For all lines (empty or not), create full-height hover area
+            // The underline/icon will be positioned within this area
+            let hoverWidth;
+            if (isWrapped) {
+                // Full width for wrapped lines
+                hoverWidth = availableWidth;
+            } else if (isEmpty) {
+                // For empty lines, use full available width for hover area
+                hoverWidth = availableWidth;
+            } else {
+                // Measure actual text width for non-wrapped lines
+                if (!this._textMeasurementElement) {
+                    this._textMeasurementElement = document.createElement('span');
+                    this._textMeasurementElement.style.position = 'absolute';
+                    this._textMeasurementElement.style.visibility = 'hidden';
+                    this._textMeasurementElement.style.whiteSpace = 'pre';
+                    this._textMeasurementElement.style.fontFamily = 'Consolas, Monaco, "Courier New", monospace';
+                    this._textMeasurementElement.style.fontSize = '13px';
+                    document.body.appendChild(this._textMeasurementElement);
+                }
+                this._textMeasurementElement.textContent = lineText;
+                hoverWidth = this._textMeasurementElement.offsetWidth;
+            }
+            
+            return {
+                position: 'absolute',
+                top: `${top}px`,
+                left: `${left}px`,
+                width: `${hoverWidth}px`,
+                height: `${lineHeight}px`, // Full line height for hover area
+                pointerEvents: 'auto',
+                cursor: 'default',
+                zIndex: 2
+            };
+        },
+
+        /**
+         * Calculate smart tooltip position relative to cursor with edge detection
+         * @param {number} clientX - Mouse X coordinate
+         * @param {number} clientY - Mouse Y coordinate
+         * @param {Object} tooltipElement - Tooltip DOM element (optional, for size calculation)
+         * @returns {Object} { x, y, placement } - Position and placement info
+         */
+        calculateTooltipPosition(clientX, clientY, tooltipElement = null) {
+            const offsetX = 10; // Offset from cursor
+            const offsetY = 10; // Offset above cursor
+            const tooltipWidth = tooltipElement ? tooltipElement.offsetWidth : 400; // Default max-width
+            const tooltipHeight = tooltipElement ? tooltipElement.offsetHeight : 100; // Estimated height
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const margin = 10; // Margin from viewport edges
+            
+            let x = clientX + offsetX;
+            let y = clientY - offsetY;
+            let placement = 'top-left'; // Default placement
+            
+            // Check right edge
+            if (x + tooltipWidth + margin > viewportWidth) {
+                x = clientX - tooltipWidth - offsetX; // Place to the left of cursor
+                placement = 'top-right';
+            }
+            
+            // Check left edge
+            if (x < margin) {
+                x = margin;
+            }
+            
+            // Check top edge
+            if (y - tooltipHeight - margin < 0) {
+                y = clientY + offsetY; // Place below cursor
+                placement = 'bottom-left';
+            }
+            
+            // Check bottom edge
+            if (y + tooltipHeight + margin > viewportHeight) {
+                y = viewportHeight - tooltipHeight - margin;
+            }
+            
+            return { x, y, placement };
+        },
+
+        /**
+         * Show tooltip for error/warning line
+         * @param {Event} event - Mouse event
+         * @param {Object} line - Line object with lineNumber, type, messages
+         */
+        showTooltip(event, line) {
+            // Clear any existing timeout
+            if (this._tooltipTimeout) {
+                clearTimeout(this._tooltipTimeout);
+            }
+            
+            // Track current hovered line
+            this._currentHoveredLine = line.lineNumber;
+            
+            // Debounce tooltip display (200ms)
+            this._tooltipTimeout = setTimeout(() => {
+                // Check if we're still on the same line
+                if (this._currentHoveredLine !== line.lineNumber) {
+                    return;
+                }
+                
+                // Get error and warning messages separately
+                const errors = this.propertiesModal.rawTextErrors.filter(e => e.lineNumber === line.lineNumber);
+                const warnings = this.propertiesModal.rawTextWarnings.filter(w => w.lineNumber === line.lineNumber);
+                
+                // Calculate position relative to cursor
+                const position = this.calculateTooltipPosition(event.clientX, event.clientY);
+                
+                // Set tooltip data
+                this.propertiesModal.rawEditorTooltip = {
+                    lineNumber: line.lineNumber,
+                    errors: errors,
+                    warnings: warnings,
+                    hasErrors: errors.length > 0,
+                    hasWarnings: warnings.length > 0,
+                    x: position.x,
+                    y: position.y,
+                    placement: position.placement
+                };
+            }, 200);
+        },
+
+        /**
+         * Update tooltip position on mouse move
+         * @param {Event} event - Mouse event
+         * @param {Object} line - Line object
+         */
+        updateTooltipPosition(event, line) {
+            // Only update if tooltip is already showing for this line
+            if (!this.propertiesModal.rawEditorTooltip || 
+                this.propertiesModal.rawEditorTooltip.lineNumber !== line.lineNumber) {
+                return;
+            }
+            
+            // Get tooltip element for accurate size calculation
+            const tooltipElement = document.querySelector('.raw-editor-tooltip');
+            
+            // Recalculate position
+            const position = this.calculateTooltipPosition(
+                event.clientX, 
+                event.clientY, 
+                tooltipElement
+            );
+            
+            // Update tooltip position
+            this.propertiesModal.rawEditorTooltip.x = position.x;
+            this.propertiesModal.rawEditorTooltip.y = position.y;
+            this.propertiesModal.rawEditorTooltip.placement = position.placement;
+        },
+
+        /**
+         * Hide tooltip
+         */
+        hideTooltip() {
+            if (this._tooltipTimeout) {
+                clearTimeout(this._tooltipTimeout);
+                this._tooltipTimeout = null;
+            }
+            this._currentHoveredLine = null;
+            this.propertiesModal.rawEditorTooltip = null;
+        },
+
+        /**
+         * Update raw editor indicators (called by watch handlers)
+         */
+        updateRawEditorIndicators() {
+            // This method is called when errors/warnings change
+            // The template will automatically re-render based on rawEditorErrorLines computed property
+            // We just need to ensure the overlay is initialized
+            if (this.propertiesModal.editorTab === 'raw') {
+                this.initializeRawEditorOverlay();
+            }
         }
     };
 }

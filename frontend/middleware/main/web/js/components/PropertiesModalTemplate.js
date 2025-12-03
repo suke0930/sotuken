@@ -353,10 +353,95 @@ export const propertiesModalTemplate = `
                         ref="rawTextarea"
                         v-model="propertiesModal.rawText"
                         @input="validateRawTextDebounced"
+                        @scroll="syncRawEditorOverlayScroll"
                         class="raw-editor-textarea"
                         placeholder="property=value&#10;difficulty=normal&#10;gamemode=survival&#10;..."
                         spellcheck="false"
                     ></textarea>
+                    
+                    <!-- Error/Warning Overlay -->
+                    <div 
+                        ref="rawEditorOverlay"
+                        class="raw-editor-overlay"
+                        v-show="propertiesModal.rawTextErrors.length > 0 || propertiesModal.rawTextWarnings.length > 0"
+                    >
+                        <!-- Error/Warning Line Indicators -->
+                        <div
+                            v-for="line in rawEditorErrorLines"
+                            :key="line.type + '-' + line.lineNumber"
+                            class="raw-editor-line-indicator"
+                            :class="{
+                                'raw-editor-empty-line-indicator': isLineEmpty(getLineText(line.lineNumber))
+                            }"
+                            :style="getLineIndicatorStyle(line)"
+                            @mouseenter="showTooltip($event, line)"
+                            @mousemove="updateTooltipPosition($event, line)"
+                            @mouseleave="hideTooltip()"
+                        >
+                            <!-- Wavy underline for non-empty lines -->
+                            <!-- Show error underline if line has errors (prioritize), otherwise warning -->
+                            <div
+                                v-if="!isLineEmpty(getLineText(line.lineNumber))"
+                                :class="line.hasErrors ? 'raw-editor-error-underline' : 'raw-editor-warning-underline'"
+                            ></div>
+                            
+                            <!-- Empty line indicator icon -->
+                            <i 
+                                v-if="isLineEmpty(getLineText(line.lineNumber))"
+                                :class="[
+                                    'fas',
+                                    line.hasErrors ? 'fa-exclamation-circle' : 'fa-exclamation-triangle',
+                                    line.hasErrors ? 'error' : 'warning'
+                                ]"
+                            ></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Tooltip -->
+                    <div
+                        v-if="propertiesModal.rawEditorTooltip"
+                        class="raw-editor-tooltip"
+                        :class="{
+                            'raw-editor-tooltip-error': propertiesModal.rawEditorTooltip.hasErrors,
+                            'raw-editor-tooltip-warning': !propertiesModal.rawEditorTooltip.hasErrors && propertiesModal.rawEditorTooltip.hasWarnings,
+                            'raw-editor-tooltip-bottom': propertiesModal.rawEditorTooltip.placement.startsWith('bottom')
+                        }"
+                        :style="{
+                            left: propertiesModal.rawEditorTooltip.x + 'px',
+                            top: propertiesModal.rawEditorTooltip.y + 'px',
+                            transform: propertiesModal.rawEditorTooltip.placement.startsWith('bottom') ? 'translateY(0)' : 'translateY(-100%)'
+                        }"
+                    >
+                        <div class="raw-editor-tooltip-header">
+                            行 {{ propertiesModal.rawEditorTooltip.lineNumber }}
+                        </div>
+                        
+                        <!-- Errors Section -->
+                        <div v-if="propertiesModal.rawEditorTooltip.hasErrors" class="raw-editor-tooltip-section raw-editor-tooltip-section-error">
+                            <div class="raw-editor-tooltip-section-title">
+                                <i class="fas fa-exclamation-circle"></i>
+                                エラー ({{ propertiesModal.rawEditorTooltip.errors.length }}件)
+                            </div>
+                            <ul class="raw-editor-tooltip-messages">
+                                <li v-for="(error, index) in propertiesModal.rawEditorTooltip.errors" :key="'error-' + index">
+                                    {{ error.message }}
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Warnings Section -->
+                        <div v-if="propertiesModal.rawEditorTooltip.hasWarnings" class="raw-editor-tooltip-section raw-editor-tooltip-section-warning">
+                            <div class="raw-editor-tooltip-section-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                警告 ({{ propertiesModal.rawEditorTooltip.warnings.length }}件)
+                            </div>
+                            <ul class="raw-editor-tooltip-messages">
+                                <li v-for="(warning, index) in propertiesModal.rawEditorTooltip.warnings" :key="'warning-' + index">
+                                    {{ warning.message }}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
