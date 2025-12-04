@@ -23,6 +23,59 @@ http://localhost:8080
 - **JWT Bearer Token**: API認証
 - **Fingerprint**: セッション検証（`X-Fingerprint`ヘッダー）
 
+### 認証フロー全体図
+
+```mermaid
+sequenceDiagram
+    participant M as Middleware
+    participant N as Nginx
+    participant A as frp-authjs
+    participant D as Discord
+    
+    Note over M,D: ステップ1-2: 認証初期化とポーリング
+    M->>+N: POST /api/auth/init<br/>{fingerprint}
+    N->>+A: リクエスト転送
+    A->>A: tempToken生成<br/>PendingAuth作成
+    A-->>-N: {tempToken, authUrl}
+    N-->>-M: 認証URL返却
+    
+    M->>M: authUrlをユーザーに提示<br/>（ブラウザ表示）
+    
+    Note over M,D: ステップ3: Discord OAuth2認証
+    M->>D: ユーザーがブラウザでauthUrl訪問
+    D->>D: ユーザー認証・承認
+    D->>A: GET /api/auth/callback<br/>?code=xxx&state=tempToken
+    A->>D: POST /oauth2/token<br/>（code交換）
+    D-->>A: access_token
+    A->>D: GET /users/@me
+    D-->>A: Discord User Info
+    A->>A: JWT生成<br/>Session保存<br/>PendingAuth完了
+    A-->>M: HTML成功画面
+    
+    Note over M,D: ステップ4-5: ポーリング完了とJWT取得
+    loop 1-2秒間隔でポーリング
+        M->>+N: GET /api/auth/poll?tempToken=xxx
+        N->>+A: リクエスト転送
+        A->>A: PendingAuthチェック
+        alt 完了済み
+            A-->>-N: {status: completed, jwt, refreshToken}
+            N-->>-M: JWT返却
+        else 待機中
+            A-->>N: {status: pending}
+            N-->>M: 待機応答
+        end
+    end
+    
+    Note over M,D: ステップ6: ユーザー情報取得
+    M->>+N: GET /api/user/info<br/>Authorization: Bearer JWT<br/>X-Fingerprint: xxx
+    N->>+A: リクエスト転送
+    A->>A: JWT検証
+    A->>frp-authz: GET /internal/user/:id/info
+    frp-authz-->>A: {permissions, activeSessions}
+    A-->>-N: ユーザー情報返却
+    N-->>-M: 完全なユーザー情報
+```
+
 ---
 
 ## 🔐 認証API (frp-authjs)
@@ -277,6 +330,46 @@ frp-authzから呼ばれるJWT検証エンドポイント。
 ---
 
 ## 📦 FRPバイナリ配信API (asset-server)
+
+### サポートプラットフォーム
+
+```mermaid
+graph LR
+    API[FRP Binary API<br/>/api/assets/frp/*]
+    
+    Linux[Linux]
+    Darwin[macOS<br/>darwin]
+    Windows[Windows]
+    
+    Linux_AMD[amd64]
+    Linux_ARM[arm64]
+    Darwin_AMD[amd64]
+    Darwin_ARM[arm64<br/>Apple Silicon]
+    Win_AMD[amd64]
+    Win_ARM[arm64]
+    
+    API --> Linux
+    API --> Darwin
+    API --> Windows
+    
+    Linux --> Linux_AMD
+    Linux --> Linux_ARM
+    Darwin --> Darwin_AMD
+    Darwin --> Darwin_ARM
+    Windows --> Win_AMD
+    Windows --> Win_ARM
+    
+    Linux_AMD -.-> TarGz[tar.gz]
+    Linux_ARM -.-> TarGz
+    Darwin_AMD -.-> TarGz
+    Darwin_ARM -.-> TarGz
+    Win_AMD -.-> Zip[zip]
+    Win_ARM -.-> Zip
+    
+    style API fill:#e1f5e1
+    style TarGz fill:#d1ecf1
+    style Zip fill:#fff3cd
+```
 
 ### 1. 全バイナリ情報一覧
 
@@ -543,6 +636,31 @@ frp-authjsから呼ばれるユーザー権限情報取得エンドポイント�
 ## 🌐 ルーティングマップ
 
 ### Nginx → サービス振り分け
+
+```mermaid
+graph TD
+    Client[クライアント<br/>Middleware]
+    Nginx[Nginx<br/>:8080]
+    
+    AuthJS[frp-authjs<br/>:3001]
+    Asset[asset-server<br/>:3000]
+    AuthZ[frp-authz<br/>:8000]
+    
+    Client -->|HTTP Request| Nginx
+    
+    Nginx -->|/api/auth/*<br/>/api/user/*<br/>/api/verify-jwt<br/>/api/frp/*<br/>/auth/*| AuthJS
+    Nginx -->|/api/assets/*| Asset
+    Nginx -->|/webhook/*<br/>/internal/*| AuthZ
+    
+    AuthJS -.->|内部通信| AuthZ
+    
+    style Nginx fill:#e1f5e1
+    style AuthJS fill:#d1ecf1
+    style Asset fill:#fff3cd
+    style AuthZ fill:#f8d7da
+```
+
+### パスマッピング詳細
 
 | 外部パス | 転送先サービス | 説明 |
 |---------|--------------|------|

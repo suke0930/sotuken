@@ -21,6 +21,26 @@
 
 ## 🚀 5分でセットアップ
 
+### セットアップフロー全体図
+
+```mermaid
+flowchart TD
+    Start([開始]) --> Discord[Discord OAuth2<br/>アプリ作成]
+    Discord --> CopyID[Client ID & Secret<br/>をコピー]
+    CopyID --> EnvFile[.env ファイル作成]
+    EnvFile --> SetEnv[環境変数設定<br/>JWT_SECRET, DISCORD_*]
+    SetEnv --> DockerUp[docker-compose up -d<br/>--build]
+    DockerUp --> Health{ヘルスチェック<br/>API}
+    Health -->|成功| Complete([完了])
+    Health -->|失敗| Troubleshoot[トラブルシューティング]
+    Troubleshoot --> DockerUp
+    
+    style Start fill:#e1f5e1
+    style Complete fill:#e1f5e1
+    style Health fill:#fff3cd
+    style Troubleshoot fill:#f8d7da
+```
+
 ### ステップ1: Discord OAuth2アプリケーション作成
 
 1. [Discord Developer Portal](https://discord.com/developers/applications) にアクセス
@@ -162,6 +182,26 @@ docker-compose -f docker-compose.dev.yml down
 | 変更反映 | 自動リロード | 再ビルド必要 |
 | node_modules | 保護される | イメージ内 |
 | 用途 | ローカル開発 | デプロイ |
+
+### モード切り替えフロー
+
+```mermaid
+flowchart LR
+    Dev[開発モード<br/>docker-compose.dev.yml] 
+    Prod[本番モード<br/>docker-compose.yml]
+    
+    Dev -->|docker-compose down| Stop1[停止]
+    Stop1 -->|docker-compose up -d| Prod
+    
+    Prod -->|docker-compose down| Stop2[停止]
+    Stop2 -->|docker-compose -f<br/>docker-compose.dev.yml up -d| Dev
+    
+    Dev -.->|ホットリロード<br/>自動反映| DevWork[開発作業]
+    Prod -.->|再ビルド必要| ProdWork[本番検証]
+    
+    style Dev fill:#d1ecf1
+    style Prod fill:#fff3cd
+```
 
 ---
 

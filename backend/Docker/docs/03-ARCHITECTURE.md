@@ -21,30 +21,36 @@ Discord OAuth2で認証したユーザーに対してFRP (Fast Reverse Proxy) �
 
 ## 📦 コンテナ構成
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    Docker Compose                        │
-└─────────────────────────────────────────────────────────┘
-         │
-         ├──► nginx (Port 8080) ─────────────┐
-         │                                    │
-         ├──► asset-server (Port 3000)       │
-         │    ├── アセット配信                 │
-         │    └── FRPバイナリAPI              │
-         │                                    │
-         ├──► frp-authjs (Port 3000)         │
-         │    ├── Discord OAuth2              │
-         │    ├── JWT発行/検証                 │
-         │    └── ポーリング認証               │
-         │                                    │
-         ├──► frp-authz (Port 3001)          │
-         │    ├── ポート権限管理               │
-         │    ├── セッショントラッキング       │
-         │    └── Webhook処理                 │
-         │                                    │
-         └──► frp-server (Port 7000, 7500)   │
-              ├── FRPサーバー本体              │
-              └── HTTP Plugin → frp-authz    │
+```mermaid
+graph TD
+    subgraph Docker["Docker Compose"]
+        Nginx[nginx<br/>:8080<br/>リバースプロキシ]
+        Asset[asset-server<br/>:3000<br/>アセット配信<br/>FRPバイナリAPI]
+        AuthJS[frp-authjs<br/>:3001<br/>Discord OAuth2<br/>JWT発行/検証<br/>ポーリング認証]
+        AuthZ[frp-authz<br/>:8000<br/>ポート権限管理<br/>セッショントラッキング<br/>Webhook処理]
+        FRPSrv[frp-server<br/>:7000, :7500<br/>FRPサーバー本体<br/>HTTP Plugin]
+    end
+    
+    Client[外部クライアント<br/>Middleware] -->|HTTP :8080| Nginx
+    FRPClient[frpcクライアント] -->|TCP :7000| FRPSrv
+    
+    Nginx -->|/api/auth/*<br/>/api/user/*<br/>/api/verify-jwt| AuthJS
+    Nginx -->|/api/assets/*| Asset
+    Nginx -->|/webhook/*<br/>/internal/*| AuthZ
+    
+    FRPSrv -->|HTTP Plugin<br/>Webhook| AuthZ
+    AuthZ -.->|内部API<br/>POST /api/verify-jwt| AuthJS
+    AuthJS -.->|内部API<br/>GET /internal/user/:id/info| AuthZ
+    
+    AuthJS -.->|永続化| AuthJSData[(sessions.json)]
+    AuthZ -.->|永続化| AuthZData[(users.json<br/>active_sessions.json)]
+    Asset -.->|永続化| AssetData[(Resource/<br/>Data/)]
+    
+    style Nginx fill:#e1f5e1
+    style AuthJS fill:#d1ecf1
+    style Asset fill:#fff3cd
+    style AuthZ fill:#f8d7da
+    style FRPSrv fill:#e7e7e7
 ```
 
 ### コンテナ詳細
@@ -152,6 +158,37 @@ sequenceDiagram
 
 ### JWT構造
 
+```mermaid
+classDiagram
+    class JWTHeader {
+        +string alg = "HS256"
+        +string typ = "JWT"
+    }
+    
+    class JWTPayload {
+        +string sub
+        +string discordId
+        +string sessionId
+        +string fingerprint
+        +int iat
+        +int exp
+    }
+    
+    class JWT {
+        +JWTHeader header
+        +JWTPayload payload
+        +string signature
+        +verify(secret) bool
+        +decode() JWTPayload
+    }
+    
+    JWT *-- JWTHeader : contains
+    JWT *-- JWTPayload : contains
+    
+    note for JWT "トークン有効期限:\nAccess Token: 8時間\nRefresh Token: 7日間"
+```
+
+**トークン構造例:**
 ```json
 {
   "header": {
@@ -169,10 +206,6 @@ sequenceDiagram
   "signature": "..."
 }
 ```
-
-**トークン有効期限:**
-- Access Token: 8時間
-- Refresh Token: 7日間
 
 ---
 
@@ -243,6 +276,52 @@ backend/Docker/
 └── AssetServ/
     ├── Resource/               # アセットファイル
     └── Data/                   # データベース
+```
+
+### データモデル関係図
+
+```mermaid
+erDiagram
+    SESSIONS ||--o{ DISCORD_USER : contains
+    SESSIONS {
+        string id PK
+        string discordId FK
+        string fingerprint
+        string accessToken
+        string refreshToken
+        datetime createdAt
+        datetime expiresAt
+        datetime refreshExpiresAt
+        datetime lastRefreshed
+    }
+    
+    DISCORD_USER {
+        string id PK
+        string username
+        string discriminator
+        string avatar
+        string email
+    }
+    
+    USERS ||--o{ ACTIVE_SESSIONS : has
+    USERS {
+        string discordId PK
+        int_array allowedPorts
+        int maxSessions
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    ACTIVE_SESSIONS {
+        string sessionId PK
+        string discordId FK
+        int remotePort
+        datetime connectedAt
+        string clientFingerprint
+    }
+    
+    SESSIONS ||--|| USERS : "discordId"
+    SESSIONS ||--o{ ACTIVE_SESSIONS : "discordId"
 ```
 
 ### sessions.json (frp-authjs)
@@ -331,6 +410,42 @@ frp-authz: 永続ファイルから古いセッション復元
 ```
 
 ### 解決策: FRP Dashboard API同期
+
+```mermaid
+sequenceDiagram
+    participant ST as SessionTracker
+    participant FC as FrpDashboardClient
+    participant FD as FRP Dashboard API<br/>:7500
+    participant FS as FileSystem<br/>active_sessions.json
+    
+    Note over ST: 起動時: initialize()
+    ST->>FS: active_sessions.json読み込み
+    FS-->>ST: 復元されたセッション<br/>(ゴースト含む可能性)
+    
+    ST->>FC: syncWithFrpServer()
+    FC->>FD: GET /api/proxy/tcp<br/>Basic Auth
+    
+    alt 接続成功
+        FD-->>FC: {proxies: [{name, port, ...}]}
+        FC->>FC: アクティブポートリスト抽出
+        
+        loop 各ローカルセッション
+            FC->>FC: remotePortがFRPに存在?
+            alt 存在しない(ゴースト)
+                FC->>ST: removeSession(sessionId)
+                Note over FC,ST: ゴーストセッション削除
+            end
+        end
+        
+        ST->>FS: 更新後のactive_sessions.json保存
+        FC-->>ST: 同期成功<br/>{removed: count}
+    else 接続失敗/タイムアウト
+        FD-->>FC: エラー
+        FC-->>ST: フォールバック<br/>既存セッションで継続
+    end
+    
+    Note over ST: 通常動作開始
+```
 
 **実装:** `frp-authz/src/services/frpDashboardClient.ts`
 

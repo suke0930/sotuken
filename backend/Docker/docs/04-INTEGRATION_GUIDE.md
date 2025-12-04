@@ -22,19 +22,32 @@
 
 ## 🏗️ 統合アーキテクチャ
 
-```
-[User Browser]
-      ↓
-[Frontend (React/Next.js)]
-      ↓
-[Frontend Middleware] ← 新規: FRP Manager
-      ↓
-[Nginx (Docker)]
-      ├─ /api/auth/       → frp-authjs
-      ├─ /api/assets/frp/ → asset-server
-      └─ /api/frp/        → frp-authjs (レガシー)
-      ↓
-[frp-authjs] ←→ [frp-authz] ←→ [frp-server]
+```mermaid
+graph TD
+    MW[Frontend Middleware<br/>FRP Manager統合]
+    Nginx[Nginx<br/>:8080]
+    
+    AuthJS[frp-authjs<br/>認証サービス]
+    Asset[asset-server<br/>バイナリ配信]
+    AuthZ[frp-authz<br/>認可サービス]
+    FRPSrv[frp-server<br/>プロキシサーバー]
+    
+    MW -->|GET /api/auth/init<br/>GET /api/auth/poll<br/>POST /api/auth/refresh| Nginx
+    MW -->|GET /api/assets/frp/client-binary| Nginx
+    MW -->|frpc TCP接続| FRPSrv
+    
+    Nginx -->|/api/auth/*| AuthJS
+    Nginx -->|/api/assets/*| Asset
+    Nginx -->|/webhook/*| AuthZ
+    
+    FRPSrv -->|HTTP Plugin<br/>Webhook| AuthZ
+    AuthZ -.->|内部API| AuthJS
+    
+    style MW fill:#e1f5e1
+    style Nginx fill:#fff3cd
+    style AuthJS fill:#d1ecf1
+    style Asset fill:#ffeaa7
+    style AuthZ fill:#f8d7da
 ```
 
 ---
@@ -59,6 +72,80 @@ frontend/middleware/main/lib/
     │   └── *.test.ts
     ├── package.json
     └── README.md
+```
+
+### FRP Managerライブラリ全体クラス図
+
+```mermaid
+classDiagram
+    class FrpManagerAPP {
+        -FrpManagerConfig config
+        -FrpBinaryManager binaryManager
+        -AuthSessionManager authManager
+        -FrpProcessManager processManager
+        -FrpLogService logService
+        -SessionStore sessionStore
+        -string binaryPath
+        +initialize() Promise~void~
+        +startAuth(fingerprint) Promise~AuthResult~
+        +pollAuth(tempToken) Promise~AuthStatus~
+        +createConnection(userId, localPort, remotePort) Promise~Connection~
+        +stopConnection(connectionId) Promise~void~
+        +getActiveConnections() Connection[]
+        +getLogs(connectionId, lines) Promise~string[]~
+    }
+    
+    class FrpBinaryManager {
+        -FrpManagerConfig config
+        -string metadataPath
+        +ensureBinary() Promise~string~
+        -fetchBinaryInfo() Promise~FrpBinaryInfo~
+        -downloadBinary(url, destPath) Promise~void~
+        -needsDownload(binaryPath) Promise~boolean~
+    }
+    
+    class AuthSessionManager {
+        -FrpManagerConfig config
+        -Map~string,AuthSession~ sessions
+        +initAuth(fingerprint) Promise~AuthResult~
+        +pollAuth(tempToken) Promise~AuthStatus~
+        +refreshToken(userId) Promise~void~
+        +getSession(userId) AuthSession
+    }
+    
+    class FrpProcessManager {
+        -FrpManagerConfig config
+        -FrpLogService logService
+        -Map~string,Process~ processes
+        +startConnection(params) Promise~Connection~
+        +stopConnection(connectionId) Promise~void~
+        +getActiveConnections() Connection[]
+        -generateConfig(params) string
+    }
+    
+    class FrpLogService {
+        -FrpManagerConfig config
+        +write(connectionId, data) void
+        +tail(connectionId, lines) Promise~string[]~
+        +rotate(connectionId) Promise~void~
+        -getLogPath(connectionId) string
+    }
+    
+    class SessionStore {
+        -FrpManagerConfig config
+        -Map~string,Session~ sessions
+        +load() Promise~void~
+        +save() Promise~void~
+        +get(userId) Session
+        +set(userId, session) void
+    }
+    
+    FrpManagerAPP *-- FrpBinaryManager : 依存
+    FrpManagerAPP *-- AuthSessionManager : 依存
+    FrpManagerAPP *-- FrpProcessManager : 依存
+    FrpManagerAPP *-- FrpLogService : 依存
+    FrpManagerAPP *-- SessionStore : 依存
+    FrpProcessManager --> FrpLogService : 使用
 ```
 
 ### config.ts の実装
@@ -170,6 +257,42 @@ export function loadFrpManagerConfig(): FrpManagerConfig {
 ```
 
 ### FrpBinaryManager.ts の実装
+
+```mermaid
+sequenceDiagram
+    participant APP as FrpManagerAPP
+    participant BM as FrpBinaryManager
+    participant FS as FileSystem
+    participant AS as Asset Server API
+    participant GH as GitHub Releases
+    
+    APP->>BM: ensureBinary()
+    BM->>BM: resolveTargetForHost()<br/>(OS/arch判定)
+    BM->>FS: Check binary exists?
+    
+    alt Binary exists
+        FS-->>BM: バイナリパス返却
+        BM-->>APP: 既存バイナリパス
+    else Binary not found
+        BM->>AS: GET /api/assets/frp/client-binary<br/>?platform=xxx&arch=xxx
+        
+        alt API成功
+            AS-->>BM: {downloadUrl, version, ...}
+            BM->>GH: GET downloadUrl<br/>(frp_x.x.x_platform_arch.tar.gz)
+            GH-->>BM: Binary Stream
+        else API失敗
+            BM->>BM: フォールバックURL使用
+            BM->>GH: GET fallback URL
+            GH-->>BM: Binary Stream
+        end
+        
+        BM->>FS: Write binary + chmod 755
+        BM->>FS: Write metadata.json
+        BM-->>APP: 新規バイナリパス
+    end
+```
+
+**実装コード例:**
 
 ```typescript
 // frontend/middleware/main/lib/frp-manager/src/FrpBinaryManager.ts
