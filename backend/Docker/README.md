@@ -1,188 +1,188 @@
-# FRP Authentication System - Docker Implementation
+# FRP認証システム - Docker実装
 
-**Version:** 2.0.0 (Arctic Migration)  
-**Last Updated:** 2025-12-02
+**バージョン:** v3.2.0  
+**最終更新:** 2025-12-04
 
-Discord OAuth2ベースのFRP認証システムのDocker実装です。
+Discord OAuth2ベースのFRP (Fast Reverse Proxy) 認証システムのDocker実装です。
 
-## 🔄 重要な更新
+---
 
-### v3.2.0 (FRP Binary Distribution - Multi-Platform) - 2025-12-03
+## 🚀 クイックスタート
 
-**新機能:**
-- ✅ **マルチプラットフォーム対応**: Linux/macOS/Windows × amd64/arm64を完全サポート
-- ✅ **FRP Binary API**: Asset ServerからfrpcバイナリのダウンロードURL提供
-- ✅ **自動URL生成**: `FRP_VERSION`環境変数1つで全プラットフォームのURL自動生成
-- ✅ **動的プラットフォーム選択**: クエリパラメータで任意のOS/アーチを指定可能
-- ✅ **ミドルウェア統合**: FrpBinaryManagerが自動的にプラットフォーム判定してAPIからダウンロードURL取得
-- ✅ **軽量設計**: バイナリホスティング不要、URL情報のみ提供
-
-**サポートプラットフォーム:**
-- Linux: amd64, arm64 (tar.gz)
-- macOS (darwin): amd64, arm64 (tar.gz)
-- Windows: amd64, arm64 (zip, .exe)
-
-**エンドポイント:**
-- `GET /api/assets/frp/binaries` - 全プラットフォームのバイナリ一覧
-- `GET /api/assets/frp/client-binary?platform=<os>&arch=<arch>` - frpcバイナリ情報
-- `GET /api/assets/frp/server-binary?platform=<os>&arch=<arch>` - frpsバイナリ情報
-- `GET /api/assets/frp/info` - FRP関連情報サマリー
-
-詳細: [FRP_BINARY_API.md](./FRP_BINARY_API.md)
-
-### v3.1.0 (Test Client & Token Refresh)
-
-**新機能:**
-- ✅ **Token Refresh API**: リフレッシュトークンによる自動トークン更新
-- ✅ **User Info API**: セッション情報と権限の取得
-- ✅ **Test Client**: 統合テストクライアント実装
-- ✅ **Token Rotation**: セキュリティ向上のためのトークンローテーション
-
-### v3.0.0 (Polling-based Auth)
-
-**変更:**
-- ✅ **ポーリング認証**: ミドルウェアから完全非同期認証対応
-- ✅ **Pending Auth Manager**: 仮トークン管理システム
-- ✅ **GitHub CLI風UX**: `gh auth login`と同様のユーザー体験
-
-### v2.0.0 (Arctic Migration)
-
-**変更:**
-- ✅ **軽量化**: 依存関係を大幅削減 (Auth.js → Arctic)
-- ✅ **API-First設計**: HTML不要、純粋なJSON APIとして動作
-- ✅ **ミドルウェア対応**: 外部ソフトウェアから直接呼び出し可能
-- ✅ **TypeScript**: Arctic は完全なTypeScriptサポート
-
-## 概要
-
-このシステムは、FRP (Fast Reverse Proxy) にDiscord OAuth2認証とJWTベースの認可機能を統合したマイクロサービス構成です。
-
-## ドキュメントガイド
-
-- [API_DOCUMENTATION_JA.md](./API_DOCUMENTATION_JA.md): Docker環境全体の構成・ルーティング・主要APIを日本語で集約したメインドキュメント
-- [API_ENDPOINTS.md](./API_ENDPOINTS.md): 上記のクイックリファレンス。APIの位置だけすぐ確認したいときに利用
-- [FRP_BINARY_API.md](./FRP_BINARY_API.md): FRPバイナリ配信エンドポイントの詳細
-- [FRP_SYNC_IMPLEMENTATION.md](./FRP_SYNC_IMPLEMENTATION.md): frp-authz と Dashbaord のセッション同期仕様
-- [MIDDLEWARE_INTEGRATION.md](./MIDDLEWARE_INTEGRATION.md): ミドルウェアからの統合手順
-
-## コンテナ構成
-
-### 既存コンテナ
-- **nginx**: リバースプロキシ (ポート 8080)
-- **asset-server**: アセット管理サーバー (内部ポート 3000) - `backend/Asset`を直接使用
-
-### 新規追加コンテナ (FRP認証システム)
-- **frp-authjs**: Arctic Discord OAuth2認証 + JWT発行/検証 (内部ポート 3000)
-- **frp-server**: FRPサーバー (ポート 7000, 7500)
-- **frp-authz**: ポート権限管理 + セッション管理 (内部ポート 3001)
-
-## クイックスタート
-
-### 1. 環境変数の設定
-
-`.env.example` をコピーして `.env` を作成:
+### 5分でセットアップ
 
 ```bash
+# 1. リポジトリに移動
+cd backend/Docker
+
+# 2. 環境変数をコピー
 cp .env.example .env
+
+# 3. .env を編集（Discord OAuth2設定を追加）
+nano .env
+
+# 4. コンテナ起動
+docker-compose up -d --build
+
+# 5. 動作確認
+curl http://localhost:8080/api/frp/health
 ```
 
-`.env` を編集して以下を設定:
+**詳細:** [📖 クイックスタートガイド](./docs/01-QUICK_START.md)
+
+---
+
+## 📚 ドキュメント
+
+### 初めての方
+1. **[クイックスタートガイド](./docs/01-QUICK_START.md)** - 5分でセットアップ
+2. **[APIリファレンス](./docs/02-API_REFERENCE.md)** - 全エンドポイント詳細
+3. **[アーキテクチャ](./docs/03-ARCHITECTURE.md)** - システム構成と設計
+
+### 開発者向け
+- **[ミドルウェア統合ガイド](./docs/04-INTEGRATION_GUIDE.md)** - フロントエンド統合手順
+- **[テストクライアント](./test-client/README.md)** - 統合テストツール
+
+### アーカイブ
+- [過去の設計書と修正履歴](./docs/archive/) - 参考資料
+
+---
+
+## 🎯 主な機能
+
+### ✅ 実装済み機能
+
+- **Discord OAuth2認証** - ポーリングベース非同期認証
+- **JWT認証・認可** - トークンリフレッシュ対応
+- **FRP接続管理** - ポート権限・セッション制限
+- **マルチプラットフォーム対応** - Linux/macOS/Windows × amd64/arm64
+- **FRPバイナリ配信API** - GitHub Releases連携
+- **セッション永続化** - コンテナ再起動対応
+- **ゴーストセッション同期** - Dashboard API連携
+
+### 📦 システム構成
+
+```
+[ユーザー]
+    ↓
+[Nginx :8080] ─── リバースプロキシ
+    ├─► [asset-server :3000] ─── アセット配信・FRPバイナリAPI
+    ├─► [frp-authjs :3000] ───── Discord OAuth2・JWT管理
+    ├─► [frp-authz :3001] ────── ポート権限・セッション管理
+    └─► [frp-server :7000] ───── FRPサーバー本体
+```
+
+**詳細:** [🏗️ アーキテクチャドキュメント](./docs/03-ARCHITECTURE.md)
+
+---
+
+## 🔄 バージョン履歴
+
+### v3.2.0 (2025-12-03) - マルチプラットフォーム対応
+
+**新機能:**
+- ✅ **FRP Binary API**: 全プラットフォームのバイナリURL自動生成
+- ✅ **マルチプラットフォーム**: Linux/macOS/Windows × amd64/arm64完全サポート
+- ✅ **ミドルウェア統合**: FrpBinaryManagerの自動プラットフォーム判定
+
+**サポートプラットフォーム:**
+| OS | アーキテクチャ | 形式 |
+|----|--------------|------|
+| Linux | amd64, arm64 | tar.gz |
+| macOS | amd64, arm64 | tar.gz |
+| Windows | amd64, arm64 | zip |
+
+### v3.1.0 (2025-12-02) - トークン管理強化
+
+- ✅ トークンリフレッシュAPI
+- ✅ ユーザー情報API
+- ✅ テストクライアント実装
+- ✅ セッション永続化・ゴーストセッション対策
+
+### v3.0.0 (2025-12-01) - ポーリング認証
+
+- ✅ GitHub CLI風UX (`gh auth login`スタイル)
+- ✅ 完全非同期認証対応
+- ✅ 一時トークン管理システム
+
+### v2.0.0 (2025-11-30) - Arctic移行
+
+- ✅ 依存関係削減 (Auth.js → Arctic)
+- ✅ API-First設計
+- ✅ 完全TypeScript対応
+
+**全履歴:** 過去のバージョン情報は[アーカイブ](./docs/archive/)を参照
+
+---
+
+## 🛠️ 開発モード
+
+```bash
+# 開発環境起動（ホットリロード有効）
+docker-compose -f docker-compose.dev.yml up -d
+
+# ログ確認
+docker-compose -f docker-compose.dev.yml logs -f
+
+# 停止
+docker-compose -f docker-compose.dev.yml down
+```
+
+**詳細:** [開発環境セットアップ](./docs/01-QUICK_START.md#-開発モード)
+
+---
+
+## 🌐 エンドポイント概要
+
+### 認証API (frp-authjs)
+- `POST /api/auth/init` - 認証初期化
+- `GET /api/auth/poll` - ポーリング
+- `POST /api/auth/refresh` - トークンリフレッシュ
+- `GET /api/user/info` - ユーザー情報取得
+
+### FRPバイナリAPI (asset-server)
+- `GET /api/assets/frp/binaries` - 全プラットフォーム一覧
+- `GET /api/assets/frp/client-binary` - frpcバイナリ情報
+- `GET /api/assets/frp/info` - FRP情報サマリー
+
+**完全なAPI仕様:** [📖 APIリファレンス](./docs/02-API_REFERENCE.md)
+
+---
+
+## ⚙️ 環境変数
+
+### 必須設定
 
 ```env
-# JWT設定
-JWT_SECRET=<openssl rand -base64 32 で生成>
+# JWT署名鍵
+JWT_SECRET=<openssl rand -base64 32で生成>
 
-# Discord OAuth2アプリケーション設定 (Arctic)
+# Discord OAuth2
 DISCORD_CLIENT_ID=<Discord Developer Portalから取得>
 DISCORD_CLIENT_SECRET=<Discord Developer Portalから取得>
 DISCORD_REDIRECT_URI=http://localhost:8080/api/auth/callback
 BASE_URL=http://localhost:8080
 ```
 
-### 2. Dockerコンテナのビルドと起動
+### オプション設定
 
-```bash
-docker-compose up --build -d
+```env
+# FRPバイナリバージョン
+FRP_VERSION=0.65.0
+
+# FRP Dashboard同期
+FRP_DASHBOARD_URL=http://frp-server:7500
+FRP_DASHBOARD_USER=admin
+FRP_DASHBOARD_PASS=admin
 ```
 
-### 3. 動作確認
+**全設定項目:** [.env.example](./.env.example) を参照
 
-```bash
-# すべてのコンテナが起動していることを確認
-docker-compose ps
+---
 
-# ヘルスチェック
-curl http://localhost:8080/api/frp/health
-```
+## 👥 ユーザー権限管理
 
-## エンドポイント
-
-### 認証関連 (nginxを経由) - v3.1 API
-
-**Polling-based Authentication:**
-- `POST /api/auth/init` - 認証初期化、仮トークン発行
-- `GET /api/auth/poll` - 認証状態ポーリング (pending/completed/expired)
-- `GET /api/auth/callback` - Discord OAuth2 callback処理
-
-**Token Management:**
-- `POST /api/auth/refresh` - アクセストークンリフレッシュ (**NEW v3.1**)
-- `POST /api/verify-jwt` - JWT検証
-
-**User Information:**
-- `GET /api/user/info` - ユーザー情報、セッション、権限取得 (**NEW v3.1**)
-
-**FRP Binary Distribution:** (**NEW v3.2**)
-- `GET /api/assets/frp/client-binary` - frpcバイナリダウンロード情報
-- `GET /api/assets/frp/server-binary` - frpsバイナリダウンロード情報
-- `GET /api/assets/frp/info` - FRP関連情報サマリー
-
-**詳細なAPIドキュメント**: [API_ENDPOINTS.md](./API_ENDPOINTS.md)を参照してください。
-
-### FRPサーバー
-- `tcp://localhost:7000` - FRPクライアント接続ポート
-- `http://localhost:7500` - FRPダッシュボード (admin/admin)
-
-## ディレクトリ構造
-
-```
-backend/
-├── Asset/                     # アセットサーバーのソースコード
-│   ├── app.ts
-│   ├── server.ts
-│   ├── package.json
-│   └── ...
-└── Docker/
-    ├── docker-compose.yml     # Docker Compose設定
-    ├── .env.example           # 環境変数テンプレート
-    ├── nginx/
-    │   └── nginx.conf         # Nginx設定
-    ├── asset-server/          # Asset Server Dockerfile
-    │   ├── Dockerfile         # backend/Assetをビルド
-    │   └── .dockerignore
-    ├── frp-authjs/            # Container 1: Arctic Auth Server
-    │   ├── Dockerfile
-    │   ├── src/
-    │   │   ├── services/      # discordOAuth2Service (Arctic)
-    │   │   ├── routes/        # API routes
-    │   │   └── types/
-    │   └── data/              # sessions.json (永続化)
-    ├── frp-server/            # Container 2: FRP Server
-    │   ├── Dockerfile
-    │   └── frps.toml
-    ├── frp-authz/             # Container 3: Authorization Service
-    │   ├── Dockerfile
-    │   ├── src/
-    │   └── data/              # users.json (永続化)
-    ├── AssetServ/             # Asset Server データディレクトリ
-    │   ├── Resource/          # ダウンロードファイル等
-    │   └── Data/              # データベース等
-    ├── README.md
-    └── MIDDLEWARE_INTEGRATION.md
-```
-
-## ユーザー権限管理
-
-`frp-authz/data/users.json` を編集してユーザーのポート権限を管理:
+`frp-authz/data/users.json` を編集:
 
 ```json
 {
@@ -191,127 +191,146 @@ backend/
       "discordId": "123456789012345678",
       "allowedPorts": [25565, 22, 3000, 8080],
       "maxSessions": 3,
-      "createdAt": "2025-12-01T00:00:00Z",
-      "updatedAt": "2025-12-01T00:00:00Z"
+      "createdAt": "2025-12-04T00:00:00Z",
+      "updatedAt": "2025-12-04T00:00:00Z"
     }
   ]
 }
 ```
 
-**フィールド説明:**
-- `discordId`: Discord User ID
-- `allowedPorts`: 使用可能なリモートポート配列
-- `maxSessions`: 同時接続可能なセッション数
+**Discord IDの取得方法:**
+1. Discordでデベロッパーモードを有効化
+2. 自分のアイコンを右クリック → 「IDをコピー」
 
-## 開発ガイド
+---
 
-### ログの確認
+## 🔍 トラブルシューティング
 
-```bash
-# すべてのコンテナのログ
-docker-compose logs -f
+### よくある問題
 
-# 特定のコンテナのログ
-docker-compose logs -f frp-authjs
-docker-compose logs -f frp-authz
-docker-compose logs -f frp-server
+**Q: `Invalid OAuth2 redirect URI`エラーが出る**
+```
+A: Discord Developer PortalのRedirect URIsを確認してください。
+   http://localhost:8080/api/auth/callback が登録されているか確認。
 ```
 
-### コンテナの再ビルド
-
+**Q: コンテナが起動しない**
 ```bash
-# 特定のコンテナのみ再ビルド
-docker-compose up --build -d frp-authjs
+# ログを確認
+docker-compose logs
 
-# すべて再ビルド
-docker-compose down
-docker-compose up --build -d
+# クリーンな状態で再起動
+docker-compose down -v
+docker-compose up -d --build
 ```
 
-### データの永続化
+**Q: ポートが既に使用されている**
+```bash
+# ポート使用状況を確認
+lsof -i :8080
 
-以下のディレクトリがホストマシンにマウントされます:
+# 既存プロセスを停止してから再起動
+```
 
-- `frp-authjs/data/` → セッションデータ
-- `frp-authz/data/` → ユーザー権限データ
+**詳細:** [🔧 トラブルシューティング](./docs/01-QUICK_START.md#-トラブルシューティング)
 
-## トラブルシューティング
+---
 
-### Discord OAuth2エラー
+## 🧪 テスト
 
-**問題:** `Invalid OAuth2 redirect URI`
-
-**解決策:**
-1. Discord Developer Portalで Redirect URIs を確認
-2. `http://localhost:8080/auth/callback/discord` を追加
-3. `.env` の `BASE_URL` が正しいことを確認
-
-### JWT検証エラー
-
-**問題:** `Fingerprint mismatch`
-
-**解決策:**
-- クライアント側のFingerprint生成ロジックを確認
-- サーバー側の `frp-authjs/src/utils/fingerprint.ts` と一致させる
-
-### ポート権限エラー
-
-**問題:** `Port not allowed for this user`
-
-**解決策:**
-1. `frp-authz/data/users.json` を確認
-2. 該当ユーザーの `allowedPorts` にポート番号を追加
-3. ファイルは自動で再読み込みされます（約60秒）
-
-## テストクライアント
-
-**v3.1.0で追加: 統合テストクライアント**
-
-`test-client/`ディレクトリに完全な機能を持つテストクライアントを実装しました。
-
-### 機能
-
-- **AuthClient**: Discord OAuth2認証、JWT管理、自動トークンリフレッシュ
-- **FrpClient**: FRP接続管理、設定ファイル生成
-- **TestRunner**: テストシナリオ実行、レポート生成
-
-### 使い方
+### 統合テストクライアント
 
 ```bash
 cd test-client
 npm install
-npm start  # デモクライアント実行
-npm test   # テストスイート実行
+npm start   # デモクライアント実行
+npm test    # テストスイート実行
 ```
 
-詳細は [test-client/README.md](./test-client/README.md) を参照してください。
+### 手動テスト
 
-## 次のステップ
+```bash
+# ヘルスチェック
+curl http://localhost:8080/api/frp/health
 
-### ミドルウェア統合
+# FRPバイナリ情報
+curl http://localhost:8080/api/assets/frp/info
 
-フロントエンドミドルウェアへの統合方法は [MIDDLEWARE_INTEGRATION.md](./MIDDLEWARE_INTEGRATION.md) を参照してください。
+# 認証初期化
+curl -X POST http://localhost:8080/api/auth/init \
+  -H "Content-Type: application/json" \
+  -d '{"fingerprint":"test_fp_123"}'
+```
 
-### テスト
+---
 
-統合テストの実行方法は [test-client/README.md](./test-client/README.md) を参照してください。
+## 📁 ディレクトリ構造
 
-### セキュリティ強化
+```
+backend/Docker/
+├── docs/                       # 📚 ドキュメント
+│   ├── 01-QUICK_START.md
+│   ├── 02-API_REFERENCE.md
+│   ├── 03-ARCHITECTURE.md
+│   ├── 04-INTEGRATION_GUIDE.md
+│   └── archive/                # 過去資料
+├── docker-compose.yml          # 本番環境設定
+├── docker-compose.dev.yml      # 開発環境設定
+├── nginx/                      # リバースプロキシ
+├── asset-server/               # アセット配信
+├── frp-authjs/                 # 認証サービス
+├── frp-authz/                  # 認可サービス
+├── frp-server/                 # FRPサーバー
+├── test-client/                # テストツール
+└── AssetServ/                  # データストレージ
+```
 
-本番環境では以下を実装してください:
+---
 
-- HTTPS/TLS通信の有効化
-- JWT暗号化 (JWE) の導入
-- Rate Limitingの実装
-- 監査ログの記録
+## 🤝 コントリビューション
 
-## 参考資料
+### 開発フロー
 
-- [設計書案1](../設計書案1.md) - 完全版設計書
-- [設計書案2](../設計書案2.md) - サーバーサイド重点設計書
-- [FRP-test](../FRP-test/) - PoC実装
-- [DiscordLoginTest](../DiscordLoginTest/) - Auth.js実装例
+1. Issue を作成（機能提案・バグ報告）
+2. ブランチを作成 (`feature/xxx`, `fix/xxx`)
+3. 変更を実装
+4. テストを実行
+5. Pull Request を作成
 
-## ライセンス
+### コーディング規約
 
-MIT
+- TypeScript strict モード
+- ESLint + Prettier
+- Conventional Commits形式
+
+---
+
+## 📄 ライセンス
+
+MIT License
+
+---
+
+## 🔗 関連リンク
+
+- **FRP公式**: https://github.com/fatedier/frp
+- **Arctic (OAuth2)**: https://arctic.js.org/
+- **Discord Developer Portal**: https://discord.com/developers/applications
+
+---
+
+## 📞 サポート
+
+### ドキュメント
+- [クイックスタート](./docs/01-QUICK_START.md)
+- [APIリファレンス](./docs/02-API_REFERENCE.md)
+- [アーキテクチャ](./docs/03-ARCHITECTURE.md)
+- [統合ガイド](./docs/04-INTEGRATION_GUIDE.md)
+
+### 問題報告
+- GitHub Issues
+- Discord サポートチャンネル（予定）
+
+---
+
+**🎉 ハッピーハッキング！**
