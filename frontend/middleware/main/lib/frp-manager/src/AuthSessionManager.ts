@@ -8,11 +8,38 @@ interface ExchangeCodePayload {
   fingerprint: string;
 }
 
+interface InitAuthResponse {
+  tempToken: string;
+  authUrl: string;
+  expiresIn: number;
+  message?: string;
+}
+
+type PollAuthResponse =
+  | {
+      status: "pending" | "not_found" | "expired";
+      message?: string;
+    }
+  | {
+      status: "completed";
+      jwt: string;
+      refreshToken?: string;
+      expiresAt: string;
+      refreshExpiresAt?: string;
+      discordUser: {
+        id: string;
+        username: string;
+        avatar?: string;
+      };
+    };
+
 export class AuthSessionManager extends EventEmitter {
   private config: FrpManagerConfig;
   private client: AxiosInstance;
   private tokens?: AuthTokens;
   private refreshTimer?: NodeJS.Timeout;
+  private lastFingerprint?: string;
+  private lastTempToken?: string;
 
   constructor(config: FrpManagerConfig) {
     super();
@@ -27,6 +54,19 @@ export class AuthSessionManager extends EventEmitter {
     return `${this.config.authServerUrl}/auth/signin`;
   }
 
+  /**
+   * Start auth flow via /api/auth/init (polling flow)
+   */
+  async initAuth(fingerprint: string): Promise<InitAuthResponse> {
+    const response = await this.client.post<InitAuthResponse>(
+      "/api/auth/init",
+      { fingerprint }
+    );
+    this.lastFingerprint = fingerprint;
+    this.lastTempToken = response.data.tempToken;
+    return response.data;
+  }
+
   async exchangeCode(payload: ExchangeCodePayload): Promise<AuthTokens> {
     const response = await this.client.post<AuthTokens>(
       "/api/frp/exchange-code",
@@ -34,6 +74,42 @@ export class AuthSessionManager extends EventEmitter {
     );
     this.setTokens(response.data);
     return response.data;
+  }
+
+  /**
+   * Poll auth status via /api/auth/poll
+   */
+  async pollAuth(tempToken: string): Promise<PollAuthResponse> {
+    const response = await this.client.get<PollAuthResponse>(
+      "/api/auth/poll",
+      {
+        params: { tempToken },
+      }
+    );
+
+    this.lastTempToken = tempToken;
+
+    if (response.data.status === "completed") {
+      this.setTokens({
+        jwt: response.data.jwt,
+        refreshToken: response.data.refreshToken,
+        expiresAt: response.data.expiresAt,
+        discordUser: response.data.discordUser,
+      });
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Refresh JWT using stored refresh token
+   */
+  async refreshTokens(): Promise<AuthTokens> {
+    await this.refreshJwt();
+    if (!this.tokens) {
+      throw new Error("Failed to refresh tokens");
+    }
+    return this.tokens;
   }
 
   getStatus(): AuthStatus {
@@ -51,6 +127,18 @@ export class AuthSessionManager extends EventEmitter {
       this.refreshTimer = undefined;
     }
     this.emit("cleared");
+  }
+
+  getTokens(): AuthTokens | undefined {
+    return this.tokens;
+  }
+
+  getLastFingerprint(): string | undefined {
+    return this.lastFingerprint;
+  }
+
+  getLastTempToken(): string | undefined {
+    return this.lastTempToken;
   }
 
   private setTokens(tokens: AuthTokens): void {

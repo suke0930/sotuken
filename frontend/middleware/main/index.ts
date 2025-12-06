@@ -15,6 +15,8 @@ import { JdkManager, JDKManagerAPP } from './lib/jdk-manager/src/Main';
 import path from 'path';
 import { SetupUserdata } from './lib/setup-dir';
 import { MCserverManagerAPP } from './lib/minecraft-server-manager/Main';
+import { FrpManagerAPP } from './lib/frp-manager/src/Main';
+import { FrpManagerRoute } from './lib/api-router';
 
 
 //ダウンロードパス
@@ -92,7 +94,15 @@ async function main(port: number): Promise<void> {
 
     // 9.1 MCServer WebSocketマネージャーのセットアップ
     new MCServerWebSocket(middlewareManager, wsInstance, "/ws/mcserver", MCmanager);
-    // 10. サーバーの起動
+
+    // 10. FRP Manager のセットアップ
+    const frpManager = new FrpManagerAPP();
+    await frpManager.initialize();
+    const frpRouter = new FrpManagerRoute(middlewareManager.authMiddleware, frpManager);
+    app.use('/api/frp', frpRouter.router);
+    log.info('FRP Manager initialized');
+
+    // 11. サーバーの起動
     server.listen(port, '0.0.0.0', () => {
         const protocol = sslOptions ? 'https' : 'http';
         const wsProtocol = sslOptions ? 'wss' : 'ws';

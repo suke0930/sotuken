@@ -5,6 +5,7 @@ import { FrpLogService } from "./FrpLogService";
 import { FrpBinaryManager } from "./FrpBinaryManager";
 import { FrpProcessManager } from "./FrpProcessManager";
 import { AuthSessionManager } from "./AuthSessionManager";
+import { randomUUID } from "crypto";
 import {
   AuthStatus,
   FrpManagerConfig,
@@ -59,12 +60,28 @@ export class FrpManagerAPP {
     return this.authManager.getStatus();
   }
 
+  async initAuth(fingerprint: string) {
+    return this.authManager.initAuth(fingerprint);
+  }
+
+  async pollAuth(tempToken: string) {
+    return this.authManager.pollAuth(tempToken);
+  }
+
+  async refreshAuth() {
+    return this.authManager.refreshTokens();
+  }
+
   async exchangeAuthCode(payload: {
     code: string;
     redirectUri: string;
     fingerprint: string;
   }) {
     return this.authManager.exchangeCode(payload);
+  }
+
+  getTokens() {
+    return this.authManager.getTokens();
   }
 
   listSessions(): FrpSessionRecord[] {
@@ -91,9 +108,51 @@ export class FrpManagerAPP {
     this.logger.info({ sessionId }, "Stopping FRP connection");
   }
 
+  async startConnectionFromAuth(payload: {
+    remotePort: number;
+    localPort: number;
+    sessionId?: string;
+    displayName?: string;
+    fingerprint?: string;
+    extraMetas?: Record<string, string>;
+  }): Promise<FrpSessionRecord> {
+    await this.ensureInitialized();
+    const tokens = this.authManager.getTokens();
+    const fingerprint =
+      payload.fingerprint || this.authManager.getLastFingerprint();
+
+    if (!tokens) {
+      throw new Error("Not authenticated. Run auth/init & auth/poll first.");
+    }
+    if (!fingerprint) {
+      throw new Error(
+        "Fingerprint is required. Provide one or run auth/init again."
+      );
+    }
+
+    const sessionId =
+      payload.sessionId ||
+      `frp-${randomUUID ? randomUUID() : Date.now().toString(36)}`;
+
+    return this.startConnection({
+      sessionId,
+      discordId: tokens.discordUser.id,
+      displayName: payload.displayName || tokens.discordUser.username,
+      remotePort: payload.remotePort,
+      localPort: payload.localPort,
+      fingerprint,
+      jwt: tokens.jwt,
+      extraMetas: payload.extraMetas,
+    });
+  }
+
   async tailLogs(sessionId: string, options?: LogTailOptions) {
     await this.ensureInitialized();
     return this.logService.tail(sessionId, options);
+  }
+
+  listActiveProcesses() {
+    return this.processManager.listProcesses();
   }
 
   private async ensureInitialized() {

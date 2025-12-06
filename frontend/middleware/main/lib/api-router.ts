@@ -15,6 +15,8 @@ import { clearScreenDown } from 'readline';
 import { MCserverManagerAPP } from './minecraft-server-manager/Main';
 import { th } from 'zod/v4/locales';
 import { threadCpuUsage } from 'process';
+import { FrpManagerAPP } from './frp-manager/src/Main';
+import { LogTailOptions } from './frp-manager/src/types';
 
 const log = createModuleLogger('auth');
 /**
@@ -360,5 +362,129 @@ export class MCServerWebSocket {
         const { MCServerWebSocketManager } = require('./minecraft-server-manager/src/websocket/MCServerWebSocketManager');
         const wsManager = new MCServerWebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
         this.mcApp.setWebSocketManager(wsManager);
+    }
+}
+
+/**
+ * FRP Manager API router
+ */
+export class FrpManagerRoute {
+    public readonly router: express.Router;
+    private frpManager: FrpManagerAPP;
+    private authMiddleware: express.RequestHandler;
+
+    constructor(authMiddleware: express.RequestHandler, frpManager: FrpManagerAPP) {
+        this.router = express.Router();
+        this.frpManager = frpManager;
+        this.authMiddleware = authMiddleware;
+        this.configureRoutes();
+    }
+
+    private configureRoutes() {
+        // Auth flow (polling)
+        this.router.post('/auth/init', this.authMiddleware, async (req, res) => {
+            try {
+                const { fingerprint } = req.body || {};
+                if (!fingerprint || typeof fingerprint !== 'string') {
+                    return res.status(400).json({ ok: false, error: 'fingerprint is required' });
+                }
+                const result = await this.frpManager.initAuth(fingerprint);
+                return res.json({ ok: true, data: result });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp auth init failed');
+                return res.status(500).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.get('/auth/poll', this.authMiddleware, async (req, res) => {
+            try {
+                const tempToken = typeof req.query.tempToken === 'string' ? req.query.tempToken : undefined;
+                if (!tempToken) {
+                    return res.status(400).json({ ok: false, error: 'tempToken is required' });
+                }
+                const result = await this.frpManager.pollAuth(tempToken);
+                return res.json({ ok: true, data: result });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp auth poll failed');
+                return res.status(500).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.get('/auth/status', this.authMiddleware, (_req, res) => {
+            return res.json({ ok: true, data: this.frpManager.getAuthStatus() });
+        });
+
+        this.router.post('/auth/refresh', this.authMiddleware, async (_req, res) => {
+            try {
+                const tokens = await this.frpManager.refreshAuth();
+                return res.json({ ok: true, data: tokens });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp auth refresh failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+
+        // Sessions
+        this.router.get('/sessions', this.authMiddleware, (_req, res) => {
+            return res.json({ ok: true, data: this.frpManager.listSessions() });
+        });
+
+        this.router.post('/sessions', this.authMiddleware, async (req, res) => {
+            try {
+                const { remotePort, localPort, sessionId, fingerprint, displayName, extraMetas } = req.body || {};
+                const parsedRemote = Number(remotePort);
+                const parsedLocal = Number(localPort);
+                if (!Number.isInteger(parsedRemote) || !Number.isInteger(parsedLocal)) {
+                    return res.status(400).json({ ok: false, error: 'remotePort and localPort must be integers' });
+                }
+                if (parsedRemote <= 0 || parsedLocal <= 0) {
+                    return res.status(400).json({ ok: false, error: 'remotePort and localPort must be positive' });
+                }
+
+                const record = await this.frpManager.startConnectionFromAuth({
+                    sessionId,
+                    remotePort: parsedRemote,
+                    localPort: parsedLocal,
+                    fingerprint,
+                    displayName,
+                    extraMetas: extraMetas && typeof extraMetas === 'object' ? extraMetas : undefined,
+                });
+                return res.status(201).json({ ok: true, data: record });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp session start failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.delete('/sessions/:sessionId', this.authMiddleware, async (req, res) => {
+            try {
+                const { sessionId } = req.params;
+                if (!sessionId) {
+                    return res.status(400).json({ ok: false, error: 'sessionId is required' });
+                }
+                await this.frpManager.stopConnection(sessionId);
+                return res.json({ ok: true });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp session stop failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.get('/processes', this.authMiddleware, (_req, res) => {
+            return res.json({ ok: true, data: this.frpManager.listActiveProcesses() });
+        });
+
+        this.router.get('/logs/:sessionId', this.authMiddleware, async (req, res) => {
+            try {
+                const { sessionId } = req.params;
+                const lines = Number(req.query.lines || req.query.tail) || undefined;
+                const options: LogTailOptions = lines ? { lines } : {};
+                const logs = await this.frpManager.tailLogs(sessionId, options);
+                return res.json({ ok: true, data: logs });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp log tail failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
     }
 }
