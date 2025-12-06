@@ -9,6 +9,7 @@ import { createUIMethods } from './composables/useUI.js';
 import { createJdkManagementMethods } from './composables/useJdkManagement.js';
 import { createMCWebSocketMethods } from './composables/useMCWebSocket.js';
 import { createConsoleMethods } from './composables/useConsole.js';
+import { createPropertiesMethods } from './composables/useProperties.js';
 import { appTemplate } from './components/templates.js';
 
 const { createApp } = Vue;
@@ -62,7 +63,8 @@ createApp({
         ...createUIMethods(),
         ...createJdkManagementMethods(),
         ...createMCWebSocketMethods(),
-        ...createConsoleMethods()
+        ...createConsoleMethods(),
+        ...createPropertiesMethods()
     },
 
     template: appTemplate
