@@ -3,6 +3,11 @@ import { apiGet, apiPost } from '../utils/api.js';
 import { API_ENDPOINTS } from '../Endpoints.js';
 import { propertiesSchema, propertyIcons } from '../content/propertiesSchema.js';
 
+const SENSITIVE_KEYS = new Set(['rcon.password']);
+const KNOWN_PROPERTY_KEYS = new Set(
+    Object.values(propertiesSchema).flatMap(tier => Object.keys(tier))
+);
+
 export function createPropertiesMethods() {
     return {
         /**
@@ -43,11 +48,29 @@ export function createPropertiesMethods() {
         },
 
         /**
+         * Get label text based on schema label field with fallbacks
+         */
+        getPropertyLabelText(property, key, language = this.currentLanguage) {
+            const label = property.label?.[language] || property.label?.ja || property.label?.en;
+            if (label) {
+                return label;
+            }
+
+            const explanation = property.explanation?.[language] || property.explanation?.ja || property.explanation?.en;
+            if (explanation) {
+                const firstSentence = explanation.split(/[。.!?]/)[0];
+                return firstSentence || key;
+            }
+
+            return key;
+        },
+
+        /**
          * Get property label with key in parentheses
          */
         getPropertyLabel(property, key) {
-            const jaLabel = property.explanation.ja.split('を')[0].split('に')[0].split('で')[0];
-            return `${jaLabel} (${key})`;
+            const labelText = this.getPropertyLabelText(property, key);
+            return `${labelText} (${key})`;
         },
 
         /**
@@ -206,7 +229,12 @@ export function createPropertiesMethods() {
         async savePropertiesToAPI(serverUuid, properties) {
             try {
                 const url = API_ENDPOINTS.server.setProperties(serverUuid);
-                const apiFormatProperties = this.convertTypedPropertiesToApi(properties);
+                const sanitizedProperties = this.sanitizePropertiesForAPI(properties);
+                const droppedKeys = Object.keys(properties || {}).filter(key => !KNOWN_PROPERTY_KEYS.has(key));
+                if (droppedKeys.length > 0) {
+                    console.warn('Dropping unknown properties before API call:', droppedKeys);
+                }
+                const apiFormatProperties = this.convertTypedPropertiesToApi(sanitizedProperties);
                 
                 const response = await apiPost(url, {
                     data: apiFormatProperties
@@ -486,10 +514,11 @@ export function createPropertiesMethods() {
         saveServerPropertiesToLocalStorage(serverUuid, properties) {
             try {
                 const storageKey = `server-properties-${serverUuid}`;
+                const sanitizedProperties = this.sanitizePropertiesForStorage(properties);
                 const dataToSave = {
                     version: 2,
                     lastModified: new Date().toISOString(),
-                    properties: properties
+                    properties: sanitizedProperties
                 };
                 localStorage.setItem(storageKey, JSON.stringify(dataToSave));
             } catch (error) {
@@ -537,8 +566,10 @@ export function createPropertiesMethods() {
                 // Set saving state
                 this.propertiesModal.saving = true;
 
+                const apiSafeProperties = this.sanitizePropertiesForAPI(this.propertiesModal.data);
+
                 // Save to API
-                await this.savePropertiesToAPI(serverUuid, this.propertiesModal.data);
+                await this.savePropertiesToAPI(serverUuid, apiSafeProperties);
                 
                 // Also save to localStorage as backup
                 this.saveServerPropertiesToLocalStorage(serverUuid, this.propertiesModal.data);
@@ -572,8 +603,9 @@ export function createPropertiesMethods() {
 
                 const parsed = JSON.parse(savedData);
                 
-                // Return properties object
-                return parsed.properties || null;
+                // Return properties object without sensitive fields
+                const sanitized = this.sanitizePropertiesForStorage(parsed.properties || {});
+                return Object.keys(sanitized).length > 0 ? sanitized : null;
             } catch (error) {
                 console.error('Error loading properties:', error);
                 return null;
@@ -597,13 +629,8 @@ export function createPropertiesMethods() {
          * Get properties count by mode for display
          */
         getPropertiesCountByMode(mode) {
-            const counts = {
-                basic: 14,
-                advanced: 18,
-                developer: 20,
-                dev: 20
-            };
-            return counts[mode] || 0;
+            const normalizedMode = mode === 'developer' ? 'dev' : mode;
+            return this.getDynamicPropertiesCount(normalizedMode);
         },
 
         /**
@@ -612,6 +639,31 @@ export function createPropertiesMethods() {
         getDynamicPropertiesCount(mode) {
             const properties = this.getPropertiesByMode(mode);
             return Object.keys(properties).length;
+        },
+
+        /**
+         * Get list of all known property keys from schema
+         */
+        getKnownPropertyKeys() {
+            return Array.from(KNOWN_PROPERTY_KEYS);
+        },
+
+        /**
+         * Remove sensitive keys before persisting to localStorage
+         */
+        sanitizePropertiesForStorage(properties) {
+            return Object.fromEntries(
+                Object.entries(properties || {}).filter(([key]) => !SENSITIVE_KEYS.has(key))
+            );
+        },
+
+        /**
+         * Keep only schema-known keys when sending to API
+         */
+        sanitizePropertiesForAPI(properties) {
+            return Object.fromEntries(
+                Object.entries(properties || {}).filter(([key]) => KNOWN_PROPERTY_KEYS.has(key))
+            );
         },
 
         /**
@@ -639,7 +691,7 @@ export function createPropertiesMethods() {
                 // For raw text validation, value is a string "true" or "false"
                 const stringValue = String(value).toLowerCase();
                 if (stringValue !== 'true' && stringValue !== 'false') {
-                    const label = property.explanation.ja.split('を')[0].split('に')[0].split('で')[0];
+                    const label = this.getPropertyLabelText(property, key, 'ja');
                     return { valid: false, message: `${label}は "true" または "false" で入力してください` };
                 }
             } else if (property.type === 'number') {
@@ -680,7 +732,7 @@ export function createPropertiesMethods() {
          * Generate Japanese error messages based on property constraints (NEW)
          */
         getJapaneseErrorMessage(key, property, errorType, params = {}) {
-            const label = property.explanation.ja.split('を')[0].split('に')[0].split('で')[0];
+            const label = this.getPropertyLabelText(property, key, 'ja');
             
             switch (errorType) {
                 case 'invalid_number':

@@ -404,6 +404,32 @@ export const propertiesSchema = {
     },
     
     dev: {
+        "server-ip": {
+            type: "string",
+            default: "",
+            required: false,
+            explanation: {
+                en: "IP address to bind the server (empty = all interfaces)",
+                ja: "サーバーがバインドするIPアドレス（空欄で全インターフェース）"
+            },
+            constraints: {
+                minLength: 0,
+                maxLength: 255
+            }
+        },
+        "server-port": {
+            type: "number",
+            default: 25565,
+            required: true,
+            explanation: {
+                en: "Port number the server listens on",
+                ja: "サーバーが待ち受けるポート番号"
+            },
+            constraints: {
+                min: 1,
+                max: 65535
+            }
+        },
         "enable-rcon": {
             type: "boolean",
             default: false,
@@ -611,6 +637,18 @@ export const propertiesSchema = {
     }
 };
 
+// Ensure each property has a stable label (fallback to explanation text)
+Object.values(propertiesSchema).forEach((tier) => {
+    Object.entries(tier).forEach(([key, property]) => {
+        if (!property.label) {
+            property.label = {
+                en: property.explanation?.en || key,
+                ja: property.explanation?.ja || key
+            };
+        }
+    });
+});
+
 /**
  * Get property icons for UI display
  */
@@ -668,4 +706,3 @@ export const propertyIcons = {
     "broadcast-rcon-to-ops": "fa-broadcast-tower",
     "function-permission-level": "fa-function"
 };
-
