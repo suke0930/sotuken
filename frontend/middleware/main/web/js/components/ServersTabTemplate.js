@@ -108,6 +108,14 @@ export const serversTabTemplate = `
                 </button>
                 <button
                     class="btn btn-secondary btn-sm"
+                    @click="openPropertiesModal(server)"
+                    title="サーバープロパティを編集"
+                >
+                    <i class="fas fa-sliders-h"></i>
+                    プロパティ
+                </button>
+                <button
+                    class="btn btn-secondary btn-sm"
                     @click="openUpdateModal(server)"
                     title="サーバー設定を編集"
                 >

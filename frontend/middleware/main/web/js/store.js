@@ -152,6 +152,27 @@ export function createStore() {
                 mcWebSocketConnected: false,
                 subscribedServers: new Set(),
 
+                // Server Properties Modal
+                propertiesModal: {
+                    visible: false,
+                    serverUuid: null,
+                    serverName: '',
+                    mode: 'basic', // 'basic', 'advanced', 'developer'
+                    editorTab: 'gui', // 'gui', 'raw'
+                    data: {},
+                    rawText: '',
+                    errors: {}, // Validation errors (GUI mode)
+                    loading: false, // Loading state for fetching properties
+                    saving: false, // Saving state for posting properties
+                    loadError: false, // Flag for load error (show warning banner)
+                    // Raw text editor validation
+                    rawTextErrors: [], // Array of { lineNumber, property, type, message }
+                    rawTextWarnings: [], // Array of { lineNumber, property, type, message }
+                    rawTextValid: true, // true if rawTextErrors.length === 0
+                    // Tooltip data for error/warning indicators
+                    rawEditorTooltip: null // { lineNumber, type, messages, x, y } or null
+                },
+
                 // Event Notifications
                 notifications: [],
                 unreadNotificationCount: 0,
@@ -250,6 +271,51 @@ export function createStore() {
                     return match ? parseInt(match[0]) : null;
                 }
                 return null;
+            },
+
+            /**
+             * Computed property for raw editor error/warning lines
+             * Combines errors and warnings, prioritizing errors for display type when both exist
+             * (But tooltip will show both errors and warnings separately)
+             */
+            rawEditorErrorLines() {
+                const linesMap = new Map();
+                
+                // First, add all errors
+                if (Array.isArray(this.propertiesModal.rawTextErrors)) {
+                    this.propertiesModal.rawTextErrors.forEach(error => {
+                        const lineNum = error.lineNumber;
+                        if (!linesMap.has(lineNum)) {
+                            linesMap.set(lineNum, {
+                                lineNumber: lineNum,
+                                type: 'error', // Prioritize error type for underline color
+                                hasErrors: true,
+                                hasWarnings: false
+                            });
+                        }
+                    });
+                }
+                
+                // Then, add warnings (even if error exists on same line)
+                if (Array.isArray(this.propertiesModal.rawTextWarnings)) {
+                    this.propertiesModal.rawTextWarnings.forEach(warning => {
+                        const lineNum = warning.lineNumber;
+                        if (!linesMap.has(lineNum)) {
+                            linesMap.set(lineNum, {
+                                lineNumber: lineNum,
+                                type: 'warning',
+                                hasErrors: false,
+                                hasWarnings: true
+                            });
+                        } else {
+                            // Line already has error, mark as having warnings too
+                            linesMap.get(lineNum).hasWarnings = true;
+                        }
+                    });
+                }
+                
+                // Convert map to sorted array
+                return Array.from(linesMap.values()).sort((a, b) => a.lineNumber - b.lineNumber);
             }
         },
 
@@ -295,6 +361,31 @@ export function createStore() {
                 if (newValue) {
                     this.checkJdkInstalled(newValue);
                 }
+            },
+
+            /**
+             * Watch for raw text error/warning changes to trigger re-rendering
+             */
+            'propertiesModal.rawTextErrors': {
+                handler() {
+                    this.$nextTick(() => {
+                        if (this.propertiesModal.editorTab === 'raw') {
+                            this.updateRawEditorIndicators();
+                        }
+                    });
+                },
+                deep: true
+            },
+
+            'propertiesModal.rawTextWarnings': {
+                handler() {
+                    this.$nextTick(() => {
+                        if (this.propertiesModal.editorTab === 'raw') {
+                            this.updateRawEditorIndicators();
+                        }
+                    });
+                },
+                deep: true
             }
         }
     };
