@@ -9,6 +9,7 @@ import {
   FrpSessionRecord,
   StartFrpProcessPayload,
 } from "./types";
+import { createModuleLogger } from "../../logger";
 
 export interface FrpProcessEvents {
   started: (session: FrpSessionRecord) => void;
@@ -30,6 +31,7 @@ export class FrpProcessManager extends EventEmitter {
   private frpServerAddr: string;
   private frpServerPort: number;
   private processes: Map<string, ActiveFrpProcess> = new Map();
+  private logger = createModuleLogger("frp-process");
 
   constructor(
     binaryManager: BinaryProvider,
@@ -60,6 +62,15 @@ export class FrpProcessManager extends EventEmitter {
     const binaryPath = await this.binaryManager.ensureBinary();
     const configPath = await this.writeConfig(payload);
     const logStream = this.logService.attachStream(payload.sessionId);
+
+    this.logger.info(
+      {
+        binaryPath,
+        args: ["-c", configPath],
+        sessionId: payload.sessionId,
+      },
+      "Spawning frpc process"
+    );
 
     const child = spawn(binaryPath, ["-c", configPath]);
 
@@ -144,11 +155,14 @@ export class FrpProcessManager extends EventEmitter {
   }
 
   private generateConfig(payload: StartFrpProcessPayload): string {
+    const metaLines = this.serializeMetas(payload.extraMetas);
     return `
 [common]
 server_addr = ${this.frpServerAddr}
 server_port = ${this.frpServerPort}
 user = ${payload.discordId}
+meta_token = "${payload.jwt}"
+meta_fingerprint = "${payload.fingerprint}"
 
 [[proxies]]
 name = "frp-${payload.remotePort}"
@@ -156,11 +170,7 @@ type = "tcp"
 local_ip = "127.0.0.1"
 local_port = ${payload.localPort}
 remote_port = ${payload.remotePort}
-
-[proxies.metadatas]
-token = "${payload.jwt}"
-fingerprint = "${payload.fingerprint}"
-${this.serializeMetas(payload.extraMetas)}
+${metaLines ? `${metaLines}` : ""}
     `.trim();
   }
 
@@ -169,7 +179,7 @@ ${this.serializeMetas(payload.extraMetas)}
       return "";
     }
     return Object.entries(metas)
-      .map(([key, value]) => `${key} = "${value}"`)
+      .map(([key, value]) => `meta_${key} = "${value}"`)
       .join("\n");
   }
 }

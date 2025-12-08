@@ -91,6 +91,13 @@ export class AuthSessionManager extends EventEmitter {
    * Start auth flow (init + auto-poll).
    */
   async initAuth(): Promise<InitAuthResponse> {
+    if (this.tokens) {
+      throw new Error("既に認証済みです。logout してから再度 init してください。");
+    }
+    if (this.authState === "pending") {
+      throw new Error("認証処理が進行中です。完了または logout までお待ちください。");
+    }
+
     const fingerprint = await this.ensureFingerprint();
 
     // cancel previous polling if any

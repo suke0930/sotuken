@@ -387,8 +387,10 @@ export class FrpManagerRoute {
                 const result = await this.frpManager.initAuth();
                 return res.json({ ok: true, data: result });
             } catch (error: any) {
+                const message = error?.message || 'frp auth init failed';
+                const status = message.includes('認証済み') || message.includes('進行中') ? 409 : 500;
                 log.error({ err: error }, 'frp auth init failed');
-                return res.status(500).json({ ok: false, error: error.message });
+                return res.status(status).json({ ok: false, error: message });
             }
         });
 

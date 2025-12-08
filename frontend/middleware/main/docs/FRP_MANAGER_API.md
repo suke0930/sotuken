@@ -43,7 +43,7 @@ sequenceDiagram
 | `POST` | `/api/frp/auth/logout` | JWT/ポーリング状態をリセット |
 | `POST` | `/api/frp/sessions` | FRP セッション開始（`remotePort`, `localPort` 必須） |
 | `GET` | `/api/frp/sessions` | 永続化されたセッション一覧を取得 |
-| `DELETE` | `/api/frp/sessions/:sessionId` | セッション停止（frpc プロセス停止） |
+| `DELETE` | `frp-fe3dd577-3bd5-43ac-8696-41d4604523f6` | セッション停止（frpc プロセス停止） |
 | `GET` | `/api/frp/processes` | 起動中の frpc プロセス情報を取得 |
 | `GET` | `/api/frp/logs/:sessionId` | ログ tail（`?lines=100` などで件数指定） |
 
