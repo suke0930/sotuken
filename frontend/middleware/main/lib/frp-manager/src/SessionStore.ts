@@ -6,12 +6,18 @@ export class SessionStore {
   private filePath: string;
   private sessions: Map<string, FrpSessionRecord> = new Map();
   private version = 1;
+  private volatile: boolean;
 
-  constructor(filePath: string) {
+  constructor(filePath: string, volatile = false) {
     this.filePath = filePath;
+    this.volatile = volatile;
   }
 
   async initialize(): Promise<void> {
+    if (this.volatile) {
+      this.sessions.clear();
+      return;
+    }
     await fs.mkdir(path.dirname(this.filePath), { recursive: true });
     await this.load();
   }
@@ -47,6 +53,9 @@ export class SessionStore {
   }
 
   async save(): Promise<void> {
+    if (this.volatile) {
+      return;
+    }
     const snapshot: SessionStoreShape = {
       version: this.version,
       sessions: this.getAll(),
@@ -59,6 +68,10 @@ export class SessionStore {
   }
 
   async load(): Promise<void> {
+    if (this.volatile) {
+      this.sessions.clear();
+      return;
+    }
     try {
       const raw = await fs.readFile(this.filePath, "utf-8");
       const parsed: SessionStoreShape = JSON.parse(raw);

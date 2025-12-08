@@ -21,13 +21,13 @@ export class AuthClient {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as VerifyJwtResponse;
 
       if (!response.ok) {
         console.log("JWT verification failed:", data);
         return {
           valid: false,
-          reason: data.reason || "Unknown error",
+          reason: (data as any).reason || "Unknown error",
         };
       }
 

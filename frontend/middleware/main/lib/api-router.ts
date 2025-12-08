@@ -426,7 +426,7 @@ export class FrpManagerRoute {
 
         // Sessions
         this.router.get('/sessions', this.authMiddleware, (_req, res) => {
-            return res.json({ ok: true, data: this.frpManager.listSessions() });
+            return res.json({ ok: true, data: this.frpManager.listSessionSummaries() });
         });
 
         this.router.post('/sessions', this.authMiddleware, async (req, res) => {
@@ -449,7 +449,7 @@ export class FrpManagerRoute {
                     displayName,
                     extraMetas: extraMetas && typeof extraMetas === 'object' ? extraMetas : undefined,
                 });
-                return res.status(201).json({ ok: true, data: record });
+                return res.status(201).json({ ok: true, data: this.sanitizeSession(record) });
             } catch (error: any) {
                 log.error({ err: error }, 'frp session start failed');
                 return res.status(400).json({ ok: false, error: error.message });
@@ -471,7 +471,7 @@ export class FrpManagerRoute {
         });
 
         this.router.get('/processes', this.authMiddleware, (_req, res) => {
-            return res.json({ ok: true, data: this.frpManager.listActiveProcesses() });
+            return res.json({ ok: true, data: this.frpManager.listActiveProcessSummaries() });
         });
 
         this.router.get('/logs/:sessionId', this.authMiddleware, async (req, res) => {
@@ -486,5 +486,29 @@ export class FrpManagerRoute {
                 return res.status(400).json({ ok: false, error: error.message });
             }
         });
+
+        // User overview (permissions/limits)
+        this.router.get('/me', this.authMiddleware, async (_req, res) => {
+            try {
+                const data = await this.frpManager.getUserOverview();
+                return res.json({ ok: true, data });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp user overview failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+    }
+
+    private sanitizeSession(record: any) {
+        return {
+            sessionId: record.sessionId,
+            discordId: record.discordId,
+            displayName: record.displayName,
+            remotePort: record.remotePort,
+            localPort: record.localPort,
+            status: record.status,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+        };
     }
 }

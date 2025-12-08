@@ -23,6 +23,7 @@ export interface FrpManagerConfig {
   logsDir: string;
   sessionsFile: string;
   fingerprintFile: string;
+  volatileSessions: boolean;
   binaryVersion: string;
   downloadTargets: BinaryDownloadTarget[];
   logRetention: {
@@ -75,13 +76,15 @@ export interface AuthTokens {
 
 export interface AuthStatus {
   linked: boolean;
-  tokens?: AuthTokens;
-  lastUpdated?: string;
   state?: "idle" | "pending" | "completed" | "expired" | "error" | "not_found";
-  tempToken?: string;
   authUrl?: string;
-  lastError?: string;
-  fingerprint?: string;
+  lastUpdated?: string;
+  discordUser?: {
+    id: string;
+    username: string;
+    avatar?: string;
+  };
+  message?: string;
 }
 
 export interface SessionStoreShape {

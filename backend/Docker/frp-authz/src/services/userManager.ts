@@ -42,7 +42,7 @@ export class UserManager {
    */
   private watchFileChanges(): void {
     try {
-      fsWatch(this.filePath, { persistent: true }, async (eventType: string, filename: string) => {
+      fsWatch(this.filePath, { persistent: true }, async (eventType: string, filename: string | null) => {
         if (eventType === 'change') {
           console.log(`Users file changed (fs.watch event), reloading...`);
           // Add a small delay to ensure file write is complete

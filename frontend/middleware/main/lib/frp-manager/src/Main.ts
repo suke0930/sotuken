@@ -26,7 +26,10 @@ export class FrpManagerAPP {
 
   constructor(config: FrpManagerConfig = loadFrpManagerConfig()) {
     this.config = config;
-    this.sessionStore = new SessionStore(config.sessionsFile);
+    this.sessionStore = new SessionStore(
+      config.sessionsFile,
+      config.volatileSessions
+    );
     this.logService = new FrpLogService(config.logsDir, {
       maxBytes: config.logRetention.maxBytes,
       rotateLimit: config.logRetention.rotateLimit,
@@ -84,8 +87,35 @@ export class FrpManagerAPP {
     return this.authManager.getTokens();
   }
 
+  async getUserOverview() {
+    const info = await this.authManager.fetchUserInfo();
+    return {
+      discordUser: info.user,
+      permissions: info.permissions,
+      activeSessions: info.activeSessions,
+      remainingSessions:
+        typeof info.permissions?.maxSessions === "number" &&
+        typeof info.activeSessions?.total === "number"
+          ? Math.max(info.permissions.maxSessions - info.activeSessions.total, 0)
+          : undefined,
+    };
+  }
+
   listSessions(): FrpSessionRecord[] {
     return this.sessionStore.getAll();
+  }
+
+  listSessionSummaries() {
+    return this.sessionStore.getAll().map((s) => ({
+      sessionId: s.sessionId,
+      discordId: s.discordId,
+      displayName: s.displayName,
+      remotePort: s.remotePort,
+      localPort: s.localPort,
+      status: s.status,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    }));
   }
 
   async startConnection(
@@ -153,6 +183,19 @@ export class FrpManagerAPP {
 
   listActiveProcesses() {
     return this.processManager.listProcesses();
+  }
+
+  listActiveProcessSummaries() {
+    return this.processManager.listProcesses().map((p) => ({
+      sessionId: p.sessionId,
+      discordId: p.discordId,
+      displayName: p.displayName,
+      remotePort: p.remotePort,
+      localPort: p.localPort,
+      status: p.status,
+      startedAt: p.startedAt,
+      pid: p.process.pid,
+    }));
   }
 
   logoutAuth() {

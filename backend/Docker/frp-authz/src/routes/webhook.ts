@@ -198,6 +198,21 @@ async function handleNewProxy(
     return;
   }
 
+  // Check if port is already in use
+  const existingSession = sessionTracker.getSessionByPort(discordId, remotePort);
+  if (existingSession) {
+    console.log(
+      `NewProxy rejected: Port ${remotePort} already in use by Discord ID ${discordId}`
+    );
+    console.log(`  Existing session: ${existingSession.sessionId}`);
+    res.json({
+      reject: true,
+      reject_reason: `Port ${remotePort} is already in use by your account. Please close the existing connection first.`,
+      unchange: true,
+    } as FrpWebhookResponse);
+    return;
+  }
+
   // Check session limit
   const currentSessions = sessionTracker.countSessions(discordId);
   const maxSessions = userManager.getMaxSessions(discordId);
@@ -215,14 +230,26 @@ async function handleNewProxy(
     return;
   }
 
-  // Add to active sessions
-  sessionTracker.addSession({
+  // Add to active sessions (returns false if port already in use)
+  const added = sessionTracker.addSession({
     sessionId: verifyResult.sessionId || "unknown",
     discordId,
     remotePort,
     connectedAt: new Date(),
     clientFingerprint: fingerprint,
   });
+
+  if (!added) {
+    console.log(
+      `NewProxy rejected: Failed to add session for Discord ID ${discordId}, Port ${remotePort}`
+    );
+    res.json({
+      reject: true,
+      reject_reason: `Failed to add session. Port ${remotePort} may already be in use.`,
+      unchange: true,
+    } as FrpWebhookResponse);
+    return;
+  }
 
   console.log(
     `NewProxy accepted: Discord ID ${discordId}, Port ${remotePort}, Proxy ${proxyName || 'unnamed'}`
@@ -243,31 +270,31 @@ async function handleCloseProxy(
 
   let sessionRemoved = false;
 
-  // Primary method: Try to verify JWT to get sessionId
-  if (token && fingerprint) {
-    const verifyResult = await authClient.verifyJwt(token, fingerprint);
-    if (verifyResult.valid && verifyResult.sessionId) {
-      sessionTracker.removeSession(verifyResult.sessionId);
-      sessionRemoved = true;
+  // Primary method: Try to verify JWT to get discordId and use composite key
+  if (token && fingerprint && remotePort) {
+    try {
+      const verifyResult = await authClient.verifyJwt(token, fingerprint);
+      if (verifyResult.valid && verifyResult.discordId) {
+        // Use composite key removal (discordId + port)
+        sessionRemoved = sessionTracker.removeSessionByPort(verifyResult.discordId, remotePort);
+        if (sessionRemoved) {
+          console.log(`CloseProxy: Session removed for Discord ID ${verifyResult.discordId}, Port ${remotePort}`);
+        }
+      }
+    } catch (error: any) {
+      console.warn(`CloseProxy: JWT verification failed: ${error.message}`);
     }
   }
 
-  // Fallback method: Remove by port if primary method failed
+  // Fallback method: Remove by port only if primary method failed
+  // This handles unexpected disconnections where JWT may be invalid
   if (!sessionRemoved && remotePort) {
     console.log(`CloseProxy: Primary method failed, attempting to find session by port ${remotePort}`);
+    sessionRemoved = sessionTracker.removeSessionByPortOnly(remotePort);
+  }
 
-    // Try to find and remove by port for all users
-    // This is less precise but ensures cleanup
-    const allSessions = sessionTracker.getAllSessions();
-    const matchingSession = allSessions.find(s => s.remotePort === remotePort);
-
-    if (matchingSession) {
-      sessionTracker.removeSession(matchingSession.sessionId);
-      sessionRemoved = true;
-      console.log(`CloseProxy: Session removed by port fallback (Discord ID: ${matchingSession.discordId})`);
-    } else {
-      console.log(`CloseProxy: No session found for port ${remotePort}`);
-    }
+  if (!sessionRemoved) {
+    console.log(`CloseProxy: No session found to remove (port: ${remotePort || 'unknown'})`);
   }
 
   console.log("CloseProxy acknowledged");

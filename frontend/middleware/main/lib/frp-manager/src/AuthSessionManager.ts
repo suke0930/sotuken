@@ -183,13 +183,11 @@ export class AuthSessionManager extends EventEmitter {
   getStatus(): AuthStatus {
     return {
       linked: Boolean(this.tokens),
-      tokens: this.tokens,
-      lastUpdated: this.tokens?.expiresAt,
       state: this.authState,
-      tempToken: this.lastTempToken,
       authUrl: this.authUrl,
-      lastError: this.lastError,
-      fingerprint: this.lastFingerprint,
+      lastUpdated: this.tokens?.expiresAt,
+      discordUser: this.tokens?.discordUser,
+      message: this.lastError,
     };
   }
 
@@ -255,6 +253,21 @@ export class AuthSessionManager extends EventEmitter {
       refreshToken: this.tokens.refreshToken,
     });
     this.setTokens(response.data);
+  }
+
+  async fetchUserInfo() {
+    if (!this.tokens?.jwt) {
+      throw new Error("Not authenticated");
+    }
+    const fingerprint =
+      this.lastFingerprint || (await this.ensureFingerprint());
+    const response = await this.client.get("/auth/api/user/info", {
+      headers: {
+        Authorization: `Bearer ${this.tokens.jwt}`,
+        "X-Fingerprint": fingerprint,
+      },
+    });
+    return response.data;
   }
 
   private startPollingLoop(tempToken: string): void {
