@@ -22,5 +22,5 @@ export const env = {
   DATA_DIR: process.env.DATA_DIR || "/app/data",
 
   // Session Sync Configuration
-  SYNC_INTERVAL_MS: parseInt(process.env.SYNC_INTERVAL_MS || "60000", 10), // Default: 1 minute
+  SYNC_INTERVAL_MS: parseInt(process.env.SYNC_INTERVAL_MS || "1000", 10), // Default: 1 second
 };

@@ -8,7 +8,7 @@ export interface FrpProxy {
   status: "online" | "offline";
   conf: {
     remotePort: number;
-  };
+  } | null;
   todayTrafficIn: number;
   todayTrafficOut: number;
   curConns: number;
@@ -68,15 +68,44 @@ export class FrpDashboardClient {
   }
 
   /**
+   * Extract remote port from proxy configuration
+   * When status is "online", conf contains remotePort
+   * When status is "offline", conf is null (port cannot be determined)
+   * @param proxy The proxy object
+   * @returns Port number or null if cannot be determined
+   */
+  private extractRemotePort(proxy: FrpProxy): number | null {
+    // When online, conf should contain remotePort
+    if (proxy.conf && typeof proxy.conf.remotePort === 'number') {
+      return proxy.conf.remotePort;
+    }
+
+    // When offline, conf is null - cannot determine port
+    // Proxy name format is "{discordId}.[proxies]" which doesn't contain port info
+    return null;
+  }
+
+  /**
    * Get list of active remote ports (online proxies only)
    * @returns Array of port numbers currently active in FRP
    */
   async getActiveRemotePorts(): Promise<number[]> {
     const proxies = await this.getActiveProxies();
 
-    return proxies
-      .filter((p) => p.status === "online")
-      .map((p) => p.conf.remotePort);
+    const ports: number[] = [];
+    for (const proxy of proxies) {
+      // Only include online proxies
+      if (proxy.status !== "online") {
+        continue;
+      }
+
+      const port = this.extractRemotePort(proxy);
+      if (port !== null) {
+        ports.push(port);
+      }
+    }
+
+    return ports;
   }
 
   /**
@@ -96,7 +125,10 @@ export class FrpDashboardClient {
    */
   async getProxyByPort(port: number): Promise<FrpProxy | null> {
     const proxies = await this.getActiveProxies();
-    return proxies.find((p) => p.conf.remotePort === port) || null;
+    return proxies.find((p) => {
+      const extractedPort = this.extractRemotePort(p);
+      return extractedPort === port;
+    }) || null;
   }
 }
 
