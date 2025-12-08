@@ -60,11 +60,11 @@ export class FrpManagerAPP {
     return this.authManager.getStatus();
   }
 
-  async initAuth(fingerprint: string) {
-    return this.authManager.initAuth(fingerprint);
+  async initAuth() {
+    return this.authManager.initAuth();
   }
 
-  async pollAuth(tempToken: string) {
+  async pollAuth(tempToken?: string) {
     return this.authManager.pollAuth(tempToken);
   }
 
@@ -153,6 +153,10 @@ export class FrpManagerAPP {
 
   listActiveProcesses() {
     return this.processManager.listProcesses();
+  }
+
+  logoutAuth() {
+    this.authManager.logout();
   }
 
   private async ensureInitialized() {

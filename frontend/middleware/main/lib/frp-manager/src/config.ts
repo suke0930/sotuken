@@ -68,6 +68,7 @@ export function loadFrpManagerConfig(): FrpManagerConfig {
   const binaryDir = path.join(dataDir, "bin");
   const configDir = path.join(dataDir, "configs");
   const logsDir = path.join(dataDir, "logs");
+  const fingerprintFile = path.join(dataDir, "fingerprint.txt");
 
   const baseAssetUrl =
     process.env.FRP_BINARY_BASE_URL || "http://localhost:8080/api/assets/frp";
@@ -89,6 +90,7 @@ export function loadFrpManagerConfig(): FrpManagerConfig {
     configDir,
     logsDir,
     sessionsFile: path.join(dataDir, "sessions.json"),
+    fingerprintFile,
     binaryVersion: process.env.FRPC_VERSION || "1.0.0",
     downloadTargets: resolveDownloadTargets(baseAssetUrl),
     logRetention: {

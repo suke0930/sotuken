@@ -22,6 +22,7 @@ export interface FrpManagerConfig {
   configDir: string;
   logsDir: string;
   sessionsFile: string;
+  fingerprintFile: string;
   binaryVersion: string;
   downloadTargets: BinaryDownloadTarget[];
   logRetention: {
@@ -76,6 +77,11 @@ export interface AuthStatus {
   linked: boolean;
   tokens?: AuthTokens;
   lastUpdated?: string;
+  state?: "idle" | "pending" | "completed" | "expired" | "error" | "not_found";
+  tempToken?: string;
+  authUrl?: string;
+  lastError?: string;
+  fingerprint?: string;
 }
 
 export interface SessionStoreShape {

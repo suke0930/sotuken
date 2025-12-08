@@ -1,5 +1,8 @@
 import axios, { AxiosInstance } from "axios";
 import { EventEmitter } from "events";
+import fs from "fs/promises";
+import path from "path";
+import { randomUUID } from "crypto";
 import { AuthStatus, AuthTokens, FrpManagerConfig } from "./types";
 
 interface ExchangeCodePayload {
@@ -40,6 +43,10 @@ export class AuthSessionManager extends EventEmitter {
   private refreshTimer?: NodeJS.Timeout;
   private lastFingerprint?: string;
   private lastTempToken?: string;
+  private authUrl?: string;
+  private pollTimer?: NodeJS.Timeout;
+  private authState: AuthStatus["state"] = "idle";
+  private lastError?: string;
 
   constructor(config: FrpManagerConfig) {
     super();
@@ -55,18 +62,60 @@ export class AuthSessionManager extends EventEmitter {
   }
 
   /**
-   * Start auth flow via /api/auth/init (polling flow)
+   * Generate or load a stable fingerprint for this middleware instance.
    */
-  async initAuth(fingerprint: string): Promise<InitAuthResponse> {
+  async ensureFingerprint(): Promise<string> {
+    if (this.lastFingerprint) return this.lastFingerprint;
+    const file = this.config.fingerprintFile;
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    try {
+      const raw = await fs.readFile(file, "utf-8");
+      const fp = raw.trim();
+      if (fp) {
+        this.lastFingerprint = fp;
+        return fp;
+      }
+    } catch (error: any) {
+      if (error.code !== "ENOENT") {
+        throw error;
+      }
+    }
+
+    const generated = randomUUID();
+    await fs.writeFile(file, generated, { encoding: "utf-8" });
+    this.lastFingerprint = generated;
+    return generated;
+  }
+
+  /**
+   * Start auth flow (init + auto-poll).
+   */
+  async initAuth(): Promise<InitAuthResponse> {
+    const fingerprint = await this.ensureFingerprint();
+
+    // cancel previous polling if any
+    this.stopPolling();
+    this.lastTempToken = undefined;
+    this.authUrl = undefined;
+    this.authState = "pending";
+    this.lastError = undefined;
+
     const response = await this.client.post<InitAuthResponse>(
       "/api/auth/init",
       { fingerprint }
     );
-    this.lastFingerprint = fingerprint;
+
     this.lastTempToken = response.data.tempToken;
+    this.authUrl = response.data.authUrl;
+    this.authState = "pending";
+
+    this.startPollingLoop(this.lastTempToken);
     return response.data;
   }
 
+  /**
+   * Start auth flow via /api/auth/init (polling flow)
+   */
   async exchangeCode(payload: ExchangeCodePayload): Promise<AuthTokens> {
     const response = await this.client.post<AuthTokens>(
       "/api/frp/exchange-code",
@@ -77,17 +126,22 @@ export class AuthSessionManager extends EventEmitter {
   }
 
   /**
-   * Poll auth status via /api/auth/poll
+   * Poll auth status via /api/auth/poll once. Typically used internally.
    */
-  async pollAuth(tempToken: string): Promise<PollAuthResponse> {
+  async pollAuth(tempToken?: string): Promise<PollAuthResponse> {
+    const token = tempToken || this.lastTempToken;
+    if (!token) {
+      throw new Error("No tempToken available. Call auth/init first.");
+    }
+
     const response = await this.client.get<PollAuthResponse>(
       "/api/auth/poll",
       {
-        params: { tempToken },
+        params: { tempToken: token },
       }
     );
 
-    this.lastTempToken = tempToken;
+    this.lastTempToken = token;
 
     if (response.data.status === "completed") {
       this.setTokens({
@@ -96,6 +150,13 @@ export class AuthSessionManager extends EventEmitter {
         expiresAt: response.data.expiresAt,
         discordUser: response.data.discordUser,
       });
+      this.authState = "completed";
+      this.stopPolling();
+    } else if (response.data.status === "expired" || response.data.status === "not_found") {
+      this.authState = response.data.status;
+      this.stopPolling();
+    } else {
+      this.authState = "pending";
     }
 
     return response.data;
@@ -117,6 +178,11 @@ export class AuthSessionManager extends EventEmitter {
       linked: Boolean(this.tokens),
       tokens: this.tokens,
       lastUpdated: this.tokens?.expiresAt,
+      state: this.authState,
+      tempToken: this.lastTempToken,
+      authUrl: this.authUrl,
+      lastError: this.lastError,
+      fingerprint: this.lastFingerprint,
     };
   }
 
@@ -127,6 +193,15 @@ export class AuthSessionManager extends EventEmitter {
       this.refreshTimer = undefined;
     }
     this.emit("cleared");
+  }
+
+  logout(): void {
+    this.clearTokens();
+    this.stopPolling();
+    this.lastTempToken = undefined;
+    this.authUrl = undefined;
+    this.authState = "idle";
+    this.lastError = undefined;
   }
 
   getTokens(): AuthTokens | undefined {
@@ -173,5 +248,29 @@ export class AuthSessionManager extends EventEmitter {
       refreshToken: this.tokens.refreshToken,
     });
     this.setTokens(response.data);
+  }
+
+  private startPollingLoop(tempToken: string): void {
+    this.stopPolling();
+    const poll = async () => {
+      try {
+        const result = await this.pollAuth(tempToken);
+        if (result.status === "pending") {
+          this.pollTimer = setTimeout(poll, this.config.authPollIntervalMs);
+        }
+      } catch (error: any) {
+        this.lastError = error?.message || "poll failed";
+        this.authState = "error";
+        this.stopPolling();
+      }
+    };
+    this.pollTimer = setTimeout(poll, this.config.authPollIntervalMs);
+  }
+
+  private stopPolling(): void {
+    if (this.pollTimer) {
+      clearTimeout(this.pollTimer);
+      this.pollTimer = undefined;
+    }
   }
 }

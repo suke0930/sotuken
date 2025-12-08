@@ -18,7 +18,10 @@
       "Bash(docker-compose restart:*)",
       "Bash(docker-compose stop:*)",
       "Bash(docker-compose rm:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout 30 npx tsc:*)"
     ],
     "deny": [],
     "ask": []

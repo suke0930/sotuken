@@ -384,11 +384,7 @@ export class FrpManagerRoute {
         // Auth flow (polling)
         this.router.post('/auth/init', this.authMiddleware, async (req, res) => {
             try {
-                const { fingerprint } = req.body || {};
-                if (!fingerprint || typeof fingerprint !== 'string') {
-                    return res.status(400).json({ ok: false, error: 'fingerprint is required' });
-                }
-                const result = await this.frpManager.initAuth(fingerprint);
+                const result = await this.frpManager.initAuth();
                 return res.json({ ok: true, data: result });
             } catch (error: any) {
                 log.error({ err: error }, 'frp auth init failed');
@@ -399,11 +395,8 @@ export class FrpManagerRoute {
         this.router.get('/auth/poll', this.authMiddleware, async (req, res) => {
             try {
                 const tempToken = typeof req.query.tempToken === 'string' ? req.query.tempToken : undefined;
-                if (!tempToken) {
-                    return res.status(400).json({ ok: false, error: 'tempToken is required' });
-                }
                 const result = await this.frpManager.pollAuth(tempToken);
-                return res.json({ ok: true, data: result });
+                return res.json({ ok: true, data: result, note: 'auto-polling is handled server-side; this endpoint is optional.' });
             } catch (error: any) {
                 log.error({ err: error }, 'frp auth poll failed');
                 return res.status(500).json({ ok: false, error: error.message });
@@ -422,6 +415,11 @@ export class FrpManagerRoute {
                 log.error({ err: error }, 'frp auth refresh failed');
                 return res.status(400).json({ ok: false, error: error.message });
             }
+        });
+
+        this.router.post('/auth/logout', this.authMiddleware, (_req, res) => {
+            this.frpManager.logoutAuth();
+            return res.json({ ok: true });
         });
 
         // Sessions
