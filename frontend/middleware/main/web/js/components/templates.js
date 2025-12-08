@@ -35,6 +35,7 @@ import { jdkManagementTabTemplate } from './JdkManagementTabTemplate.js';
 import { modalsTemplate } from './ModalsTemplate.js';
 import { propertiesModalTemplate } from './PropertiesModalTemplate.js';
 import { toastTemplate } from './ToastTemplate.js';
+import { frpManagementTabTemplate } from './FrpManagementTabTemplate.js';
 
 // Combine all templates into the main application template
 export const appTemplate = `
@@ -57,6 +58,8 @@ ${authTemplate}
         ${settingsTabTemplate}
 
         ${downloadsTabTemplate}
+
+        ${frpManagementTabTemplate}
 
         ${contentTabsTemplate}
 

@@ -55,6 +55,23 @@ export const API_ENDPOINTS = {
         list: (type) => `/api/assets/downloads${type}`
     },
 
+    // FRP manager endpoints
+    frp: {
+        authInit: '/api/frp/auth/init',
+        authPoll: '/api/frp/auth/poll',
+        authStatus: '/api/frp/auth/status',
+        authRefresh: '/api/frp/auth/refresh',
+        authLogout: '/api/frp/auth/logout',
+        me: '/api/frp/me',
+        sessions: '/api/frp/sessions',
+        session: (sessionId) => `/api/frp/sessions/${sessionId}`,
+        processes: '/api/frp/processes',
+        logs: (sessionId, lines) => {
+            const suffix = lines ? `?lines=${lines}` : '';
+            return `/api/frp/logs/${sessionId}${suffix}`;
+        }
+    },
+
     // Other endpoints
     protected: '/api/protected'
 };

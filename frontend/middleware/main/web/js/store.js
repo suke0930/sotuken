@@ -27,7 +27,8 @@ export function createStore() {
                     { id: 'servers', label: 'サーバー一覧', icon: 'fas fa-server' },
                     { id: 'create', label: '新規作成', icon: 'fas fa-plus-circle' },
                     { id: 'settings', label: 'システム設定', icon: 'fas fa-cogs' },
-                    { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' }
+                    { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' },
+                    { id: 'frp', label: 'FRP管理', icon: 'fas fa-network-wired' }
                 ],
                 sidebarMenu: [
                     { id: 'servers', label: 'サーバー一覧', icon: 'fas fa-server' },
@@ -35,6 +36,7 @@ export function createStore() {
                     { id: 'jdk-management', label: 'JDK管理', icon: 'fas fa-coffee' },
                     { id: 'settings', label: 'システム設定', icon: 'fas fa-cogs' },
                     { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' },
+                    { id: 'frp', label: 'FRP管理', icon: 'fas fa-network-wired' },
                     { id: 'about', label: 'About Us', icon: 'fas fa-info-circle' },
                     { id: 'tutorials', label: 'Tutorials', icon: 'fas fa-book' }
                 ],
@@ -188,7 +190,36 @@ export function createStore() {
 
                 // Content Pages (markdown)
                 aboutUsRendered: '',
-                tutorialsRendered: ''
+                tutorialsRendered: '',
+
+                // FRP Manager
+                frpAuthStatus: { linked: false, state: 'idle' },
+                frpAuthInit: null,
+                frpAuthLoading: false,
+                frpAuthError: '',
+                frpMe: null,
+                frpSessions: [],
+                frpProcesses: [],
+                frpWarnings: [],
+                frpForm: {
+                    remotePort: '',
+                    localPort: '',
+                    displayName: '',
+                    extraMetas: '',
+                    selectedServerId: ''
+                },
+                frpLogs: {
+                    sessionId: null,
+                    entries: [],
+                    loading: false,
+                    error: '',
+                    lines: 200
+                },
+                frpLoadingOverview: false,
+                frpCreatingSession: false,
+                frpPollTimer: null,
+                frpPollEnabled: false,
+                frpLastUpdated: null
             };
         },
 

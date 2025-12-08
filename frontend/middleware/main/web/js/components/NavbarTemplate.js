@@ -70,10 +70,15 @@ export const navbarTemplate = `
             </button>
             <div class="user-menu-container" :class="{ open: userMenuOpen }" @click.stop="toggleUserMenu">
                 <div class="user-menu">
-                    <div class="user-avatar">
-                        <i class="fas fa-user" style="font-size: 12px;"></i>
+                    <div
+                        class="user-avatar"
+                        :style="frpAuthStatus.linked && frpAuthStatus.discordUser?.avatar ? { backgroundImage: 'url(' + frpAuthStatus.discordUser.avatar + ')' } : {}"
+                    >
+                        <i v-if="!frpAuthStatus.discordUser?.avatar" class="fas fa-user" style="font-size: 12px;"></i>
                     </div>
-                    <span>{{ username || '管理者' }}</span>
+                    <span>
+                        {{ frpAuthStatus.discordUser?.username || username || '管理者' }}
+                    </span>
                     <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
                 </div>
                 <div class="user-menu-dropdown">
@@ -87,4 +92,3 @@ export const navbarTemplate = `
     </div>
 </nav>
 `;
-

@@ -10,6 +10,7 @@ import { createJdkManagementMethods } from './composables/useJdkManagement.js';
 import { createMCWebSocketMethods } from './composables/useMCWebSocket.js';
 import { createConsoleMethods } from './composables/useConsole.js';
 import { createPropertiesMethods } from './composables/useProperties.js';
+import { createFrpMethods } from './composables/useFrp.js';
 import { appTemplate } from './components/templates.js';
 
 const { createApp } = Vue;
@@ -44,6 +45,8 @@ createApp({
         await this.checkAuth();
         this.connectWebSocket();
         this.connectMCWebSocket();
+        // 初回のFRP状態取得
+        await this.refreshFrpOverview();
     },
 
     beforeUnmount() {
@@ -52,6 +55,9 @@ createApp({
         }
         if (this.mcWebSocket) {
             this.mcWebSocket.close();
+        }
+        if (this.stopFrpPolling) {
+            this.stopFrpPolling();
         }
     },
 
@@ -64,7 +70,8 @@ createApp({
         ...createJdkManagementMethods(),
         ...createMCWebSocketMethods(),
         ...createConsoleMethods(),
-        ...createPropertiesMethods()
+        ...createPropertiesMethods(),
+        ...createFrpMethods()
     },
 
     template: appTemplate
