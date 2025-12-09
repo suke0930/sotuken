@@ -202,12 +202,12 @@ export function createStore() {
                 frpProcesses: [],
                 frpWarnings: [],
                 frpForm: {
-                    remotePort: '',
+                    selectedServerId: '',
                     localPort: '',
-                    displayName: '',
-                    extraMetas: '',
-                    selectedServerId: ''
+                    remotePort: '',
+                    publicUrl: ''
                 },
+                frpPublications: [],
                 frpLogs: {
                     sessionId: null,
                     entries: [],
@@ -215,6 +215,16 @@ export function createStore() {
                     error: '',
                     lines: 200
                 },
+                frpLogModal: {
+                    visible: false,
+                    sessionId: null,
+                    title: '',
+                    lines: 200,
+                    entries: [],
+                    loading: false,
+                    error: ''
+                },
+                frpPublicDomain: (window.__FRP_PUBLIC_DOMAIN || 'example.com'),
                 frpLoadingOverview: false,
                 frpCreatingSession: false,
                 frpPollTimer: null,

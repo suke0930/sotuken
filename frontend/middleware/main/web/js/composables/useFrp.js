@@ -4,6 +4,78 @@ import { apiDelete, apiGet, apiPost } from '../utils/api.js';
 
 export function createFrpMethods() {
     return {
+        computeAvailableRemotePorts() {
+            const allowed = this.frpMe?.permissions?.allowedPorts || [];
+            if (!allowed.length) return [];
+            const used = new Set();
+            (this.frpProcesses || []).forEach(p => used.add(p.remotePort));
+            (this.frpSessions || []).forEach(s => used.add(s.remotePort));
+            (this.frpMe?.activeSessions?.sessions || []).forEach(s => used.add(s.remotePort));
+            return allowed.filter(p => !used.has(p)).sort((a, b) => a - b);
+        },
+
+        selectFrpServer(serverId) {
+            this.frpForm.selectedServerId = serverId || '';
+            const target = this.servers.find((s) => s.uuid === serverId || s.id === serverId);
+            const localPort = target
+                ? (target.launchConfig?.port || target.port || target.serverPort || target.Port)
+                : '';
+            this.frpForm.localPort = localPort || '';
+            const available = this.computeAvailableRemotePorts();
+            const picked = available[0] || '';
+            this.frpForm.remotePort = picked;
+            this.updateFrpPublicUrl();
+        },
+
+        updateFrpPublicUrl() {
+            if (this.frpForm.remotePort) {
+                this.frpForm.publicUrl = `${this.frpPublicDomain}:${this.frpForm.remotePort}`;
+            } else {
+                this.frpForm.publicUrl = '';
+            }
+        },
+
+        buildFrpPublications() {
+            const domain = this.frpPublicDomain || 'example.com';
+            const publications = [];
+            const sessionsById = new Map();
+            (this.frpSessions || []).forEach((s) => sessionsById.set(s.sessionId, s));
+
+            for (const session of this.frpSessions || []) {
+                const proc = (this.frpProcesses || []).find((p) => p.sessionId === session.sessionId);
+                const status = proc?.status || session.status || 'running';
+                const server = this.servers.find(
+                    (s) => (s.launchConfig?.port || s.port || s.serverPort || s.Port) === session.localPort
+                );
+                publications.push({
+                    sessionId: session.sessionId,
+                    serverName: server?.serverName || server?.name || server?.id || session.sessionId,
+                    localPort: session.localPort,
+                    remotePort: session.remotePort,
+                    publicUrl: `${domain}:${session.remotePort}`,
+                    status,
+                });
+            }
+
+            // processes without session record (fallback)
+            for (const proc of this.frpProcesses || []) {
+                if (sessionsById.has(proc.sessionId)) continue;
+                const server = this.servers.find(
+                    (s) => (s.launchConfig?.port || s.port || s.serverPort || s.Port) === proc.localPort
+                );
+                publications.push({
+                    sessionId: proc.sessionId,
+                    serverName: server?.serverName || server?.name || server?.id || proc.sessionId,
+                    localPort: proc.localPort,
+                    remotePort: proc.remotePort,
+                    publicUrl: `${domain}:${proc.remotePort}`,
+                    status: proc.status || 'running',
+                });
+            }
+
+            this.frpPublications = publications;
+        },
+
         async fetchFrpAuthStatus() {
             try {
                 const res = await apiGet(API_ENDPOINTS.frp.authStatus);
@@ -175,6 +247,7 @@ export function createFrpMethods() {
                 } else {
                     await Promise.all([this.fetchFrpMe(), this.fetchFrpSessions(), this.fetchFrpProcesses()]);
                     this.computeFrpWarnings();
+                    this.buildFrpPublications();
                 }
                 this.frpLastUpdated = new Date().toISOString();
             } finally {
@@ -204,12 +277,7 @@ export function createFrpMethods() {
         },
 
         pickMinecraftPort(serverId) {
-            const target = this.servers.find((s) => s.uuid === serverId || s.id === serverId);
-            if (!target) return;
-            const port = target.port || target.serverPort || target.Port || 25565;
-            this.frpForm.remotePort = port;
-            this.frpForm.localPort = port;
-            this.frpForm.selectedServerId = serverId;
+            this.selectFrpServer(serverId);
         },
 
         async createFrpSession() {
@@ -222,32 +290,17 @@ export function createFrpMethods() {
                 const remotePort = Number(this.frpForm.remotePort);
                 const localPort = Number(this.frpForm.localPort);
                 if (!Number.isInteger(remotePort) || !Number.isInteger(localPort)) {
-                    this.showError('ポートは整数で入力してください');
+                    this.showError('ポートが選択されていません');
                     return;
                 }
-                const payload = {
-                    remotePort,
-                    localPort,
-                    displayName: this.frpForm.displayName || undefined
-                };
-                if (this.frpForm.extraMetas) {
-                    try {
-                        const metas = JSON.parse(this.frpForm.extraMetas);
-                        if (metas && typeof metas === 'object') {
-                            payload.extraMetas = metas;
-                        }
-                    } catch (error) {
-                        this.showError('extraMetasはJSON形式で入力してください');
-                        return;
-                    }
-                }
+                const payload = { remotePort, localPort };
                 const res = await apiPost(API_ENDPOINTS.frp.sessions, payload);
                 if (res.ok) {
-                    this.showSuccess('FRPセッションを開始しました');
-                    this.frpForm.displayName = '';
+                    this.showSuccess('公開を開始しました');
                     await this.refreshFrpOverview(true);
+                    this.selectFrpServer(this.frpForm.selectedServerId); // 再度ポートを計算
                 } else {
-                    this.showError(res.error || 'セッション開始に失敗しました');
+                    this.showError(res.error || '公開開始に失敗しました');
                 }
             } catch (error) {
                 this.showError(error.message);
@@ -259,8 +312,30 @@ export function createFrpMethods() {
         async stopFrpSession(sessionId) {
             try {
                 await apiDelete(API_ENDPOINTS.frp.session(sessionId));
-                this.showSuccess('セッションを停止しました');
+                this.showSuccess('公開を停止しました');
                 await this.refreshFrpOverview(true);
+            } catch (error) {
+                this.showError(error.message);
+            }
+        },
+
+        async startFrpPublication(pub) {
+            if (!pub) return;
+            this.frpForm.selectedServerId = this.servers.find((s) => (s.launchConfig?.port || s.port || s.serverPort || s.Port) === pub.localPort)?.uuid || '';
+            this.frpForm.localPort = pub.localPort;
+            this.frpForm.remotePort = pub.remotePort;
+            this.updateFrpPublicUrl();
+            await this.createFrpSession();
+        },
+
+        async deleteFrpPublication(pub) {
+            if (!pub) return;
+            // backendには削除専用APIがないため、停止→UIから除外という扱いにする
+            try {
+                await this.stopFrpSession(pub.sessionId);
+                this.frpSessions = (this.frpSessions || []).filter((s) => s.sessionId !== pub.sessionId);
+                this.frpProcesses = (this.frpProcesses || []).filter((p) => p.sessionId !== pub.sessionId);
+                this.buildFrpPublications();
             } catch (error) {
                 this.showError(error.message);
             }
@@ -283,6 +358,41 @@ export function createFrpMethods() {
             } finally {
                 this.frpLogs.loading = false;
             }
+        },
+
+        openFrpLogModal(sessionId, title) {
+            this.frpLogModal.visible = true;
+            this.frpLogModal.sessionId = sessionId;
+            this.frpLogModal.title = title || sessionId;
+            this.frpLogModal.loading = true;
+            this.frpLogModal.error = '';
+            this.frpLogModal.entries = [];
+            this.fetchFrpLogsForModal(sessionId, this.frpLogModal.lines);
+        },
+
+        async fetchFrpLogsForModal(sessionId, lines) {
+            this.frpLogModal.loading = true;
+            this.frpLogModal.error = '';
+            try {
+                const url = API_ENDPOINTS.frp.logs(sessionId, lines || this.frpLogModal.lines || 200);
+                const res = await apiGet(url);
+                if (res.ok) {
+                    this.frpLogModal.entries = res.data || [];
+                } else {
+                    this.frpLogModal.error = res.error || 'ログ取得に失敗しました';
+                }
+            } catch (error) {
+                this.frpLogModal.error = error.message;
+            } finally {
+                this.frpLogModal.loading = false;
+            }
+        },
+
+        closeFrpLogModal() {
+            this.frpLogModal.visible = false;
+            this.frpLogModal.sessionId = null;
+            this.frpLogModal.entries = [];
+            this.frpLogModal.error = '';
         },
 
         startFrpPolling() {
