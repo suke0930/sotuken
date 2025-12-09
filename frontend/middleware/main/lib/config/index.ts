@@ -52,7 +52,8 @@ function resolvePath(inputPath: string, baseDir: string = path.join(__dirname, '
 // ベースディレクトリの設定
 const BASE_DIR = path.join(__dirname, '..', '..');
 const _USERDATA_DIR = resolvePath(getEnvString('USERDATA_DIR', './userdata'), BASE_DIR);
-const _SSL_CERT_DIR = path.join(_USERDATA_DIR, 'ssl');
+const SSL_CERT_DIR_DEFAULT = path.join(_USERDATA_DIR, 'ssl');
+const _SSL_CERT_DIR = resolvePath(getEnvString('SSL_CERT_DIR', SSL_CERT_DIR_DEFAULT), BASE_DIR);
 const _DEV_SECRET_DIR = resolvePath(getEnvString('DEV_SECRET_DIR', './devsecret'), BASE_DIR);
 
 /**
@@ -68,10 +69,10 @@ function buildAppConfig(): AppConfig {
       enabled: getEnvBoolean('SSL_ENABLED', true),
       commonName: getEnvString('SSL_COMMON_NAME', 'localhost'),
       organization: getEnvString('SSL_ORGANIZATION', 'MCserverManager'),
-      certDir: SSL_CERT_DIR,
-      keyFile: path.join(SSL_CERT_DIR, 'server.key'),
-      certFile: path.join(SSL_CERT_DIR, 'server.cert'),
-      infoFile: path.join(SSL_CERT_DIR, 'cert-info.json'),
+      certDir: _SSL_CERT_DIR,
+      keyFile: path.join(_SSL_CERT_DIR, 'server.key'),
+      certFile: path.join(_SSL_CERT_DIR, 'server.cert'),
+      infoFile: path.join(_SSL_CERT_DIR, 'cert-info.json'),
       validityDays: getEnvNumber('CERT_VALIDITY_DAYS', 365),
       renewalThresholdDays: getEnvNumber('CERT_RENEWAL_THRESHOLD_DAYS', 10),
     },
@@ -215,7 +216,7 @@ export function validateConfig(): { valid: boolean; errors: string[] } {
  */
 export function printConfig(): void {
   const maskedConfig = JSON.parse(JSON.stringify(appConfig));
-  
+
   // センシティブ情報をマスク
   if (maskedConfig.session.secret) {
     maskedConfig.session.secret = maskedConfig.session.secret.substring(0, 10) + '...';
