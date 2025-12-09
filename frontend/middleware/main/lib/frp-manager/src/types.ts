@@ -1,4 +1,4 @@
-import { ChildProcessWithoutNullStreams } from "child_process";
+import { FrpProcessExecutor } from "./FrpProcessExecutor";
 
 export type SupportedPlatform = NodeJS.Platform;
 
@@ -48,7 +48,7 @@ export interface FrpSessionRecord {
 }
 
 export interface ActiveFrpProcess extends FrpSessionRecord {
-  process: ChildProcessWithoutNullStreams;
+  executor: FrpProcessExecutor;
   startedAt: Date;
 }
 

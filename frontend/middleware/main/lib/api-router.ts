@@ -464,11 +464,21 @@ export class FrpManagerRoute {
                 if (!sessionId) {
                     return res.status(400).json({ ok: false, error: 'sessionId is required' });
                 }
+
+                // stopConnectionの完了を待つ
                 await this.frpManager.stopConnection(sessionId);
+
+                // セッション削除を確認
+                const session = this.frpManager.listSessions().find(s => s.sessionId === sessionId);
+                if (session) {
+                    log.warn({ sessionId }, 'Session still exists after stop, force deleting');
+                    await this.frpManager.deleteSession(sessionId);
+                }
+
                 return res.json({ ok: true });
             } catch (error: any) {
                 log.error({ err: error }, 'frp session stop failed');
-                return res.status(400).json({ ok: false, error: error.message });
+                return res.status(500).json({ ok: false, error: error.message });
             }
         });
 

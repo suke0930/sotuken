@@ -1,9 +1,9 @@
 import { EventEmitter } from "events";
 import path from "path";
 import fs from "fs/promises";
-import { spawn } from "child_process";
 import { FrpLogService } from "./FrpLogService";
 import { SessionStore } from "./SessionStore";
+import { FrpProcessExecutor } from "./FrpProcessExecutor";
 import {
   ActiveFrpProcess,
   FrpSessionRecord,
@@ -30,6 +30,7 @@ export class FrpProcessManager extends EventEmitter {
   private configDir: string;
   private frpServerAddr: string;
   private frpServerPort: number;
+  private authzServerUrl: string;
   private processes: Map<string, ActiveFrpProcess> = new Map();
   private logger = createModuleLogger("frp-process");
 
@@ -39,7 +40,8 @@ export class FrpProcessManager extends EventEmitter {
     sessionStore: SessionStore,
     configDir: string,
     frpServerAddr: string,
-    frpServerPort: number
+    frpServerPort: number,
+    authzServerUrl: string = "http://localhost:8080"
   ) {
     super();
     this.binaryManager = binaryManager;
@@ -48,6 +50,7 @@ export class FrpProcessManager extends EventEmitter {
     this.configDir = configDir;
     this.frpServerAddr = frpServerAddr;
     this.frpServerPort = frpServerPort;
+    this.authzServerUrl = authzServerUrl;
   }
 
   async initialize(): Promise<void> {
@@ -63,48 +66,22 @@ export class FrpProcessManager extends EventEmitter {
     const configPath = await this.writeConfig(payload);
     const logStream = this.logService.attachStream(payload.sessionId);
 
-    this.logger.info(
-      {
-        binaryPath,
-        args: ["-c", configPath],
-        sessionId: payload.sessionId,
-      },
-      "Spawning frpc process"
-    );
+    // FrpProcessExecutor を作成
+    const executor = new FrpProcessExecutor();
 
-    const child = spawn(binaryPath, ["-c", configPath]);
-
-    child.stdout.on("data", (chunk) =>
-      logStream.write(`[STDOUT] ${chunk.toString()}`)
-    );
-    child.stderr.on("data", (chunk) =>
-      logStream.write(`[STDERR] ${chunk.toString()}`)
-    );
-
-    child.on("error", (error) => {
-      logStream.write(`[ERROR] ${error.message}\n`);
-      this.emit("error", payload.sessionId, error);
-      const record = this.sessionStore.get(payload.sessionId);
-      if (record) {
-        record.status = "error";
-        record.lastError = error.message;
-        this.sessionStore.upsert(record);
-        this.sessionStore.save().catch(() => {});
-      }
+    // コールバック設定
+    executor.setCallbacks({
+      onStdout: (line: string) => logStream.write(`[STDOUT] ${line}`),
+      onStderr: (line: string) => logStream.write(`[STDERR] ${line}`),
+      onExit: (code: number | null) =>
+        this.handleProcessExit(payload.sessionId, code),
+      onError: (error: Error) =>
+        this.handleProcessError(payload.sessionId, error),
+      onStopTimeout: () => this.handleStopTimeout(payload.sessionId),
     });
 
-    child.on("exit", (code) => {
-      logStream.write(`[EXIT] code=${code}\n`);
-      this.logService.closeStream(payload.sessionId);
-      this.processes.delete(payload.sessionId);
-      const record = this.sessionStore.get(payload.sessionId);
-      if (record) {
-        record.status = "stopped";
-        this.sessionStore.upsert(record);
-        this.sessionStore.save().catch(() => {});
-      }
-      this.emit("exited", payload.sessionId, code);
-    });
+    // プロセス起動
+    await executor.start(binaryPath, configPath);
 
     const session: FrpSessionRecord = {
       sessionId: payload.sessionId,
@@ -112,7 +89,7 @@ export class FrpProcessManager extends EventEmitter {
       displayName: payload.displayName,
       remotePort: payload.remotePort,
       localPort: payload.localPort,
-      status: "starting",
+      status: "running", // PID確認済みなので即座に"running"
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       logPath: this.logService.getLogPath(payload.sessionId),
@@ -121,24 +98,111 @@ export class FrpProcessManager extends EventEmitter {
 
     this.sessionStore.upsert(session);
     await this.sessionStore.save();
+
     this.processes.set(payload.sessionId, {
       ...session,
-      process: child,
+      executor,
       startedAt: new Date(),
     });
+
     this.emit("started", session);
     return session;
   }
 
-  async stopProcess(sessionId: string, signal: NodeJS.Signals = "SIGTERM") {
+  private handleProcessExit(sessionId: string, code: number | null): void {
+    this.logger.info({ sessionId, exitCode: code }, "FRP process exited");
+
+    const session = this.sessionStore.get(sessionId);
+
+    this.logService.closeStream(sessionId);
+    this.processes.delete(sessionId);
+
+    // セッションを完全に削除
+    this.sessionStore.remove(sessionId);
+    this.sessionStore.save().catch(() => {});
+
+    // バックエンドに通知
+    if (session) {
+      this.notifyBackendSessionClose(session).catch(() => {});
+    }
+
+    this.emit("exited", sessionId, code);
+  }
+
+  private async notifyBackendSessionClose(
+    session: FrpSessionRecord
+  ): Promise<void> {
+    try {
+      const response = await fetch(
+        `${this.authzServerUrl}/webhook/sessions/${session.sessionId}/close`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            discordId: session.discordId,
+            remotePort: session.remotePort,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        this.logger.info(
+          { sessionId: session.sessionId },
+          "Notified backend of session close"
+        );
+      } else {
+        this.logger.warn(
+          { sessionId: session.sessionId, status: response.status },
+          "Failed to notify backend of session close (non-OK status)"
+        );
+      }
+    } catch (error: any) {
+      this.logger.warn(
+        { err: error, sessionId: session.sessionId },
+        "Failed to notify backend of session close (will rely on CloseProxy webhook)"
+      );
+      // エラーは無視（CloseProxy webhookにフォールバック）
+    }
+  }
+
+  private handleProcessError(sessionId: string, error: Error): void {
+    this.logger.error({ sessionId, err: error }, "FRP process error");
+
+    this.logService.closeStream(sessionId);
+    this.processes.delete(sessionId);
+
+    // エラー状態のセッションも削除
+    this.sessionStore.remove(sessionId);
+    this.sessionStore.save().catch(() => {});
+
+    this.emit("error", sessionId, error);
+  }
+
+  private handleStopTimeout(sessionId: string): void {
+    this.logger.warn({ sessionId }, "Stop timeout occurred");
+    // 通知のみ（SIGKILL は executor 内で処理される）
+  }
+
+  async stopProcess(
+    sessionId: string,
+    timeout: number = 10000
+  ): Promise<boolean> {
     const proc = this.processes.get(sessionId);
     if (!proc) {
-      return;
+      this.logger.warn({ sessionId }, "Process not found for stop");
+      return true; // 既に停止済み
     }
+
     proc.status = "stopping";
-    this.sessionStore.upsert(proc);
-    await this.sessionStore.save();
-    proc.process.kill(signal);
+    this.logger.info({ sessionId, timeout }, "Stopping FRP process");
+
+    // executor経由で停止（タイムアウト処理込み）
+    const stopped = await proc.executor.stop(timeout);
+
+    // exitハンドラーでクリーンアップされる
+    return stopped;
   }
 
   listProcesses(): ActiveFrpProcess[] {
@@ -163,6 +227,15 @@ server_port = ${this.frpServerPort}
 user = ${payload.discordId}
 meta_token = "${payload.jwt}"
 meta_fingerprint = "${payload.fingerprint}"
+
+# 再接続制御（接続切断時に即座に終了）
+login_fail_exit = true
+reconnect_timeout = -1
+
+# タイムアウト設定
+dial_server_timeout = 10
+heartbeat_interval = 30
+heartbeat_timeout = 90
 
 [[proxies]]
 name = "frp-${payload.remotePort}"

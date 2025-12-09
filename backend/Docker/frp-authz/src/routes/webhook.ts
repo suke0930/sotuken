@@ -312,4 +312,32 @@ function handlePing(res: Response): void {
   } as FrpWebhookResponse);
 }
 
+// ミドルウェアからの手動セッション削除API
+router.post("/sessions/:sessionId/close", async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const { discordId, remotePort } = req.body;
+
+  if (!sessionId || !discordId || !remotePort) {
+    return res.status(400).json({
+      ok: false,
+      error: "sessionId, discordId, and remotePort are required",
+    });
+  }
+
+  // セッション削除
+  const removed = sessionTracker.removeSessionByPort(discordId, remotePort);
+
+  if (removed) {
+    console.log(
+      `✅ Manual close: Session ${sessionId} (Discord: ${discordId}, Port: ${remotePort}) removed`
+    );
+  } else {
+    console.log(
+      `⚠️ Manual close: Session ${sessionId} not found (already removed or never existed)`
+    );
+  }
+
+  return res.json({ ok: true, removed });
+});
+
 export default router;
