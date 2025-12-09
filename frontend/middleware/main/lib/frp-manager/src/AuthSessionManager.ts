@@ -252,11 +252,24 @@ export class AuthSessionManager extends EventEmitter {
     const fingerprint =
       this.lastFingerprint || (await this.ensureFingerprint());
 
-    const response = await this.client.post<AuthTokens>("/api/auth/refresh", {
+    const response = await this.client.post<any>("/api/auth/refresh", {
       refreshToken: this.tokens.refreshToken,
       fingerprint,
     });
-    this.setTokens(response.data);
+
+    const data = response.data || {};
+    const nextTokens: AuthTokens = {
+      jwt: (data as any).jwt || (data as any).accessToken || this.tokens.jwt,
+      refreshToken: (data as any).refreshToken || this.tokens.refreshToken,
+      expiresAt: (data as any).expiresAt || this.tokens.expiresAt,
+      discordUser: this.tokens.discordUser, // refresh APIはuserを返さないため既存を保持
+    };
+
+    if (!nextTokens.jwt) {
+      throw new Error("Failed to refresh tokens: jwt/accessToken missing");
+    }
+
+    this.setTokens(nextTokens);
   }
 
   async fetchUserInfo() {
