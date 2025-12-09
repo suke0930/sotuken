@@ -90,6 +90,13 @@ services:
       - FRP_AUTH_SERVER_URL=http://nginx:80
 ```
 
+### アーキテクチャ: 多対1構成
+
+フロントエンドミドルウェアとバックエンドは**多対1**の関係です：
+- 複数のフロントエンドミドルウェアが1つのバックエンドに接続可能
+- フロントエンドは**接続情報のみ**を保持
+- バックエンドの管理設定（ダッシュボード、内部ポート等）は**バックエンド側で管理**
+
 ### Nginx経由の推奨設定
 
 Nginx経由でバックエンドにアクセスする場合（推奨）：
@@ -99,9 +106,13 @@ Nginx経由でバックエンドにアクセスする場合（推奨）：
 BACKEND_API_URL=http://localhost:8080
 FRP_BINARY_BASE_URL=http://localhost:8080/api/assets/frp
 FRP_AUTH_SERVER_URL=http://localhost:8080
+FRP_SERVER_ADDR=127.0.0.1
+FRP_SERVER_PORT=7000
 ```
 
-この設定により、フロントエンドミドルウェアは全てNginx経由でバックエンドサービスにアクセスします。
+この設定により：
+- API/認証はNginx経由でアクセス
+- FRPクライアントはFRPサーバー（7000番ポート）に直接接続
 
 ## 設定項目一覧
 
@@ -117,13 +128,15 @@ FRP_AUTH_SERVER_URL=http://localhost:8080
 | `BACKEND_API_URL` | `http://localhost:8080` | バックエンドAPIのURL（Nginx経由を推奨） |
 | `BACKEND_API_TIMEOUT` | `300000` | タイムアウト（ミリ秒） |
 
-### FRP設定
+### FRP設定（クライアント側）
 | 環境変数 | 既定値 | 説明 |
 |---------|--------|------|
-| `FRP_BINARY_BASE_URL` | `http://localhost:8080/api/assets/frp` | FRPバイナリのベースURL |
-| `FRP_AUTH_SERVER_URL` | `http://localhost:8080` | FRP認証サーバーURL |
-| `FRP_SERVER_ADDR` | `127.0.0.1` | FRPサーバーアドレス |
-| `FRP_SERVER_PORT` | `7000` | FRPサーバーポート |
+| `FRP_BINARY_BASE_URL` | `http://localhost:8080/api/assets/frp` | FRPバイナリのベースURL（バックエンド経由） |
+| `FRP_AUTH_SERVER_URL` | `http://localhost:8080` | FRP認証サーバーURL（バックエンド） |
+| `FRP_SERVER_ADDR` | `127.0.0.1` | FRPサーバーアドレス（接続先） |
+| `FRP_SERVER_PORT` | `7000` | FRPサーバーポート（接続先） |
+
+**注意**: フロントエンドはFRPクライアントとして動作します。バックエンドの管理設定（ダッシュボード等）はバックエンド側で管理されます。
 
 完全な設定項目リストは `.env.example` を参照してください。
 

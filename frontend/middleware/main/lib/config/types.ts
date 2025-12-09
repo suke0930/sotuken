@@ -61,32 +61,33 @@ export interface BackendApiConfig {
 }
 
 /**
- * FRP設定
+ * FRP設定（フロントエンド/クライアント側）
+ * 
+ * 注意: フロントエンドはFRPクライアントとして動作します
+ * バックエンドの管理設定（ダッシュボードポート等）はバックエンド側で管理されます
  */
 export interface FrpConfig {
-  /** FRPバイナリのダウンロードベースURL */
+  /** FRPバイナリのダウンロードベースURL（バックエンドのAsset Server経由） */
   binaryBaseUrl: string;
-  /** FRP認証サーバーのURL */
+  /** FRP認証サーバーのURL（バックエンド） */
   authServerUrl: string;
-  /** FRPサーバーのアドレス */
+  /** FRPサーバーのアドレス（クライアントとして接続する先） */
   serverAddr: string;
-  /** FRPサーバーのポート */
+  /** FRPサーバーのポート（クライアントとして接続する先） */
   serverPort: number;
-  /** FRPダッシュボードのポート */
-  dashboardPort: number;
-  /** FRPデータディレクトリ */
+  /** FRPクライアントのデータディレクトリ（このフロントエンド環境のローカルストレージ） */
   dataDir: string;
-  /** FRPバイナリのバージョン */
+  /** FRPクライアントバイナリのバージョン */
   binaryVersion: string;
-  /** 揮発性セッション */
+  /** クライアント側のセッション管理: 揮発性セッション */
   volatileSessions: boolean;
-  /** JWT更新間隔（時間） */
+  /** クライアント側のJWT更新間隔（時間） */
   jwtRefreshIntervalHours: number;
-  /** JWT更新マージン（分） */
+  /** クライアント側のJWT更新マージン（分） */
   jwtRefreshMarginMinutes: number;
   /** 認証ポーリング間隔（ミリ秒） */
   authPollIntervalMs: number;
-  /** ログ設定 */
+  /** クライアント側のログ設定 */
   logRetention: {
     /** 最大行数 */
     maxLines: number;

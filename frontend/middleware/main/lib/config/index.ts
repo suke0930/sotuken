@@ -85,11 +85,13 @@ function buildAppConfig(): AppConfig {
       timeout: getEnvNumber('BACKEND_API_TIMEOUT', 300000), // 5分
     },
     frp: {
+      // フロントエンド（クライアント側）の接続情報
       binaryBaseUrl: getEnvString('FRP_BINARY_BASE_URL', 'http://localhost:8080/api/assets/frp'),
       authServerUrl: getEnvString('FRP_AUTH_SERVER_URL', 'http://localhost:8080'),
+      // FRPサーバーへの接続先（クライアントとして接続）
       serverAddr: getEnvString('FRP_SERVER_ADDR', '127.0.0.1'),
       serverPort: getEnvNumber('FRP_SERVER_PORT', 7000),
-      dashboardPort: getEnvNumber('FRP_DASHBOARD_PORT', 7500),
+      // クライアント側のローカル設定
       dataDir: resolvePath(getEnvString('FRP_DATA_DIR', './userdata/frp'), BASE_DIR),
       binaryVersion: getEnvString('FRPC_VERSION', '1.0.0'),
       volatileSessions: getEnvBoolean(
