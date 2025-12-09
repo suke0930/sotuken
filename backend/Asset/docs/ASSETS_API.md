@@ -6,6 +6,7 @@
 
 - [概要](#概要)
 - [エンドポイント](#エンドポイント)
+- [FRP バイナリ配布](#frp-バイナリ配布)
 - [ディレクトリ構造](#ディレクトリ構造)
 - [使用例](#使用例)
 - [セキュリティ](#セキュリティ)
@@ -167,6 +168,91 @@ GET /api/assets/list/servers
   "timestamp": "2025-10-19T16:00:00.000Z"
 }
 ```
+
+---
+
+## FRP バイナリ配布
+GitHub Releases 上の FRP バイナリを指定バージョンで配布します。バージョンは環境変数 `FRP_VERSION`（デフォルト `0.65.0`）で指定されます。
+
+### サポートプラットフォーム
+| platform | arch  | extension | binary 備考 |
+| --- | --- | --- | --- |
+| linux | amd64 / arm64 | tar.gz | `frpc`, `frps` は展開後に `chmod +x` が必要 |
+| darwin | amd64 / arm64 | tar.gz | 同上 |
+| windows | amd64 / arm64 | zip | 展開後 `frpc.exe` / `frps.exe` を `frp_<ver>_<platform>_<arch>/` 配下から取得 |
+
+### FRP バイナリ一覧
+```http
+GET /api/assets/frp/binaries
+```
+
+#### レスポンス
+```json
+{
+  "success": true,
+  "data": {
+    "version": "0.65.0",
+    "binaries": [
+      {
+        "platform": "linux",
+        "arch": "amd64",
+        "downloadUrl": "https://github.com/fatedier/frp/releases/download/v0.65.0/frp_0.65.0_linux_amd64.tar.gz",
+        "clientBinaryName": "frpc",
+        "serverBinaryName": "frps",
+        "archivePath": "frp_0.65.0_linux_amd64"
+      }
+    ],
+    "supportedPlatforms": [
+      { "platform": "linux", "arch": "amd64" }
+    ]
+  },
+  "timestamp": "2025-10-19T16:00:00.000Z"
+}
+```
+
+### FRP クライアントバイナリ URL
+```http
+GET /api/assets/frp/client-binary?platform=linux&arch=amd64
+```
+
+| クエリ | 必須 | 既定値 | 説明 |
+| --- | --- | --- | --- |
+| `platform` | 任意 | `linux` | `linux` / `darwin` / `windows` |
+| `arch` | 任意 | `amd64` | `amd64` / `arm64` |
+
+#### 成功レスポンス例
+```json
+{
+  "success": true,
+  "data": {
+    "downloadUrl": "https://github.com/fatedier/frp/releases/download/v0.65.0/frp_0.65.0_linux_amd64.tar.gz",
+    "version": "0.65.0",
+    "platform": "linux",
+    "arch": "amd64",
+    "binaryName": "frpc",
+    "archivePath": "frp_0.65.0_linux_amd64/frpc",
+    "extension": "tar.gz",
+    "notes": [
+      "Download the archive and extract the frpc binary",
+      "Make sure to set executable permissions (chmod +x frpc on Unix-like systems)"
+    ]
+  }
+}
+```
+
+### FRP サーバーバイナリ URL
+```http
+GET /api/assets/frp/server-binary?platform=linux&arch=amd64
+```
+
+- クエリ、エラー応答はクライアントバイナリと同様。`binaryName` が `frps` になります。
+
+### FRP 情報
+```http
+GET /api/assets/frp/info
+```
+
+配布中の FRP バージョン、サポートプラットフォーム、関連エンドポイントへのリンクを返します。
 
 ---
 
