@@ -174,6 +174,14 @@ GET /api/assets/list/servers
 ## FRP バイナリ配布
 GitHub Releases 上の FRP バイナリを指定バージョンで配布します。バージョンは環境変数 `FRP_VERSION`（デフォルト `0.65.0`）で指定されます。
 
+### エンドポイント一覧
+| HTTP | パス | 役割 |
+| --- | --- | --- |
+| GET | `/api/assets/frp/info` | 配布中バージョンとサポートプラットフォームを返却 |
+| GET | `/api/assets/frp/binaries` | 利用可能なアーカイブのダウンロード情報を一覧で返却 |
+| GET | `/api/assets/frp/client-binary` | `platform` / `arch` で絞り込んだクライアント用バイナリ URL を返却 |
+| GET | `/api/assets/frp/server-binary` | `platform` / `arch` で絞り込んだサーバー用バイナリ URL を返却 |
+
 ### サポートプラットフォーム
 | platform | arch  | extension | binary 備考 |
 | --- | --- | --- | --- |
