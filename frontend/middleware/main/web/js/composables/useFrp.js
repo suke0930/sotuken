@@ -75,7 +75,8 @@ export function createFrpMethods() {
                 const res = await apiPost(API_ENDPOINTS.frp.authRefresh, {});
                 if (res.ok) {
                     this.showSuccess('トークンを更新しました');
-                    await this.refreshFrpOverview();
+                    // expiresAt などをUIに反映させるため、ステータスを再取得
+                    await this.refreshFrpOverview(false);
                 } else {
                     this.showError(res.error || 'トークン更新に失敗しました');
                 }
