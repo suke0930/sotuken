@@ -86,6 +86,8 @@ export function createFrpMethods() {
 
         async logoutFrp() {
             try {
+                const confirmed = window.confirm('Discordリンクを解除しますか？');
+                if (!confirmed) return;
                 await apiPost(API_ENDPOINTS.frp.authLogout, {});
             } catch (error) {
                 console.warn('FRP logout failed', error);
@@ -96,7 +98,6 @@ export function createFrpMethods() {
                 this.frpProcesses = [];
                 this.frpWarnings = [];
                 this.frpAuthInit = null;
-                this.stopFrpPolling();
             }
         },
 

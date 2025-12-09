@@ -249,8 +249,12 @@ export class AuthSessionManager extends EventEmitter {
     if (!this.tokens?.refreshToken) {
       throw new Error("No refresh token available");
     }
+    const fingerprint =
+      this.lastFingerprint || (await this.ensureFingerprint());
+
     const response = await this.client.post<AuthTokens>("/api/auth/refresh", {
       refreshToken: this.tokens.refreshToken,
+      fingerprint,
     });
     this.setTokens(response.data);
   }

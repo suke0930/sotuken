@@ -38,11 +38,7 @@ export const frpManagementTabTemplate = `
                     <button class="btn danger ghost" @click="logoutFrp">リンク解除</button>
                 </div>
                 <div class="auth-actions">
-                    <button class="btn ghost" @click="fetchFrpAuthStatus">認証状態を再取得</button>
-                    <button class="btn ghost" @click="refreshFrpOverview">全体更新</button>
-                    <button class="btn ghost" @click="frpPollEnabled ? stopFrpPolling() : startFrpPolling()">
-                        {{ frpPollEnabled ? 'ポーリング停止' : 'ポーリング開始(1req/s)' }}
-                    </button>
+                    <button class="btn ghost" @click="refreshFrpOverview">状態更新</button>
                 </div>
                 <p class="muted" v-if="frpLastUpdated">最終更新: {{ new Date(frpLastUpdated).toLocaleTimeString() }}</p>
             </div>

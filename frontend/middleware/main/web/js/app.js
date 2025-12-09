@@ -47,6 +47,7 @@ createApp({
         this.connectMCWebSocket();
         // 初回のFRP状態取得
         await this.refreshFrpOverview();
+        this.startFrpPolling();
     },
 
     beforeUnmount() {
