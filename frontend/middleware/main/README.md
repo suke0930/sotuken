@@ -1,158 +1,80 @@
-# Front Driver - Session Management
+# Front Driver (Middleware) 概要
 
-express-sessionを使用したセキュアなセッション管理システムです。
+Front Driver は Express + TypeScript ベースの統合ミドルウェアです。認証済みのユーザーに対して、アセット配布 API のプロキシ、JDK/MC サーバー管理、FRP リモートアクセスの制御を一元化します。
 
-## 🔐 セキュリティ機能
-
-### 実装済みセキュリティ対策
-
-- **express-session**: 堅牢なセッション管理
-- **HTTPOnly Cookie**: XSS攻撃を防ぐCookie設定
-- **SameSite設定**: CSRF攻撃を防ぐ（開発環境: `lax`）
-- **セッション有効期限**: 24時間の自動タイムアウト
-- **セキュリティヘッダー**: 基本的なセキュリティヘッダーを設定
-- **入力検証**: 適切なバリデーション処理
-
-### 本番環境用設定（コメント記載）
-
-以下の設定は現在コメントアウトされていますが、本番環境では有効にしてください：
-
-```typescript
-// 本番環境用設定
-store: new MongoStore({
-    mongoUrl: process.env.MONGODB_URI,
-    touchAfter: 24 * 3600
-}),
-cookie: {
-    secure: true,        // HTTPS必須
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'strict'   // より厳格なCSRF保護
-}
+```mermaid
+graph TD
+  UI[ブラウザ UI] -->|Cookie 認証| MW[Front Driver]
+  MW -->|/api/assets| AS[Asset Server]
+  MW -->|/api/jdk /api/mc| MC[ローカル JDK & MC Server 管理]
+  MW -->|/api/frp| FRP[FRP Manager]
+  MW -->|WebSocket /ws /ws/mcserver| WS[リアルタイム更新]
 ```
 
-## 🚀 使用方法
+## 主要機能
+- **セッション管理**: `express-session` による HTTPOnly/SameSite Cookie 認証。MongoDB ストアにも対応（本番では有効化推奨）。
+- **Asset プロキシ**: `/api/assets/*` でバックエンド配布 API へ転送し、ダウンロードキューと進捗 WebSocket (`/ws`) を提供。
+- **JDK 管理**: `/api/jdk/*` で Temurin バイナリの取得・展開・キャッシュ管理を実行。
+- **Minecraft サーバー管理**: `/api/mc/*` と `/ws/mcserver` でサーバー作成、起動/停止、ログ/状態配信を提供。
+- **FRP 管理**: `/api/frp/*` で FRP バイナリ取得・トンネル設定・JWT リフレッシュを実装（`FRP_BINARY_BASE_URL` と連携）。
+- **サンプル API**: `/api/sample/*` に最小構成の雛形 API を用意。
 
-### 1. 依存関係のインストール
+## セットアップ
+1. **依存関係インストール**
+   ```bash
+   cd frontend/middleware/main
+   npm install
+   ```
+2. **環境変数設定**: `.env` を `frontend/middleware/main` 直下に作成。
+   - 最低限 `BACKEND_API_URL`（アセット配布サーバー）、`SESSION_SECRET` を設定。
+   - HTTPS を有効化する場合は `SSL_ENABLED=true`（デフォルト）と証明書出力先を調整。
+3. **ビルド/起動**
+   ```bash
+   # TypeScript ビルド（任意）
+   npm run build
+   # 開発起動（ts-node）
+   npm run dev
+   # 12800 番ポートで HTTPS/HTTP が立ち上がる
+   ```
 
-```bash
-npm install
+### 主な環境変数
+| 変数 | 役割 | デフォルト |
+| --- | --- | --- |
+| `PORT` | リッスンポート | 12800 |
+| `BACKEND_API_URL` | Asset 配布 API のベース URL | `http://localhost:8080` |
+| `SESSION_SECRET` | セッション暗号鍵 | 自動生成 |
+| `SSL_ENABLED` | 自己署名証明書で HTTPS を有効化 | `true` |
+| `USERDATA_DIR` | ユーザーデータ基底ディレクトリ | `./userdata` |
+| `DOWNLOAD_TEMP_PATH` | ダウンロード一時ディレクトリ | `./temp/download` |
+| `FRP_BINARY_BASE_URL` | FRP バイナリ取得元 | `http://localhost:8080/api/assets/frp` |
+| `FRP_AUTH_SERVER_URL` | FRP 認証サーバー URL | `http://localhost:8080` |
+
+## エンドポイント概要
+- 認証: `POST /user/login`, `GET /user/auth`, `POST /user/logout`
+- アセット: `GET /api/assets/list/servers`, `GET /api/assets/list/jdk`, `GET /api/assets/health`, `GET /api/assets/downloads`
+- ダウンロード: `GET /api/assets/download`（クエリ指定でキュー投入）、`GET /download/:taskId`（詳細は `methodclass/Asset_handler/src/app.ts`）
+- JDK: `/api/jdk/*`（バージョン情報・インストール操作）
+- Minecraft: `/api/mc/*`（作成/起動/停止/ログ取得）、`/ws/mcserver`（状態配信）
+- FRP: `/api/frp/*`（バイナリ配布、クライアント設定、JWT リフレッシュ）
+- サンプル: `/api/sample/public-info` ほか雛形 API
+
+## ディレクトリ構成
+```
+frontend/middleware/main/
+├── index.ts                 # エントリーポイント
+├── lib/                     # 各種マネージャー/ルーター
+│   ├── api-router.ts        # API ルーティング集約
+│   ├── middleware/          # 認証・セキュリティミドルウェア
+│   ├── frp-manager/         # FRP 管理ロジック
+│   ├── jdk-manager/         # JDK 管理ロジック
+│   └── minecraft-server-manager/ # MC サーバー管理
+├── docs/                    # 設計/API ドキュメント
+├── web/                     # ログイン/デモ用静的ページ
+├── .env (手動作成)          # 環境変数定義
+└── package.json             # スクリプト・依存関係
 ```
 
-### 2. TypeScriptのコンパイル
-
-```bash
-npm run build
-```
-
-### 3. サーバー起動
-
-```bash
-npm run dev
-```
-
-または
-
-```bash
-npm start
-```
-
-### 4. アクセス
-
-ブラウザで `http://localhost:12800` にアクセス
-
-## 📁 ファイル構造
-
-```
-frontend/middleware/driver/
-├── index.ts          # メインサーバーファイル
-├── package.json      # 依存関係とスクリプト
-├── tsconfig.json     # TypeScript設定
-├── web/             # 静的ファイル
-│   ├── index.html   # ログインページ
-│   └── demo.html    # 認証必須デモページ
-└── devsecret/       # 開発用データ（自動生成）
-    └── users.json   # 許可されたユーザーリスト
-```
-
-## 🔧 API エンドポイント
-
-### 認証系
-
-- `POST /user/login` - ログイン処理
-- `GET /user/auth` - セッション状態確認  
-- `POST /user/logout` - ログアウト処理
-
-### ページ系
-
-- `GET /` - ログインページ
-- `GET /demo` - 認証必須デモページ（認証ミドルウェア使用）
-- `GET /api/protected` - 認証必須APIの例
-
-### Asset系
-- `GET /api/assets/list/servers` - Minecraft サーバーJarリスト
-- `GET /api/assets/list/jdk` - JDKBinaryリスト
-- `GET /api/assets/health` - Asset Serverのヘルスチェック
-
-### Download系
-- `GET /api/assets/download` - ダウンロード開始
-- `GET /api/assets/downloads` - ダウンロード一覧
-- `/download/:taskId`については`frontend\middleware\main\methodclass\Asset_handler\src\app.ts`を参照
-
-## 💡 主な改善点
-
-### 従来の実装との比較
-
-| 項目 | 従来（独自実装） | 新実装（express-session） |
-|------|-----------------|---------------------------|
-| セッション管理 | JSON ファイル | メモリ（本番はMongoDB） |
-| セキュリティ | 基本的 | HTTPOnly, SameSite, CSRF保護 |
-| セッションID | 手動生成 | express-sessionが自動管理 |
-| Cookie管理 | LocalStorage | HTTPOnly Cookie |
-| 有効期限 | 手動管理 | 自動管理（24時間） |
-| エラーハンドリング | 基本的 | 包括的なエラーハンドリング |
-
-### セキュリティの向上
-
-1. **XSS攻撃対策**: HTTPOnly Cookieでクライアントサイドからのアクセスを防止
-2. **CSRF攻撃対策**: SameSite設定で外部サイトからのリクエストを制限
-3. **セッション固定攻撃対策**: express-sessionの自動セッション再生成
-4. **セッションハイジャック対策**: セキュアなセッション管理
-
-## 🔬 テスト方法
-
-### 1. 基本動作テスト
-
-1. ログインページでDevice IDが自動生成されることを確認
-2. ログインボタンクリックで認証処理が行われることを確認
-3. 認証成功後にデモページへリダイレクトされることを確認
-
-### 2. セッション管理テスト
-
-1. ログアウト後にセッションが無効になることを確認
-2. ブラウザ再起動後もセッションが維持されることを確認（有効期限内）
-3. 直接`/demo`にアクセスして認証チェックが機能することを確認
-
-### 3. セキュリティテスト
-
-1. 開発者ツールでCookieがHTTPOnlyに設定されていることを確認
-2. JavaScriptからセッション情報にアクセスできないことを確認
-3. 保護されたAPIが認証なしでアクセスできないことを確認
-
-## 🌟 今後の拡張予定
-
-- [ ] MongoDB セッションストアの実装
-- [ ] レート制限の実装
-- [ ] 2要素認証の対応
-- [ ] セッション分析・監視機能
-- [ ] ロードバランサー対応
-
-## ⚠️ 注意事項
-
-- 現在は**開発環境用**の設定です
-- 本番環境では必ず以下を実施してください：
-  - HTTPS の使用
-  - セッションストアをMongoDBに変更
-  - セキュリティヘッダーの強化
-  - 環境変数での設定管理
-  - ログ・監視システムの導入
+## 運用メモ
+- 本番は **HTTPS + MongoDB セッションストア + 強化ヘッダー** を必須化してください。
+- FRP クライアントは `userdata/frp` 以下に状態・ログを保存します。`FRP_*` 環境変数で公開ドメインやサーバー接続先を合わせてください。
+- WebSocket (`/ws`, `/ws/mcserver`) を利用するフロントエンドは同一オリジンでアクセスすることを想定しています。
