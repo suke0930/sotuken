@@ -1,13 +1,14 @@
+/**
+ * FRP Manager設定
+ * 
+ * 統合設定システム (lib/config) から設定を取得します。
+ * 既存コードとの互換性を保ちながら、段階的な移行を可能にします。
+ */
+
 import path from "path";
 import os from "os";
 import { BinaryDownloadTarget, FrpManagerConfig } from "./types";
-
-function resolveDataDir(): string {
-  if (process.env.FRP_DATA_DIR) {
-    return path.resolve(process.env.FRP_DATA_DIR);
-  }
-  return path.join(process.cwd(), "userdata", "frp");
-}
+import { appConfig } from "../../config";
 
 function resolveDownloadTargets(baseUrl: string): BinaryDownloadTarget[] {
   const targets: BinaryDownloadTarget[] = [];
@@ -63,50 +64,37 @@ function resolveDownloadTargets(baseUrl: string): BinaryDownloadTarget[] {
   return targets;
 }
 
+/**
+ * FRP Manager設定を読み込み
+ * 統合設定システムから値を取得します
+ */
 export function loadFrpManagerConfig(): FrpManagerConfig {
-  const dataDir = resolveDataDir();
+  // 統合設定システムからFRP設定を取得
+  const frpConfig = appConfig.frp;
+  
+  const dataDir = frpConfig.dataDir;
   const binaryDir = path.join(dataDir, "bin");
   const configDir = path.join(dataDir, "configs");
   const logsDir = path.join(dataDir, "logs");
   const fingerprintFile = path.join(dataDir, "fingerprint.txt");
-  const volatileSessions =
-    process.env.FRP_VOLATILE_SESSIONS === "true"
-      ? true
-      : process.env.FRP_VOLATILE_SESSIONS === "false"
-      ? false
-      : process.env.NODE_ENV === "test"
-      ? false
-      : true;
-
-  const baseAssetUrl =
-    process.env.FRP_BINARY_BASE_URL || "http://localhost:8080/api/assets/frp";
 
   return {
-    authServerUrl:
-      process.env.FRP_AUTH_SERVER_URL || "http://localhost:8080",
-    frpServerAddr: process.env.FRP_SERVER_ADDR || "127.0.0.1",
-    frpServerPort: Number(process.env.FRP_SERVER_PORT || 7000),
-    jwtRefreshIntervalHours: Number(
-      process.env.FRP_JWT_REFRESH_INTERVAL_HOURS || 6
-    ),
-    jwtRefreshMarginMinutes: Number(
-      process.env.FRP_JWT_REFRESH_MARGIN_MINUTES || 5
-    ),
-    authPollIntervalMs: Number(process.env.FRP_AUTH_POLL_INTERVAL_MS || 1000),
+    authServerUrl: frpConfig.authServerUrl,
+    frpServerAddr: frpConfig.serverAddr,
+    frpServerPort: frpConfig.serverPort,
+    jwtRefreshIntervalHours: frpConfig.jwtRefreshIntervalHours,
+    jwtRefreshMarginMinutes: frpConfig.jwtRefreshMarginMinutes,
+    authPollIntervalMs: frpConfig.authPollIntervalMs,
     dataDir,
     binaryDir,
     configDir,
     logsDir,
     sessionsFile: path.join(dataDir, "sessions.json"),
     fingerprintFile,
-    volatileSessions,
-    binaryVersion: process.env.FRPC_VERSION || "1.0.0",
-    downloadTargets: resolveDownloadTargets(baseAssetUrl),
-    logRetention: {
-      maxLines: Number(process.env.FRP_LOG_MAX_LINES || 400),
-      maxBytes: Number(process.env.FRP_LOG_MAX_BYTES || 5 * 1024 * 1024),
-      rotateLimit: Number(process.env.FRP_LOG_ROTATE_LIMIT || 5),
-    },
+    volatileSessions: frpConfig.volatileSessions,
+    binaryVersion: frpConfig.binaryVersion,
+    downloadTargets: resolveDownloadTargets(frpConfig.binaryBaseUrl),
+    logRetention: frpConfig.logRetention,
   };
 }
 
