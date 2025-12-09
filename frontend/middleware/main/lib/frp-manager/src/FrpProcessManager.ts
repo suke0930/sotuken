@@ -117,13 +117,17 @@ export class FrpProcessManager extends EventEmitter {
     this.logService.closeStream(sessionId);
     this.processes.delete(sessionId);
 
-    // セッションを完全に削除
-    this.sessionStore.remove(sessionId);
-    this.sessionStore.save().catch(() => {});
+    // セッションを保持し、状態をstoppedに更新（異常終了時のデバッグ用）
+    if (session) {
+      session.status = "stopped";
+      session.updatedAt = new Date().toISOString();
+      this.sessionStore.upsert(session);
+      this.sessionStore.save().catch(() => { });
+    }
 
     // バックエンドに通知
     if (session) {
-      this.notifyBackendSessionClose(session).catch(() => {});
+      this.notifyBackendSessionClose(session).catch(() => { });
     }
 
     this.emit("exited", sessionId, code);
@@ -173,9 +177,15 @@ export class FrpProcessManager extends EventEmitter {
     this.logService.closeStream(sessionId);
     this.processes.delete(sessionId);
 
-    // エラー状態のセッションも削除
-    this.sessionStore.remove(sessionId);
-    this.sessionStore.save().catch(() => {});
+    // エラー状態のセッションを保持し、lastErrorを付与
+    const session = this.sessionStore.get(sessionId);
+    if (session) {
+      session.status = "error";
+      session.lastError = error.message;
+      session.updatedAt = new Date().toISOString();
+      this.sessionStore.upsert(session);
+      this.sessionStore.save().catch(() => { });
+    }
 
     this.emit("error", sessionId, error);
   }
@@ -219,40 +229,46 @@ export class FrpProcessManager extends EventEmitter {
   }
 
   private generateConfig(payload: StartFrpProcessPayload): string {
-    const metaLines = this.serializeMetas(payload.extraMetas);
-    return `
-[common]
-server_addr = ${this.frpServerAddr}
-server_port = ${this.frpServerPort}
-user = ${payload.discordId}
-meta_token = "${payload.jwt}"
-meta_fingerprint = "${payload.fingerprint}"
+    const metadatas = this.serializeMetas({
+      user: payload.discordId,
+      token: payload.jwt,
+      fingerprint: payload.fingerprint,
+      ...(payload.extraMetas || {}),
+    });
 
-# 再接続制御（接続切断時に即座に終了）
-login_fail_exit = true
-reconnect_timeout = -1
+    return `
+# サーバー接続設定
+serverAddr = "${this.frpServerAddr}"
+serverPort = ${this.frpServerPort}
+
+# 再接続制御（接続失敗時に即座に終了）
+loginFailExit = true
 
 # タイムアウト設定
-dial_server_timeout = 10
-heartbeat_interval = 30
-heartbeat_timeout = 90
+transport.dialServerTimeout = 10
+transport.heartbeatInterval = 30
+transport.heartbeatTimeout = 90
 
+# カスタムメタデータ（サーバーに渡される追加情報）
+[metadatas]
+${metadatas}
+
+# プロキシ設定
 [[proxies]]
-name = "frp-${payload.remotePort}"
+name = "frp-${payload.sessionId}"
 type = "tcp"
-local_ip = "127.0.0.1"
-local_port = ${payload.localPort}
-remote_port = ${payload.remotePort}
-${metaLines ? `${metaLines}` : ""}
+localIP = "127.0.0.1"
+localPort = ${payload.localPort}
+remotePort = ${payload.remotePort}
     `.trim();
   }
 
   private serializeMetas(metas?: Record<string, string>): string {
-    if (!metas) {
+    if (!metas || Object.keys(metas).length === 0) {
       return "";
     }
     return Object.entries(metas)
-      .map(([key, value]) => `meta_${key} = "${value}"`)
+      .map(([key, value]) => `${key} = "${value}"`)
       .join("\n");
   }
 }

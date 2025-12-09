@@ -205,7 +205,8 @@ export function createFrpMethods() {
             try {
                 const res = await apiGet(API_ENDPOINTS.frp.sessions);
                 if (res.ok) {
-                    this.frpSessions = res.data || [];
+                    // Filter out "stopped" sessions to prevent them from appearing in UI
+                    this.frpSessions = (res.data || []).filter(s => s.status !== 'stopped');
                 } else {
                     this.showError(res.error || 'セッション取得に失敗しました');
                 }

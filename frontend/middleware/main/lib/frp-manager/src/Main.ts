@@ -85,9 +85,11 @@ export class FrpManagerAPP {
               sessionId: session.sessionId,
               remotePort: session.remotePort,
             },
-            "Removing ghost session not found in backend"
+            "Sync: backendに存在しないためstoppedで保持"
           );
-          this.sessionStore.remove(session.sessionId);
+          session.status = "stopped";
+          session.updatedAt = new Date().toISOString();
+          this.sessionStore.upsert(session);
           removedCount++;
         }
       }
@@ -96,7 +98,7 @@ export class FrpManagerAPP {
         await this.sessionStore.save();
         this.logger.info(
           { removedCount },
-          "Synced with backend, removed ghost sessions"
+          "Synced with backend, marked ghost sessions as stopped"
         );
       } else {
         this.logger.info("Synced with backend, no ghost sessions found");
@@ -128,27 +130,29 @@ export class FrpManagerAPP {
     const activeProcesses = this.processManager.listProcesses();
     const processIds = new Set(activeProcesses.map((p) => p.sessionId));
 
-    let removedCount = 0;
+    let updatedCount = 0;
 
-    // プロセスが存在しないセッションを削除
+    // プロセスが存在しないセッションは削除せず stopped にする
     for (const session of localSessions) {
       const hasProcess = processIds.has(session.sessionId);
 
       if (!hasProcess) {
         this.logger.warn(
           { sessionId: session.sessionId, remotePort: session.remotePort },
-          "Health check: Removing session without active process"
+          "Health check: Marking session without active process as stopped"
         );
-        this.sessionStore.remove(session.sessionId);
-        removedCount++;
+        session.status = "stopped";
+        session.updatedAt = new Date().toISOString();
+        this.sessionStore.upsert(session);
+        updatedCount++;
       }
     }
 
-    if (removedCount > 0) {
+    if (updatedCount > 0) {
       await this.sessionStore.save();
       this.logger.info(
-        { removedCount },
-        "Health check: Removed ghost sessions"
+        { updatedCount },
+        "Health check: Marked ghost sessions as stopped"
       );
     } else {
       this.logger.debug("Health check: No issues found");
