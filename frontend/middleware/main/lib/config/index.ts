@@ -92,6 +92,7 @@ function buildAppConfig(): AppConfig {
       // FRPサーバーへの接続先（クライアントとして接続）
       serverAddr: getEnvString('FRP_SERVER_ADDR', '127.0.0.1'),
       serverPort: getEnvNumber('FRP_SERVER_PORT', 7000),
+      publicDomain: getEnvString('FRP_PUBLIC_DOMAIN', 'example.com'),
       // クライアント側のローカル設定
       dataDir: resolvePath(getEnvString('FRP_DATA_DIR', './userdata/frp'), BASE_DIR),
       binaryVersion: getEnvString('FRPC_VERSION', '1.0.0'),

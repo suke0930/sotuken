@@ -75,7 +75,7 @@ export interface FrpConfig {
   serverAddr: string;
   /** FRPサーバーのポート（クライアントとして接続する先） */
   serverPort: number;
-  /** FRPクライアントのデータディレクトリ（このフロントエンド環境のローカルストレージ） */
+  /** FRPクライアントのデータディレクトリ（ふぃｇのフロントエンド環境のローカルストレージ） */
   dataDir: string;
   /** FRPクライアントバイナリのバージョン */
   binaryVersion: string;
@@ -96,6 +96,8 @@ export interface FrpConfig {
     /** ローテーション制限 */
     rotateLimit: number;
   };
+  /** 公開ドメイン */
+  publicDomain: string;
 }
 
 /**
