@@ -8,10 +8,21 @@ import { ServerSchema } from "../types/server.types";
 const execAsync = promisify(exec);
 
 function getBaseUrl(): string {
-  const port = Number(process.env.PORT) || 3000;
-  const host = process.env.HOST || "localhost";
-  const protocol = process.env.PROTOCOL || "http";
-  return (process.env.BASE_URL || `${protocol}://${host}:${port}`).replace(/\/$/, "");
+  const baseUrlFromEnv =
+    process.env.ASSET_BASE_URL ||
+    process.env.PUBLIC_BASE_URL ||
+    process.env.EXTERNAL_BASE_URL ||
+    process.env.BASE_URL;
+
+  if (baseUrlFromEnv) {
+    return baseUrlFromEnv.replace(/\/$/, "");
+  }
+
+  const port = Number(process.env.ASSET_PORT || process.env.PORT) || 3000;
+  const host = process.env.ASSET_HOST || process.env.HOST || "localhost";
+  const protocol = process.env.ASSET_PROTOCOL || process.env.PROTOCOL || "http";
+
+  return `${protocol}://${host}:${port}`.replace(/\/$/, "");
 }
 
 /**
