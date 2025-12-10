@@ -1,3 +1,4 @@
+# Important!!---このREADMEには嘘が多く含まれています---!!!important
 # Minecraft Server Manager - ユーザーガイド
 
 Minecraftサーバーの管理を簡単かつ直感的に行える統合サーバー管理システムです。ブラウザ上でサーバーの作成・起動・停止・監視といった一連の操作を完結できます。
