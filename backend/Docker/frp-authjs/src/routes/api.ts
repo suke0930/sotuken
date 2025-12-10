@@ -10,6 +10,15 @@ import axios from "axios";
 
 const router = express.Router();
 
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * GET /api/health
  */
@@ -141,10 +150,29 @@ router.get("/auth/callback", async (req: Request, res: Response) => {
   }
 
   try {
+    // Validate OAuth2 state (CSRF protection, one-time use)
+    const isValidState = discordOAuth2Service.validateState(state);
+    if (!isValidState) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>Invalid State</title></head>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+          <h1>❌ Invalid State</h1>
+          <p>Invalid or expired authentication session.</p>
+        </body>
+        </html>
+      `);
+    }
+
     // Find pending auth by state
     const pendingAuth = pendingAuthManager.getByState(state);
 
-    if (!pendingAuth) {
+    if (
+      !pendingAuth ||
+      pendingAuth.status === "expired" ||
+      pendingAuth.expiresAt.getTime() < Date.now()
+    ) {
       return res.status(400).send(`
         <!DOCTYPE html>
         <html>
@@ -187,6 +215,7 @@ router.get("/auth/callback", async (req: Request, res: Response) => {
     });
 
     // Return success page
+    const safeUsername = escapeHtml(discordUser.username);
     return res.send(`
       <!DOCTYPE html>
       <html>
@@ -217,7 +246,7 @@ router.get("/auth/callback", async (req: Request, res: Response) => {
         <div class="container">
           <div class="success-icon">✅</div>
           <h1>Authentication Successful!</h1>
-          <p>Welcome, <strong>${discordUser.username}</strong>!</p>
+          <p>Welcome, <strong>${safeUsername}</strong>!</p>
           <p>You can now close this window and return to your application.</p>
         </div>
       </body>
@@ -225,13 +254,16 @@ router.get("/auth/callback", async (req: Request, res: Response) => {
     `);
   } catch (error: any) {
     console.error("Error in /api/auth/callback:", error);
+    const safeErrorMessage = escapeHtml(
+      typeof error?.message === "string" ? error.message : "An unexpected error occurred"
+    );
     return res.status(500).send(`
       <!DOCTYPE html>
       <html>
       <head><title>Authentication Failed</title></head>
       <body style="font-family: sans-serif; text-align: center; padding: 50px;">
         <h1>❌ Authentication Failed</h1>
-        <p>${error.message}</p>
+        <p>${safeErrorMessage}</p>
       </body>
       </html>
     `);
