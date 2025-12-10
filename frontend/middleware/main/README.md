@@ -1,158 +1,72 @@
-# Front Driver - Session Management
+# Front Driver Middleware
 
-express-sessionを使用したセキュアなセッション管理システムです。
+Minecraft サーバー管理用のフロントエンド UI とバックエンド Asset/FRP/ログ API をつなぐ Express 5 + TypeScript 製ミドルウェアです。セッション認証、アセット配信、JDK/サーバー管理、FRP トンネル管理、各種 WebSocket 通知を 1 つのプロセスで提供します。
 
-## 🔐 セキュリティ機能
+## ここでできること
+- シングルユーザー向けセッション認証（`devsecret/users.json` にハッシュ保存）
+- Asset Server 経由の Jar/JDK ダウンロードと進捗 WebSocket (`/ws`)
+- JDK 管理（インストール/一覧/削除）と MC サーバー作成・起動・停止・ログ取得 (`/api/jdk`, `/api/mc`)
+- サーバー更新・バックアップなどの管理 UI を配信 (`/web/*`)
+- FRP クライアントの認証・セッション起動・ログ取得 (`/api/frp`, `/ws/mcserver`)
+- SSL 自動生成/更新（自己署名、`userdata/ssl`）、Pino による構造化ログ
 
-### 実装済みセキュリティ対策
+## 必要要件
+- Node.js 20 以上（`ts-node` 実行を想定）
+- バックエンド Asset/FRP サーバー（`BACKEND_API_URL` が指す先）  
+  ※ Docker/Nginx 経由の多対1構成が前提。詳細は `.env.example` と `CONFIG_MIGRATION_GUIDE.md` を参照。
 
-- **express-session**: 堅牢なセッション管理
-- **HTTPOnly Cookie**: XSS攻撃を防ぐCookie設定
-- **SameSite設定**: CSRF攻撃を防ぐ（開発環境: `lax`）
-- **セッション有効期限**: 24時間の自動タイムアウト
-- **セキュリティヘッダー**: 基本的なセキュリティヘッダーを設定
-- **入力検証**: 適切なバリデーション処理
-
-### 本番環境用設定（コメント記載）
-
-以下の設定は現在コメントアウトされていますが、本番環境では有効にしてください：
-
-```typescript
-// 本番環境用設定
-store: new MongoStore({
-    mongoUrl: process.env.MONGODB_URI,
-    touchAfter: 24 * 3600
-}),
-cookie: {
-    secure: true,        // HTTPS必須
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'strict'   // より厳格なCSRF保護
-}
-```
-
-## 🚀 使用方法
-
-### 1. 依存関係のインストール
-
+## クイックスタート
 ```bash
+cd frontend/middleware/main
+cp .env.example .env   # 必要に応じてポートやバックエンド URL を編集
 npm install
+npm run dev            # または npm start
 ```
+- 既定ポートは `.env` の `PORT`（デフォルト 12800）。SSL 有効時は `https://localhost:<PORT>/` で UI にアクセス。
+- ユーザーが未登録の場合、最初のログイン時に `/user/signup` が呼ばれ `devsecret/users.json` に作成されます。
 
-### 2. TypeScriptのコンパイル
+## 主要設定（抜粋）
+- ポート/モード: `PORT`, `NODE_ENV`
+- バックエンド接続: `BACKEND_API_URL`, `BACKEND_API_TIMEOUT`
+- FRP クライアント: `FRP_BINARY_BASE_URL`, `FRP_AUTH_SERVER_URL`, `FRP_SERVER_ADDR`, `FRP_SERVER_PORT`, `FRP_DATA_DIR`
+- ストレージ: `USERDATA_DIR`, `DEV_SECRET_DIR`, `DOWNLOAD_TEMP_PATH`, `JDK_DATA_DIR`, `MC_DATA_DIR`
+- SSL: `SSL_ENABLED`, `SSL_COMMON_NAME`, `CERT_VALIDITY_DAYS`, `CERT_RENEWAL_THRESHOLD_DAYS`
+- セッション: `SESSION_SECRET`（未設定なら起動毎に自動生成）、`SESSION_NAME`, `SESSION_MAX_AGE`
+完全な一覧は `.env.example` を参照。`DEBUG_CONFIG=true npm run dev` で読み込まれた設定を確認できます。
 
-```bash
-npm run build
-```
+## ディレクトリ概要
+- `index.ts` — エントリーポイント。設定検証 → SSL セットアップ → ミドルウェア/ルーター登録 → サーバー起動。
+- `lib/config` — 環境変数ベースの統合設定と検証。
+- `lib/middleware-manager.ts` — 共通ミドルウェア（JSON, Cookie, セッション, セキュリティヘッダー, 静的配信）。
+- `lib/api-router.ts` — 認証・Asset プロキシ・JDK/MC/FRP API・WebSocket のルーティング定義。
+- `lib/jdk-manager` — JDK エントリ管理とダウンロード。
+- `lib/minecraft-server-manager` — サーバー作成/起動/停止/コマンド/ログ/プロパティ管理と `/ws/mcserver` 配信。
+- `lib/Asset_handler` — バックエンド Asset Server 経由のダウンロード API と `/ws` での進捗通知。
+- `lib/frp-manager` — FRP 認証フロー（Discord OAuth 経由）と frpc プロセス/ログ/セッション管理。
+- `web/` — 管理 UI（サーバー一覧・更新モーダル等のフロントエンド）。
+- `devsecret/` — シングルユーザー用の資格情報 (`users.json`) とサーバー定義 (`servers.json`)。起動時に自動生成。
+- `userdata/` — JDK/MC/FRP/SSL の実データ。存在しなければ起動時に作成。
+- `temp/download/` — ダウンロード一時保存先。
 
-### 3. サーバー起動
+## 提供エンドポイント（抜粋）
+- 認証: `POST /user/signup`, `POST /user/login`, `GET /user/auth`, `POST /user/logout`
+- サンプル: `GET /api/sample/public-info`, `GET /api/sample/private-data`
+- Asset プロキシ: `/api/assets/*`（Jar/JDK/FRP バイナリ取得、ダウンロード一覧など）
+- JDK 管理: `GET /api/jdk/installlist`, `GET /api/jdk/getbyid/:id`, `GET /api/jdk/getbyverison/:verison`, `POST /api/jdk/add`, `DELETE /api/jdk/removeJDK/:id`
+- Minecraft 管理: `GET /api/mc/list`, `POST /api/mc/add`, `DELETE /api/mc/remove/:id`, `GET /api/mc/run|stop/:id`, `POST /api/mc/command/:id`, `PUT /api/mc/update/:id`, `GET /api/mc/logs/:id`, `DELETE /api/mc/logs/:id`, `GET/POST /api/mc/Properties/:id`（旧 `/Propites/*` も後方互換で提供）
+- FRP 管理: `/api/frp/auth/*`, `/api/frp/sessions`, `/api/frp/processes`, `/api/frp/logs/:sessionId`, `/api/frp/me`（詳細は `docs/FRP_MANAGER_API.md`）
+- WebSocket: `/ws`（ダウンロード進捗）, `/ws/mcserver`（MC サーバーの標準出力/イベント）
 
-```bash
-npm run dev
-```
+## スクリプト
+- `npm run dev` / `npm start` — ts-node でサーバー起動
+- `npm run build` — TypeScript のビルド（出力先: `dist/`）
+- `npm test` — FRP 関連のテスト実行（`tsconfig.frp-tests.json` でビルド後、`temp/frp-tests` の Node.js テストを実行）
 
-または
+## 追加ドキュメント
+- 設定移行と .env 説明: `CONFIG_MIGRATION_GUIDE.md`
+- サーバー更新機能ガイド: `QUICK_START_UPDATE_FEATURE.md`, `SERVER_UPDATE_IMPLEMENTATION.md`
+- FRP API 詳細: `docs/FRP_MANAGER_API.md`
+- WebSocket 認証: `docs/WEBSOCKET_AUTH.md`
+- SSL 実装メモ: `docs/SSL_IMPLEMENTATION.md`
 
-```bash
-npm start
-```
-
-### 4. アクセス
-
-ブラウザで `http://localhost:12800` にアクセス
-
-## 📁 ファイル構造
-
-```
-frontend/middleware/driver/
-├── index.ts          # メインサーバーファイル
-├── package.json      # 依存関係とスクリプト
-├── tsconfig.json     # TypeScript設定
-├── web/             # 静的ファイル
-│   ├── index.html   # ログインページ
-│   └── demo.html    # 認証必須デモページ
-└── devsecret/       # 開発用データ（自動生成）
-    └── users.json   # 許可されたユーザーリスト
-```
-
-## 🔧 API エンドポイント
-
-### 認証系
-
-- `POST /user/login` - ログイン処理
-- `GET /user/auth` - セッション状態確認  
-- `POST /user/logout` - ログアウト処理
-
-### ページ系
-
-- `GET /` - ログインページ
-- `GET /demo` - 認証必須デモページ（認証ミドルウェア使用）
-- `GET /api/protected` - 認証必須APIの例
-
-### Asset系
-- `GET /api/assets/list/servers` - Minecraft サーバーJarリスト
-- `GET /api/assets/list/jdk` - JDKBinaryリスト
-- `GET /api/assets/health` - Asset Serverのヘルスチェック
-
-### Download系
-- `GET /api/assets/download` - ダウンロード開始
-- `GET /api/assets/downloads` - ダウンロード一覧
-- `/download/:taskId`については`frontend\middleware\main\methodclass\Asset_handler\src\app.ts`を参照
-
-## 💡 主な改善点
-
-### 従来の実装との比較
-
-| 項目 | 従来（独自実装） | 新実装（express-session） |
-|------|-----------------|---------------------------|
-| セッション管理 | JSON ファイル | メモリ（本番はMongoDB） |
-| セキュリティ | 基本的 | HTTPOnly, SameSite, CSRF保護 |
-| セッションID | 手動生成 | express-sessionが自動管理 |
-| Cookie管理 | LocalStorage | HTTPOnly Cookie |
-| 有効期限 | 手動管理 | 自動管理（24時間） |
-| エラーハンドリング | 基本的 | 包括的なエラーハンドリング |
-
-### セキュリティの向上
-
-1. **XSS攻撃対策**: HTTPOnly Cookieでクライアントサイドからのアクセスを防止
-2. **CSRF攻撃対策**: SameSite設定で外部サイトからのリクエストを制限
-3. **セッション固定攻撃対策**: express-sessionの自動セッション再生成
-4. **セッションハイジャック対策**: セキュアなセッション管理
-
-## 🔬 テスト方法
-
-### 1. 基本動作テスト
-
-1. ログインページでDevice IDが自動生成されることを確認
-2. ログインボタンクリックで認証処理が行われることを確認
-3. 認証成功後にデモページへリダイレクトされることを確認
-
-### 2. セッション管理テスト
-
-1. ログアウト後にセッションが無効になることを確認
-2. ブラウザ再起動後もセッションが維持されることを確認（有効期限内）
-3. 直接`/demo`にアクセスして認証チェックが機能することを確認
-
-### 3. セキュリティテスト
-
-1. 開発者ツールでCookieがHTTPOnlyに設定されていることを確認
-2. JavaScriptからセッション情報にアクセスできないことを確認
-3. 保護されたAPIが認証なしでアクセスできないことを確認
-
-## 🌟 今後の拡張予定
-
-- [ ] MongoDB セッションストアの実装
-- [ ] レート制限の実装
-- [ ] 2要素認証の対応
-- [ ] セッション分析・監視機能
-- [ ] ロードバランサー対応
-
-## ⚠️ 注意事項
-
-- 現在は**開発環境用**の設定です
-- 本番環境では必ず以下を実施してください：
-  - HTTPS の使用
-  - セッションストアをMongoDBに変更
-  - セキュリティヘッダーの強化
-  - 環境変数での設定管理
-  - ログ・監視システムの導入
+変更や運用時の詳細は上記ドキュメントと `.env.example` を併せて確認してください。

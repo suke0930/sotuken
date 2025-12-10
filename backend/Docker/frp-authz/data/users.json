@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "discordId": "example-discord-id-123",
+      "allowedPorts": [
+        25565,
+        22,
+        3000,
+        8080
+      ],
+      "maxSessions": 3,
+      "createdAt": "2025-12-01T05:08:53.314Z",
+      "updatedAt": "2025-12-01T05:08:53.314Z"
+    }
+  ]
+}

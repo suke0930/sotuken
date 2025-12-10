@@ -27,7 +27,8 @@ export function createStore() {
                     { id: 'servers', label: 'サーバー一覧', icon: 'fas fa-server' },
                     { id: 'create', label: '新規作成', icon: 'fas fa-plus-circle' },
                     { id: 'settings', label: 'システム設定', icon: 'fas fa-cogs' },
-                    { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' }
+                    { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' },
+                    { id: 'frp', label: 'FRP管理', icon: 'fas fa-network-wired' }
                 ],
                 sidebarMenu: [
                     { id: 'servers', label: 'サーバー一覧', icon: 'fas fa-server' },
@@ -35,6 +36,7 @@ export function createStore() {
                     { id: 'jdk-management', label: 'JDK管理', icon: 'fas fa-coffee' },
                     { id: 'settings', label: 'システム設定', icon: 'fas fa-cogs' },
                     { id: 'downloads', label: 'ダウンロード管理', icon: 'fas fa-cloud-download-alt' },
+                    { id: 'frp', label: 'FRP管理', icon: 'fas fa-network-wired' },
                     { id: 'about', label: 'About Us', icon: 'fas fa-info-circle' },
                     { id: 'tutorials', label: 'Tutorials', icon: 'fas fa-book' }
                 ],
@@ -188,7 +190,57 @@ export function createStore() {
 
                 // Content Pages (markdown)
                 aboutUsRendered: '',
-                tutorialsRendered: ''
+                tutorialsRendered: '',
+
+                // FRP Manager
+                frpAuthStatus: { linked: false, state: 'idle' },
+                frpAuthInit: {
+                    authUrl: null,
+                    tempToken: null,
+                    loading: false,
+                    lastAttempt: null,
+                    cooldown: 5000  // 5秒のクールダウン
+                },
+                frpAuthLoading: false,
+                frpAuthError: '',
+                frpMe: null,
+                frpSessions: [],
+                frpProcesses: [],
+                frpWarnings: [],
+                frpForm: {
+                    selectedServerId: '',
+                    localPort: '',
+                    remotePort: '',
+                    publicUrl: ''
+                },
+                frpPublications: [],
+                frpFormValidation: {
+                    remotePort: { valid: true, error: '' },
+                    localPort: { valid: true, error: '' }
+                },
+                frpLogs: {
+                    sessionId: null,
+                    entries: [],
+                    loading: false,
+                    error: '',
+                    lines: 200
+                },
+                frpLogModal: {
+                    visible: false,
+                    sessionId: null,
+                    title: '',
+                    lines: 200,
+                    entries: [],
+                    loading: false,
+                    error: ''
+                },
+                frpPublicDomain: (window.__FRP_PUBLIC_DOMAIN || 'example.com'),
+                frpLoadingOverview: false,
+                frpCreatingSession: false,
+                frpPollTimer: null,
+                frpPollEnabled: false,
+                frpLastUpdated: null,
+                frpStopIntents: new Set()
             };
         },
 
@@ -316,6 +368,18 @@ export function createStore() {
                 
                 // Convert map to sorted array
                 return Array.from(linesMap.values()).sort((a, b) => a.lineNumber - b.lineNumber);
+            },
+
+            // FRP認証のクールダウンチェック
+            isAuthCooldown() {
+                if (!this.frpAuthInit.lastAttempt) return false;
+                const elapsed = Date.now() - this.frpAuthInit.lastAttempt;
+                return elapsed < this.frpAuthInit.cooldown;
+            },
+
+            // 公開情報（トークンの有効期限はリンク詳細側で表示）
+            frpPublicationsWithExpiry() {
+                return this.frpPublications;
             }
         },
 

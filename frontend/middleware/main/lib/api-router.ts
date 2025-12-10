@@ -3,6 +3,7 @@ import path from 'path';
 import { DevUserManager } from './dev-user-manager';
 import { MinecraftServerManager } from './minecraft-server-manager';
 import { SESSION_NAME } from './constants';
+import { appConfig } from './config';
 import { AssetServerAPP, } from './Asset_handler/src/app';
 import expressWs from 'express-ws';
 import { DownloadWebSocketManager } from './Asset_handler/src/lib/DownloadWebSocketManager';
@@ -15,6 +16,8 @@ import { clearScreenDown } from 'readline';
 import { MCserverManagerAPP } from './minecraft-server-manager/Main';
 import { th } from 'zod/v4/locales';
 import { threadCpuUsage } from 'process';
+import { FrpManagerAPP } from './frp-manager/src/Main';
+import { LogTailOptions } from './frp-manager/src/types';
 
 const log = createModuleLogger('auth');
 /**
@@ -252,7 +255,8 @@ export class AssetManagerRouter {
     public readonly router: express.Router;
     constructor(private authMiddleware: express.RequestHandler) {
         this.router = express.Router();
-        new AssetServerAPP(this.router, this.authMiddleware, "http://localhost:3000");
+        // 統合設定システムからバックエンドAPIのURLを取得
+        new AssetServerAPP(this.router, this.authMiddleware, appConfig.backendApi.url);
     }
 }
 
@@ -361,4 +365,167 @@ export class MCServerWebSocket {
         const wsManager = new MCServerWebSocketManager(this.wsServer, this.basepath, this.middlewareManager);
         this.mcApp.setWebSocketManager(wsManager);
     }
+}
+
+/**
+ * FRP Manager API router
+ */
+export class FrpManagerRoute {
+    public readonly router: express.Router;
+    private frpManager: FrpManagerAPP;
+    private authMiddleware: express.RequestHandler;
+
+    constructor(authMiddleware: express.RequestHandler, frpManager: FrpManagerAPP) {
+        this.router = express.Router();
+        this.frpManager = frpManager;
+        this.authMiddleware = authMiddleware;
+        this.configureRoutes();
+    }
+
+    private configureRoutes() {
+        // Auth flow (polling)
+        this.router.post('/auth/init', this.authMiddleware, async (req, res) => {
+            try {
+                const result = await this.frpManager.initAuth();
+                return res.json({ ok: true, data: result });
+            } catch (error: any) {
+                const message = error?.message || 'frp auth init failed';
+                const status = message.includes('認証済み') || message.includes('進行中') ? 409 : 500;
+                log.error({ err: error }, 'frp auth init failed');
+                return res.status(status).json({ ok: false, error: message });
+            }
+        });
+
+        this.router.get('/auth/poll', this.authMiddleware, async (req, res) => {
+            try {
+                const tempToken = typeof req.query.tempToken === 'string' ? req.query.tempToken : undefined;
+                const result = await this.frpManager.pollAuth(tempToken);
+                return res.json({ ok: true, data: result, note: 'auto-polling is handled server-side; this endpoint is optional.' });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp auth poll failed');
+                return res.status(500).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.get('/auth/status', this.authMiddleware, (_req, res) => {
+            return res.json({ ok: true, data: this.frpManager.getAuthStatus() });
+        });
+
+        this.router.post('/auth/refresh', this.authMiddleware, async (_req, res) => {
+            try {
+                const tokens = await this.frpManager.refreshAuth();
+                return res.json({ ok: true, data: tokens });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp auth refresh failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.post('/auth/logout', this.authMiddleware, (_req, res) => {
+            this.frpManager.logoutAuth();
+            return res.json({ ok: true });
+        });
+
+        // Sessions
+        this.router.get('/sessions', this.authMiddleware, (_req, res) => {
+            return res.json({ ok: true, data: this.frpManager.listSessionSummaries() });
+        });
+
+        this.router.post('/sessions', this.authMiddleware, async (req, res) => {
+            try {
+                const { remotePort, localPort, sessionId, fingerprint, displayName, extraMetas } = req.body || {};
+                const parsedRemote = Number(remotePort);
+                const parsedLocal = Number(localPort);
+                if (!Number.isInteger(parsedRemote) || !Number.isInteger(parsedLocal)) {
+                    return res.status(400).json({ ok: false, error: 'remotePort and localPort must be integers' });
+                }
+                if (parsedRemote <= 0 || parsedLocal <= 0) {
+                    return res.status(400).json({ ok: false, error: 'remotePort and localPort must be positive' });
+                }
+                if (sessionId !== undefined && typeof sessionId !== 'string') {
+                    return res.status(400).json({ ok: false, error: 'sessionId must be a string' });
+                }
+
+                const record = await this.frpManager.startConnectionFromAuth({
+                    sessionId,
+                    remotePort: parsedRemote,
+                    localPort: parsedLocal,
+                    fingerprint,
+                    displayName,
+                    extraMetas: extraMetas && typeof extraMetas === 'object' ? extraMetas : undefined,
+                });
+                return res.status(201).json({ ok: true, data: this.sanitizeSession(record) });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp session start failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.delete('/sessions/:sessionId', this.authMiddleware, async (req, res) => {
+            try {
+                const { sessionId } = req.params;
+                const purge =
+                    typeof req.query.purge === 'string'
+                        ? ['true', '1'].includes(req.query.purge.toLowerCase())
+                        : false;
+                if (!sessionId) {
+                    return res.status(400).json({ ok: false, error: 'sessionId is required' });
+                }
+
+                // stopConnectionの完了を待つ
+                await this.frpManager.stopConnection(sessionId);
+
+                if (purge) {
+                    await this.frpManager.deleteSession(sessionId);
+                }
+
+                return res.json({ ok: true });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp session stop failed');
+                return res.status(500).json({ ok: false, error: error.message });
+            }
+        });
+
+        this.router.get('/processes', this.authMiddleware, (_req, res) => {
+            return res.json({ ok: true, data: this.frpManager.listActiveProcessSummaries() });
+        });
+
+        this.router.get('/logs/:sessionId', this.authMiddleware, async (req, res) => {
+            try {
+                const { sessionId } = req.params;
+                const lines = Number(req.query.lines || req.query.tail) || undefined;
+                const options: LogTailOptions = lines ? { lines } : {};
+                const logs = await this.frpManager.tailLogs(sessionId, options);
+                return res.json({ ok: true, data: logs });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp log tail failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+
+        // User overview (permissions/limits)
+        this.router.get('/me', this.authMiddleware, async (_req, res) => {
+            try {
+                const data = await this.frpManager.getUserOverview();
+                return res.json({ ok: true, data });
+            } catch (error: any) {
+                log.error({ err: error }, 'frp user overview failed');
+                return res.status(400).json({ ok: false, error: error.message });
+            }
+        });
+    }
+
+  private sanitizeSession(record: any) {
+    return {
+      sessionId: record.sessionId,
+      discordId: record.discordId,
+      displayName: record.displayName,
+      remotePort: record.remotePort,
+      localPort: record.localPort,
+      status: record.status,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      lastError: record.lastError,
+    };
+  }
 }

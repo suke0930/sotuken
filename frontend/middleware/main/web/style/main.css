@@ -21,6 +21,7 @@
 @import './components/notifications.css';
 @import './components/help-modal.css';
 @import './components/content-pages.css';
+@import './components/frp-management.css';
 
 /* Responsive */
 @import './components/responsive.css';

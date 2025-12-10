@@ -47,6 +47,11 @@ export function createUIMethods() {
                 this.renderAboutUs();
             } else if (tabId === 'tutorials') {
                 this.renderTutorials();
+            } else if (tabId === 'frp') {
+                this.refreshFrpOverview();
+                if (!this.frpPollEnabled) {
+                    this.startFrpPolling();
+                }
             }
             // Close sidebar on mobile after selection
             if (window.innerWidth < 1024) {

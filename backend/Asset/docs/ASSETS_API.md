@@ -6,6 +6,7 @@
 
 - [概要](#概要)
 - [エンドポイント](#エンドポイント)
+  - [FRP バイナリ配布](#frp-バイナリ配布)
 - [ディレクトリ構造](#ディレクトリ構造)
 - [使用例](#使用例)
 - [セキュリティ](#セキュリティ)
@@ -164,6 +165,182 @@ GET /api/assets/list/servers
     }
   ],
   "count": 2,
+  "timestamp": "2025-10-19T16:00:00.000Z"
+}
+```
+
+---
+
+### FRP バイナリ配布
+
+GitHub Releases から Fast Reverse Proxy (FRP) のバイナリを配布します。`FRP_VERSION` 環境変数で対象バージョンを指定可能（デフォルト: `0.65.0`）。サポートされる OS/アーキテクチャとアーカイブ形式は以下の通りです。
+
+| OS | アーキテクチャ | アーカイブ拡張子 | バイナリ拡張子 |
+|----|----------------|------------------|----------------|
+| linux | amd64 | tar.gz | (なし) |
+| linux | arm64 | tar.gz | (なし) |
+| darwin | amd64 | tar.gz | (なし) |
+| darwin | arm64 | tar.gz | (なし) |
+| windows | amd64 | zip | .exe |
+| windows | arm64 | zip | .exe |
+
+#### 🧭 配布フロー
+
+```mermaid
+flowchart LR
+    A[利用者] --> B[API 呼び出し /api/assets/frp/*]
+    B --> C{プラットフォーム判定<br/>platform + arch}
+    C -->|対応| D[GitHub Releases v${FRP_VERSION}]
+    C -->|非対応| E[400 Unsupported platform]
+    D --> F[ダウンロード URL 返却]
+```
+
+#### 注意事項
+
+- Windows 版は ZIP 展開後に `frpc.exe` / `frps.exe` が `frp_${FRP_VERSION}_windows_{arch}/` 配下に配置されます。
+- macOS/Linux 版は展開後に `chmod +x frpc` / `chmod +x frps` を実行してください。
+- Windows Defender などにより実行ファイルが警告される場合があります。必要に応じて除外設定を検討してください。
+
+#### `/api/assets/frp/binaries`
+
+サポートされる全プラットフォームのダウンロード情報をまとめて取得します。
+
+```http
+GET /api/assets/frp/binaries
+```
+
+レスポンス例:
+
+```json
+{
+  "success": true,
+  "data": {
+    "version": "0.65.0",
+    "binaries": [
+      {
+        "platform": "linux",
+        "arch": "amd64",
+        "downloadUrl": "https://github.com/fatedier/frp/releases/download/v0.65.0/frp_0.65.0_linux_amd64.tar.gz",
+        "version": "0.65.0",
+        "extension": "tar.gz",
+        "clientBinaryName": "frpc",
+        "serverBinaryName": "frps",
+        "archivePath": "frp_0.65.0_linux_amd64"
+      }
+    ],
+    "supportedPlatforms": [
+      { "platform": "linux", "arch": "amd64" }
+    ]
+  },
+  "timestamp": "2025-10-19T16:00:00.000Z"
+}
+```
+
+#### `/api/assets/frp/client-binary`
+
+FRP クライアント (`frpc`) のバイナリ情報を取得します。
+
+```http
+GET /api/assets/frp/client-binary?platform=linux&arch=amd64
+```
+
+| クエリ | 型 | 必須 | 説明 | デフォルト |
+|--------|----|------|------|-----------|
+| `platform` | string | 任意 | `linux` `darwin` `windows` | `linux` |
+| `arch` | string | 任意 | `amd64` `arm64` | `amd64` |
+
+レスポンス例:
+
+```json
+{
+  "success": true,
+  "data": {
+    "downloadUrl": "https://github.com/fatedier/frp/releases/download/v0.65.0/frp_0.65.0_linux_amd64.tar.gz",
+    "version": "0.65.0",
+    "platform": "linux",
+    "arch": "amd64",
+    "binaryName": "frpc",
+    "archivePath": "frp_0.65.0_linux_amd64/frpc",
+    "extension": "tar.gz",
+    "notes": [
+      "Download the archive and extract the frpc binary",
+      "The frpc binary is located at frp_0.65.0_linux_amd64/frpc within the archive",
+      "Make sure to set executable permissions (chmod +x frpc on Unix-like systems)"
+    ]
+  },
+  "timestamp": "2025-10-19T16:00:00.000Z"
+}
+```
+
+#### `/api/assets/frp/server-binary`
+
+FRP サーバー (`frps`) のバイナリ情報を取得します。
+
+```http
+GET /api/assets/frp/server-binary?platform=windows&arch=arm64
+```
+
+| クエリ | 型 | 必須 | 説明 | デフォルト |
+|--------|----|------|------|-----------|
+| `platform` | string | 任意 | `linux` `darwin` `windows` | `linux` |
+| `arch` | string | 任意 | `amd64` `arm64` | `amd64` |
+
+レスポンス例:
+
+```json
+{
+  "success": true,
+  "data": {
+    "downloadUrl": "https://github.com/fatedier/frp/releases/download/v0.65.0/frp_0.65.0_windows_arm64.zip",
+    "version": "0.65.0",
+    "platform": "windows",
+    "arch": "arm64",
+    "binaryName": "frps.exe",
+    "archivePath": "frp_0.65.0_windows_arm64/frps.exe",
+    "extension": "zip",
+    "notes": [
+      "Download the ZIP archive and extract the frps.exe binary",
+      "The frps.exe binary is located at frp_0.65.0_windows_arm64/frps.exe within the archive",
+      "Windows Defender may flag the binary - add an exception if needed"
+    ]
+  },
+  "timestamp": "2025-10-19T16:00:00.000Z"
+}
+```
+
+#### `/api/assets/frp/info`
+
+FRP 配布エンドポイントの概要を取得します。
+
+```http
+GET /api/assets/frp/info
+```
+
+レスポンス例:
+
+```json
+{
+  "success": true,
+  "data": {
+    "version": "0.65.0",
+    "releaseUrl": "https://github.com/fatedier/frp/releases/download/v0.65.0",
+    "clientBinaryEndpoint": "/api/assets/frp/client-binary",
+    "serverBinaryEndpoint": "/api/assets/frp/server-binary",
+    "binariesEndpoint": "/api/assets/frp/binaries",
+    "description": "FRP (Fast Reverse Proxy) binary distribution endpoints",
+    "supportedPlatforms": [
+      {
+        "platform": "linux",
+        "arch": "amd64",
+        "extension": "tar.gz"
+      },
+      {
+        "platform": "windows",
+        "arch": "arm64",
+        "extension": "zip"
+      }
+    ]
+  },
   "timestamp": "2025-10-19T16:00:00.000Z"
 }
 ```
