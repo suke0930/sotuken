@@ -59,7 +59,7 @@ export const frpManagementTabTemplate = `
             <div class="form-actions">
                 <button
                     class="btn primary"
-                    @click="createFrpSession"
+                    @click="createFrpSession()"
                     :disabled="!frpAuthStatus.linked || !frpForm.localPort || !frpForm.remotePort || frpCreatingSession || !computeAvailableRemotePorts().length || (frpMe?.remainingSessions !== undefined && frpMe.remainingSessions <= 0)"
                 >
                     公開を開始
@@ -101,11 +101,11 @@ export const frpManagementTabTemplate = `
                 <span>{{ pub.serverName }}</span>
                 <span>{{ pub.localPort }}</span>
                 <span class="mono">{{ pub.publicUrl }}</span>
-                <span><span class="badge" :class="['status', 'status-' + pub.status]">{{ pub.status }}</span></span>
+                <span><span class="badge" :class="['status', 'status-' + pub.status]" :title="pub.lastError || ''">{{ pub.status }}</span></span>
                 <span class="actions">
                     <button class="btn ghost" @click="openFrpLogModal(pub.sessionId, pub.serverName)">ログ</button>
-                    <button class="btn ghost" @click="startFrpPublication(pub)">起動</button>
-                    <button class="btn warning ghost" @click="stopFrpSession(pub.sessionId)">停止</button>
+                    <button class="btn ghost" @click="startFrpPublication(pub)" :disabled="['running', 'starting', 'stopping'].includes(pub.status)">起動</button>
+                    <button class="btn warning ghost" @click="stopFrpSession(pub.sessionId)" :disabled="pub.status === 'stopped'">停止</button>
                     <button class="btn danger ghost" @click="deleteFrpPublication(pub)">削除</button>
                 </span>
             </div>

@@ -71,6 +71,8 @@ export interface FrpConfig {
   binaryBaseUrl: string;
   /** FRP認証サーバーのURL（バックエンド） */
   authServerUrl: string;
+  /** FRPセッション同期/手動削除用のAuthZサーバーURL */
+  authzServerUrl: string;
   /** FRPサーバーのアドレス（クライアントとして接続する先） */
   serverAddr: string;
   /** FRPサーバーのポート（クライアントとして接続する先） */

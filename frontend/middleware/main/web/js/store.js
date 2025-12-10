@@ -229,7 +229,8 @@ export function createStore() {
                 frpCreatingSession: false,
                 frpPollTimer: null,
                 frpPollEnabled: false,
-                frpLastUpdated: null
+                frpLastUpdated: null,
+                frpStopIntents: new Set()
             };
         },
 
