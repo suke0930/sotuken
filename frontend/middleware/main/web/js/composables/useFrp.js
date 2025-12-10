@@ -100,14 +100,38 @@ export function createFrpMethods() {
         },
 
         async initFrpAuth() {
-            this.frpAuthLoading = true;
+            // クールダウンチェック
+            const now = Date.now();
+            if (this.frpAuthInit.lastAttempt &&
+                (now - this.frpAuthInit.lastAttempt) < this.frpAuthInit.cooldown) {
+                const remaining = Math.ceil((this.frpAuthInit.cooldown - (now - this.frpAuthInit.lastAttempt)) / 1000);
+                this.showError(`${remaining}秒後に再試行してください`);
+                return;
+            }
+
+            this.frpAuthInit.loading = true;
+            this.frpAuthInit.lastAttempt = now;
             this.frpAuthError = '';
             try {
                 const res = await apiPost(API_ENDPOINTS.frp.authInit, {});
                 if (res.ok) {
-                    this.frpAuthInit = res.data;
+                    this.frpAuthInit = {
+                        ...this.frpAuthInit,
+                        authUrl: res.data.authUrl,
+                        tempToken: res.data.tempToken,
+                        loading: false
+                    };
                     this.frpAuthStatus = { ...(this.frpAuthStatus || {}), state: 'pending', authUrl: res.data.authUrl };
-                    this.showSuccess('Discord連携を開始しました。ブラウザで認証を完了してください。');
+
+                    // 自動で新しいタブを開く
+                    if (res.data.authUrl) {
+                        const opened = window.open(res.data.authUrl, '_blank');
+                        if (!opened) {
+                            this.showError('ポップアップがブロックされました。「認証ページを再度開く」ボタンをクリックしてください');
+                        } else {
+                            this.showSuccess('認証ページを開きました。Discordで認証を完了してください');
+                        }
+                    }
                 } else {
                     this.frpAuthError = res.error || '認証初期化に失敗しました';
                     this.showError(this.frpAuthError);
@@ -116,7 +140,7 @@ export function createFrpMethods() {
                 this.frpAuthError = error.message;
                 this.showError(error.message);
             } finally {
-                this.frpAuthLoading = false;
+                this.frpAuthInit.loading = false;
             }
         },
 
@@ -279,7 +303,8 @@ export function createFrpMethods() {
             if (this.frpSessions?.length && this.frpProcesses?.length >= 0) {
                 const procIds = new Set(this.frpProcesses.map(p => p.sessionId));
                 for (const session of this.frpSessions) {
-                    if (!procIds.has(session.sessionId)) {
+                    const isStopping = session.status === 'stopped' || session.status === 'stopping';
+                    if (!procIds.has(session.sessionId) && !isStopping) {
                         warnings.push(`セッション ${session.sessionId} は起動中プロセスに存在しません。`);
                     }
                 }
@@ -360,6 +385,16 @@ export function createFrpMethods() {
                 }
                 const remotePort = Number(this.frpForm.remotePort);
                 const localPort = Number(this.frpForm.localPort);
+
+                // バリデーション実行
+                const isRemoteValid = this.validateRemotePort(remotePort);
+                const isLocalValid = this.validateLocalPort(localPort);
+
+                if (!isRemoteValid || !isLocalValid) {
+                    this.showError('入力内容を確認してください');
+                    return;
+                }
+
                 if (!Number.isInteger(remotePort) || !Number.isInteger(localPort)) {
                     this.showError('ポートが選択されていません');
                     return;
@@ -504,6 +539,94 @@ export function createFrpMethods() {
                 // 多重認証防止のため、表示を消す
                 this.frpAuthStatus.authUrl = null;
             }
+        },
+
+        // ステータスバッジ用ヘルパーメソッド
+        getStatusIcon(status) {
+            const icons = {
+                running: 'fas fa-circle-check',
+                starting: 'fas fa-spinner fa-spin',
+                stopping: 'fas fa-spinner fa-spin',
+                stopped: 'fas fa-circle-stop',
+                error: 'fas fa-circle-exclamation'
+            };
+            return icons[status] || 'fas fa-circle';
+        },
+
+        getStatusText(status) {
+            const texts = {
+                running: '稼働中',
+                starting: '起動中',
+                stopping: '停止中',
+                stopped: '停止',
+                error: 'エラー'
+            };
+            return texts[status] || status;
+        },
+
+        // 残り時間フォーマット
+        formatRemainingTime(ms) {
+            if (ms <= 0) return '期限切れ';
+
+            const hours = Math.floor(ms / (1000 * 60 * 60));
+            const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+
+            if (hours > 0) {
+                return `残り ${hours}時間${minutes}分`;
+            } else {
+                return `残り ${minutes}分`;
+            }
+        },
+
+        // ポートバリデーション
+        validateRemotePort(port) {
+            const portNum = Number(port);
+
+            if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) {
+                this.frpFormValidation.remotePort = {
+                    valid: false,
+                    error: 'ポートは1-65535の範囲で指定してください'
+                };
+                return false;
+            }
+
+            // 許可されたポートかチェック
+            const allowedPorts = this.frpMe?.permissions?.allowedPorts || [];
+            if (!allowedPorts.includes(portNum)) {
+                this.frpFormValidation.remotePort = {
+                    valid: false,
+                    error: 'このポートは使用が許可されていません'
+                };
+                return false;
+            }
+
+            this.frpFormValidation.remotePort = { valid: true, error: '' };
+            return true;
+        },
+
+        validateLocalPort(port) {
+            const portNum = Number(port);
+            const selectedServer = this.servers.find(s => s.uuid === this.frpForm.selectedServerId);
+
+            if (!selectedServer) {
+                this.frpFormValidation.localPort = {
+                    valid: false,
+                    error: 'サーバーを選択してください'
+                };
+                return false;
+            }
+
+            const expectedPort = selectedServer.launchConfig?.port || selectedServer.port;
+            if (portNum !== expectedPort) {
+                this.frpFormValidation.localPort = {
+                    valid: false,
+                    error: `サーバーのポート(${expectedPort})と一致しません`
+                };
+                return false;
+            }
+
+            this.frpFormValidation.localPort = { valid: true, error: '' };
+            return true;
         }
     };
 }

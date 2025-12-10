@@ -194,7 +194,13 @@ export function createStore() {
 
                 // FRP Manager
                 frpAuthStatus: { linked: false, state: 'idle' },
-                frpAuthInit: null,
+                frpAuthInit: {
+                    authUrl: null,
+                    tempToken: null,
+                    loading: false,
+                    lastAttempt: null,
+                    cooldown: 5000  // 5秒のクールダウン
+                },
                 frpAuthLoading: false,
                 frpAuthError: '',
                 frpMe: null,
@@ -208,6 +214,10 @@ export function createStore() {
                     publicUrl: ''
                 },
                 frpPublications: [],
+                frpFormValidation: {
+                    remotePort: { valid: true, error: '' },
+                    localPort: { valid: true, error: '' }
+                },
                 frpLogs: {
                     sessionId: null,
                     entries: [],
@@ -358,6 +368,18 @@ export function createStore() {
                 
                 // Convert map to sorted array
                 return Array.from(linesMap.values()).sort((a, b) => a.lineNumber - b.lineNumber);
+            },
+
+            // FRP認証のクールダウンチェック
+            isAuthCooldown() {
+                if (!this.frpAuthInit.lastAttempt) return false;
+                const elapsed = Date.now() - this.frpAuthInit.lastAttempt;
+                return elapsed < this.frpAuthInit.cooldown;
+            },
+
+            // 公開情報（トークンの有効期限はリンク詳細側で表示）
+            frpPublicationsWithExpiry() {
+                return this.frpPublications;
             }
         },
 
