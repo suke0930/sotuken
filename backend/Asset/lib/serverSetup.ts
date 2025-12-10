@@ -7,6 +7,11 @@ import { ServerSchema } from "../types/server.types";
 
 const execAsync = promisify(exec);
 
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "localhost";
+const PROTOCOL = process.env.PROTOCOL || "http";
+const BASE_URL = (process.env.BASE_URL || `${PROTOCOL}://${HOST}:${PORT}`).replace(/\/$/, "");
+
 /**
  * Server_JSON_Generatorのmain.jsを実行してlatest-servers.jsonを生成
  */
@@ -40,7 +45,7 @@ export async function runServerGenerator(): Promise<void> {
  */
 export async function convertLatestServersToSchema(
   latestServersPath: string,
-  baseUrl: string = "http://localhost:3000"
+  baseUrl: string = BASE_URL
 ): Promise<ServerSchema> {
   if (!fs.existsSync(latestServersPath)) {
     throw new Error(`latest-servers.json not found at ${latestServersPath}`);
@@ -213,7 +218,7 @@ export async function downloadServerBinaries(
 /**
  * Minecraftサーバー自動セットアップのメイン処理
  */
-export async function setupServers(baseUrl: string = "http://localhost:3000"): Promise<void> {
+export async function setupServers(baseUrl: string = BASE_URL): Promise<void> {
   const rootDir = path.join(__dirname, "..");
   const generatorDir = path.join(rootDir, "Server_JSON_Genelator");
   const latestServersPath = path.join(generatorDir, "latest-servers.json");

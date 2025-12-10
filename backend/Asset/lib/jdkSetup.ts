@@ -7,6 +7,11 @@ import { JDKSchema } from "../types/jdk.types";
 
 const execAsync = promisify(exec);
 
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "localhost";
+const PROTOCOL = process.env.PROTOCOL || "http";
+const BASE_URL = (process.env.BASE_URL || `${PROTOCOL}://${HOST}:${PORT}`).replace(/\/$/, "");
+
 /**
  * JDK_JSON_Generatorのmain.jsを実行してlatest-jdks.jsonを生成
  */
@@ -52,7 +57,7 @@ interface LatestJDKEntry {
  */
 export async function convertLatestJDKsToSchema(
   latestJdksPath: string,
-  baseUrl: string = "http://localhost:3000"
+  baseUrl: string = BASE_URL
 ): Promise<JDKSchema> {
   if (!fs.existsSync(latestJdksPath)) {
     throw new Error(`latest-jdks.json not found at ${latestJdksPath}`);
@@ -231,7 +236,7 @@ export async function downloadJDKBinaries(
 /**
  * JDK自動セットアップのメイン処理
  */
-export async function setupJDKs(baseUrl: string = "http://localhost:3000"): Promise<void> {
+export async function setupJDKs(baseUrl: string = BASE_URL): Promise<void> {
   const rootDir = path.join(__dirname, "..");
   const generatorDir = path.join(rootDir, "JDK_JSON_Genelator");
   const latestJdksPath = path.join(generatorDir, "latest-jdks.json");
