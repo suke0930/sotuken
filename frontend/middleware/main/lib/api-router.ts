@@ -442,6 +442,9 @@ export class FrpManagerRoute {
                 if (parsedRemote <= 0 || parsedLocal <= 0) {
                     return res.status(400).json({ ok: false, error: 'remotePort and localPort must be positive' });
                 }
+                if (sessionId !== undefined && typeof sessionId !== 'string') {
+                    return res.status(400).json({ ok: false, error: 'sessionId must be a string' });
+                }
 
                 const record = await this.frpManager.startConnectionFromAuth({
                     sessionId,
@@ -461,6 +464,10 @@ export class FrpManagerRoute {
         this.router.delete('/sessions/:sessionId', this.authMiddleware, async (req, res) => {
             try {
                 const { sessionId } = req.params;
+                const purge =
+                    typeof req.query.purge === 'string'
+                        ? ['true', '1'].includes(req.query.purge.toLowerCase())
+                        : false;
                 if (!sessionId) {
                     return res.status(400).json({ ok: false, error: 'sessionId is required' });
                 }
@@ -468,10 +475,7 @@ export class FrpManagerRoute {
                 // stopConnectionの完了を待つ
                 await this.frpManager.stopConnection(sessionId);
 
-                // セッション削除を確認
-                const session = this.frpManager.listSessions().find(s => s.sessionId === sessionId);
-                if (session) {
-                    log.warn({ sessionId }, 'Session still exists after stop, force deleting');
+                if (purge) {
                     await this.frpManager.deleteSession(sessionId);
                 }
 
@@ -511,16 +515,17 @@ export class FrpManagerRoute {
         });
     }
 
-    private sanitizeSession(record: any) {
-        return {
-            sessionId: record.sessionId,
-            discordId: record.discordId,
-            displayName: record.displayName,
-            remotePort: record.remotePort,
-            localPort: record.localPort,
-            status: record.status,
-            createdAt: record.createdAt,
-            updatedAt: record.updatedAt,
-        };
-    }
+  private sanitizeSession(record: any) {
+    return {
+      sessionId: record.sessionId,
+      discordId: record.discordId,
+      displayName: record.displayName,
+      remotePort: record.remotePort,
+      localPort: record.localPort,
+      status: record.status,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      lastError: record.lastError,
+    };
+  }
 }

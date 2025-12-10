@@ -12,6 +12,7 @@ export interface BinaryDownloadTarget {
 
 export interface FrpManagerConfig {
   authServerUrl: string;
+  authzServerUrl: string;
   frpServerAddr: string;
   frpServerPort: number;
   jwtRefreshIntervalHours: number;
@@ -50,6 +51,8 @@ export interface FrpSessionRecord {
 export interface ActiveFrpProcess extends FrpSessionRecord {
   executor: FrpProcessExecutor;
   startedAt: Date;
+  startSuccessful?: boolean;
+  requestedStop?: boolean;
 }
 
 export interface StartFrpProcessPayload {

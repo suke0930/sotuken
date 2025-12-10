@@ -89,6 +89,7 @@ function buildAppConfig(): AppConfig {
       // フロントエンド（クライアント側）の接続情報
       binaryBaseUrl: getEnvString('FRP_BINARY_BASE_URL', 'http://localhost:8080/api/assets/frp'),
       authServerUrl: getEnvString('FRP_AUTH_SERVER_URL', 'http://localhost:8080'),
+      authzServerUrl: getEnvString('FRP_AUTHZ_SERVER_URL', 'http://localhost:3001'),
       // FRPサーバーへの接続先（クライアントとして接続）
       serverAddr: getEnvString('FRP_SERVER_ADDR', '127.0.0.1'),
       serverPort: getEnvNumber('FRP_SERVER_PORT', 7000),
@@ -191,6 +192,7 @@ export function validateConfig(): { valid: boolean; errors: string[] } {
     { name: 'BACKEND_API_URL', value: appConfig.backendApi.url },
     { name: 'FRP_BINARY_BASE_URL', value: appConfig.frp.binaryBaseUrl },
     { name: 'FRP_AUTH_SERVER_URL', value: appConfig.frp.authServerUrl },
+    { name: 'FRP_AUTHZ_SERVER_URL', value: appConfig.frp.authzServerUrl },
   ];
 
   for (const field of urlFields) {

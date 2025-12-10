@@ -9,7 +9,10 @@ export function createFrpMethods() {
             if (!allowed.length) return [];
             const used = new Set();
             (this.frpProcesses || []).forEach(p => used.add(p.remotePort));
-            (this.frpSessions || []).forEach(s => used.add(s.remotePort));
+            (this.frpSessions || []).forEach(s => {
+                if (s.status === 'stopped' || s.status === 'error') return;
+                used.add(s.remotePort);
+            });
             (this.frpMe?.activeSessions?.sessions || []).forEach(s => used.add(s.remotePort));
             return allowed.filter(p => !used.has(p)).sort((a, b) => a - b);
         },
@@ -54,6 +57,7 @@ export function createFrpMethods() {
                     remotePort: session.remotePort,
                     publicUrl: `${domain}:${session.remotePort}`,
                     status,
+                    lastError: session.lastError,
                 });
             }
 
@@ -70,6 +74,7 @@ export function createFrpMethods() {
                     remotePort: proc.remotePort,
                     publicUrl: `${domain}:${proc.remotePort}`,
                     status: proc.status || 'running',
+                    lastError: proc.lastError,
                 });
             }
 
@@ -171,6 +176,7 @@ export function createFrpMethods() {
                 this.frpProcesses = [];
                 this.frpWarnings = [];
                 this.frpAuthInit = null;
+                this.frpStopIntents = new Set();
             }
         },
 
@@ -205,8 +211,7 @@ export function createFrpMethods() {
             try {
                 const res = await apiGet(API_ENDPOINTS.frp.sessions);
                 if (res.ok) {
-                    // Filter out "stopped" sessions to prevent them from appearing in UI
-                    this.frpSessions = (res.data || []).filter(s => s.status !== 'stopped');
+                    this.frpSessions = res.data || [];
                 } else {
                     this.showError(res.error || 'セッション取得に失敗しました');
                 }
@@ -234,6 +239,9 @@ export function createFrpMethods() {
 
         async refreshFrpOverview(skipStatus = false) {
             this.frpLoadingOverview = true;
+            const previousSessions = new Map(
+                (this.frpSessions || []).map((s) => [s.sessionId, s])
+            );
             try {
                 if (!skipStatus) {
                     await this.fetchFrpAuthStatus();
@@ -244,11 +252,13 @@ export function createFrpMethods() {
                     this.frpSessions = [];
                     this.frpProcesses = [];
                     this.frpWarnings = [];
+                    this.frpStopIntents = new Set();
                     return;
                 } else {
                     await Promise.all([this.fetchFrpMe(), this.fetchFrpSessions(), this.fetchFrpProcesses()]);
                     this.computeFrpWarnings();
                     this.buildFrpPublications();
+                    this.notifyFrpSessionChanges(previousSessions, this.frpSessions || []);
                 }
                 this.frpLastUpdated = new Date().toISOString();
             } finally {
@@ -273,15 +283,75 @@ export function createFrpMethods() {
                         warnings.push(`セッション ${session.sessionId} は起動中プロセスに存在しません。`);
                     }
                 }
+                for (const session of this.frpSessions) {
+                    if (session.lastError) {
+                        warnings.push(`セッション ${session.sessionId}: ${session.lastError}`);
+                    }
+                }
             }
             this.frpWarnings = warnings;
+        },
+
+        frpSessionLabel(session) {
+            const server = this.servers.find(
+                (s) => (s.launchConfig?.port || s.port || s.serverPort || s.Port) === session.localPort
+            );
+            const base = server?.serverName || server?.name || session.displayName || session.sessionId;
+            return `${base} (:${session.remotePort})`;
+        },
+
+        notifyFrpSessionChanges(prevSessions, nextSessions) {
+            nextSessions.forEach((session) => {
+                const prev = prevSessions.get(session.sessionId);
+                if (!prev) return;
+
+                const label = this.frpSessionLabel(session);
+
+                if (session.status === 'error' && prev.status !== 'error') {
+                    const message = session.lastError
+                        ? `${label} でエラー: ${session.lastError}`
+                        : `${label} でエラーが発生しました`;
+                    this.addNotification?.({
+                        type: 'frp_error',
+                        title: 'FRPセッションエラー',
+                        message,
+                        sessionId: session.sessionId,
+                        remotePort: session.remotePort,
+                        timestamp: new Date().toISOString()
+                    });
+                    this.showToast?.(message, 'error');
+                } else if (session.status === 'stopped' && prev.status !== 'stopped') {
+                    if (this.frpStopIntents?.has(session.sessionId)) {
+                        this.frpStopIntents.delete(session.sessionId);
+                        return;
+                    }
+                    const message = `${label} が停止しました`;
+                    this.addNotification?.({
+                        type: 'frp_stopped',
+                        title: 'FRPセッション停止',
+                        message,
+                        sessionId: session.sessionId,
+                        remotePort: session.remotePort,
+                        timestamp: new Date().toISOString()
+                    });
+                    this.showToast?.(message, 'warning');
+                }
+            });
+            if (this.frpStopIntents && this.frpStopIntents.size) {
+                const currentIds = new Set(nextSessions.map((s) => s.sessionId));
+                Array.from(this.frpStopIntents).forEach((id) => {
+                    if (!currentIds.has(id)) {
+                        this.frpStopIntents.delete(id);
+                    }
+                });
+            }
         },
 
         pickMinecraftPort(serverId) {
             this.selectFrpServer(serverId);
         },
 
-        async createFrpSession() {
+        async createFrpSession(sessionId) {
             this.frpCreatingSession = true;
             try {
                 if (!this.frpAuthStatus?.linked) {
@@ -295,6 +365,9 @@ export function createFrpMethods() {
                     return;
                 }
                 const payload = { remotePort, localPort };
+                if (sessionId) {
+                    payload.sessionId = sessionId;
+                }
                 const res = await apiPost(API_ENDPOINTS.frp.sessions, payload);
                 if (res.ok) {
                     this.showSuccess('公開を開始しました');
@@ -312,31 +385,42 @@ export function createFrpMethods() {
 
         async stopFrpSession(sessionId) {
             try {
+                if (sessionId) {
+                    if (!this.frpStopIntents) {
+                        this.frpStopIntents = new Set();
+                    }
+                    this.frpStopIntents.add(sessionId);
+                }
                 await apiDelete(API_ENDPOINTS.frp.session(sessionId));
                 this.showSuccess('公開を停止しました');
                 await this.refreshFrpOverview(true);
             } catch (error) {
+                if (sessionId && this.frpStopIntents) {
+                    this.frpStopIntents.delete(sessionId);
+                }
                 this.showError(error.message);
             }
         },
 
         async startFrpPublication(pub) {
             if (!pub) return;
+            if (['running', 'starting', 'stopping'].includes(pub.status)) {
+                this.showToast?.('このセッションは既に起動しています', 'info');
+                return;
+            }
             this.frpForm.selectedServerId = this.servers.find((s) => (s.launchConfig?.port || s.port || s.serverPort || s.Port) === pub.localPort)?.uuid || '';
             this.frpForm.localPort = pub.localPort;
             this.frpForm.remotePort = pub.remotePort;
             this.updateFrpPublicUrl();
-            await this.createFrpSession();
+            await this.createFrpSession(pub.sessionId);
         },
 
         async deleteFrpPublication(pub) {
             if (!pub) return;
-            // backendには削除専用APIがないため、停止→UIから除外という扱いにする
             try {
-                await this.stopFrpSession(pub.sessionId);
-                this.frpSessions = (this.frpSessions || []).filter((s) => s.sessionId !== pub.sessionId);
-                this.frpProcesses = (this.frpProcesses || []).filter((p) => p.sessionId !== pub.sessionId);
-                this.buildFrpPublications();
+                await apiDelete(`${API_ENDPOINTS.frp.session(pub.sessionId)}?purge=true`);
+                this.showSuccess('公開エントリを削除しました');
+                await this.refreshFrpOverview(true);
             } catch (error) {
                 this.showError(error.message);
             }

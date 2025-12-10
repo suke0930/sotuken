@@ -71,7 +71,7 @@ function resolveDownloadTargets(baseUrl: string): BinaryDownloadTarget[] {
 export function loadFrpManagerConfig(): FrpManagerConfig {
   // 統合設定システムからFRP設定を取得
   const frpConfig = appConfig.frp;
-  
+
   const dataDir = frpConfig.dataDir;
   const binaryDir = path.join(dataDir, "bin");
   const configDir = path.join(dataDir, "configs");
@@ -80,6 +80,7 @@ export function loadFrpManagerConfig(): FrpManagerConfig {
 
   return {
     authServerUrl: frpConfig.authServerUrl,
+    authzServerUrl: frpConfig.authzServerUrl,
     frpServerAddr: frpConfig.serverAddr,
     frpServerPort: frpConfig.serverPort,
     jwtRefreshIntervalHours: frpConfig.jwtRefreshIntervalHours,

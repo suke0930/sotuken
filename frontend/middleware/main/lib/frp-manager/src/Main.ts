@@ -43,7 +43,7 @@ export class FrpManagerAPP {
       config.configDir,
       config.frpServerAddr,
       config.frpServerPort,
-      config.authServerUrl // バックエンド通知用URL
+      config.authzServerUrl // バックエンド通知用URL
     );
     this.authManager = new AuthSessionManager(config);
   }
@@ -80,6 +80,9 @@ export class FrpManagerAPP {
 
       for (const session of localSessions) {
         if (!backendPorts.has(session.remotePort)) {
+          if (session.status === "error") {
+            continue;
+          }
           this.logger.warn(
             {
               sessionId: session.sessionId,
@@ -137,6 +140,9 @@ export class FrpManagerAPP {
       const hasProcess = processIds.has(session.sessionId);
 
       if (!hasProcess) {
+        if (session.status === "error") {
+          continue;
+        }
         this.logger.warn(
           { sessionId: session.sessionId, remotePort: session.remotePort },
           "Health check: Marking session without active process as stopped"
@@ -237,6 +243,7 @@ export class FrpManagerAPP {
       status: s.status,
       createdAt: s.createdAt,
       updatedAt: s.updatedAt,
+      lastError: s.lastError,
     }));
   }
 
@@ -257,6 +264,16 @@ export class FrpManagerAPP {
   async stopConnection(sessionId: string): Promise<void> {
     await this.ensureInitialized();
     await this.processManager.stopProcess(sessionId);
+    const session = this.sessionStore.get(sessionId);
+    if (session) {
+      if (session.status !== "error") {
+        session.status = "stopped";
+        session.lastError = undefined;
+      }
+      session.updatedAt = new Date().toISOString();
+      this.sessionStore.upsert(session);
+      await this.sessionStore.save();
+    }
     this.logger.info({ sessionId }, "Stopping FRP connection");
   }
 
@@ -288,15 +305,45 @@ export class FrpManagerAPP {
         "Fingerprint is required. Provide one or run auth/init again."
       );
     }
+    if (payload.sessionId !== undefined && typeof payload.sessionId !== "string") {
+      throw new Error("sessionId must be a string");
+    }
+
+    const existingSession = this.sessionStore
+      .getAll()
+      .find((s) => s.remotePort === payload.remotePort);
+    const activeProcess = this.processManager
+      .listProcesses()
+      .find((p) => p.remotePort === payload.remotePort);
+
+    if (
+      existingSession &&
+      (existingSession.status === "running" ||
+        existingSession.status === "starting" ||
+        existingSession.status === "stopping")
+    ) {
+      throw new Error(
+        `Port ${payload.remotePort} already has an active session (${existingSession.sessionId})`
+      );
+    }
+    if (activeProcess) {
+      throw new Error(
+        `Port ${payload.remotePort} already has a running process (${activeProcess.sessionId})`
+      );
+    }
 
     const sessionId =
       payload.sessionId ||
+      existingSession?.sessionId ||
       `frp-${randomUUID ? randomUUID() : Date.now().toString(36)}`;
 
     return this.startConnection({
       sessionId,
       discordId: tokens.discordUser.id,
-      displayName: payload.displayName || tokens.discordUser.username,
+      displayName:
+        payload.displayName ||
+        existingSession?.displayName ||
+        tokens.discordUser.username,
       remotePort: payload.remotePort,
       localPort: payload.localPort,
       fingerprint,
