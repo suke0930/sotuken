@@ -7,6 +7,12 @@ const HOST = process.env.HOST || 'localhost';
 const PROTOCOL = process.env.PROTOCOL || 'http';
 const BASE_URL = (process.env.BASE_URL || `${PROTOCOL}://${HOST}:${PORT}`).replace(/\/$/, '');
 
+// 環境変数デバッグログ
+if (!process.env.BASE_URL) {
+  console.warn('⚠️  BASE_URL environment variable is not set. Using fallback:', BASE_URL);
+  console.warn('   Consider setting BASE_URL in docker-compose.yml or .env file');
+}
+
 // 起動モード判定
 const args = process.argv.slice(2);
 const isTestMode = args.includes('--test') || process.env.NODE_ENV === 'test';
@@ -34,6 +40,7 @@ async function startServer() {
 
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
+    console.log(`🌐 BASE_URL: ${BASE_URL}`);
     console.log(`📡 Health check: ${BASE_URL}/health`);
     console.log(`🎮 Minecraft Servers API: ${BASE_URL}/api/v1/servers`);
     console.log(`☕ JDK API: ${BASE_URL}/api/v1/jdk`);
