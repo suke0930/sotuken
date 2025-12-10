@@ -1,0 +1,962 @@
+{
+	"info": {
+		"_postman_id": "90035b95-d4c0-4f3d-b3a4-aa30647b40b9",
+		"name": "Sotuken",
+		"description": "### Welcome to Postman! This is your first collection. \n\nCollections are your starting point for building and testing APIs. You can use this one to:\n\n• Group related requests\n• Test your API in real-world scenarios\n• Document and share your requests\n\nUpdate the name and overview whenever you’re ready to make it yours.\n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "49855377",
+		"_collection_link": "https://akitochuanshang-3885072.postman.co/workspace/%E3%82%B9%E3%82%B1%EF%BC%88%E3%82%B9%E3%82%B1%E3%81%95%E3%82%93%EF%BC%89's-Workspace~0acc7e90-8511-4c0a-81b8-bc314fdf4f93/collection/49855377-90035b95-d4c0-4f3d-b3a4-aa30647b40b9?action=share&source=collection_link&creator=49855377"
+	},
+	"item": [
+		{
+			"name": "AssetManager",
+			"item": [
+				{
+					"name": "AssetServer",
+					"item": [
+						{
+							"name": "MCserver",
+							"protocolProfileBehavior": {
+								"protocolVersion": "http1"
+							},
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://127.0.0.1:12800/api/assets/list/servers",
+									"protocol": "https",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "12800",
+									"path": [
+										"api",
+										"assets",
+										"list",
+										"servers"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "JDK",
+							"protocolProfileBehavior": {
+								"protocolVersion": "http1"
+							},
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://127.0.0.1:12800/api/assets/list/jdk",
+									"protocol": "https",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "12800",
+									"path": [
+										"api",
+										"assets",
+										"list",
+										"jdk"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "health",
+							"protocolProfileBehavior": {
+								"protocolVersion": "http1"
+							},
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://127.0.0.1:12800/api/assets/health",
+									"protocol": "https",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "12800",
+									"path": [
+										"api",
+										"assets",
+										"health"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "To Asset Server Proxy Endpoints"
+				},
+				{
+					"name": "LocalAsset",
+					"item": [
+						{
+							"name": "[ALL]GetActiveDownloads",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://127.0.0.1:12800/api/assets/downloads",
+									"protocol": "https",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "12800",
+									"path": [
+										"api",
+										"assets",
+										"downloads"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[Single]GetDownLoadStatus",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "https://127.0.0.1:12800/api/assets/download/taskid",
+									"protocol": "https",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "12800",
+									"path": [
+										"api",
+										"assets",
+										"download",
+										"taskid"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[Single]DownloadCancel",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "https://127.0.0.1:12800/api/assets/download/taskid",
+									"protocol": "https",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "12800",
+									"path": [
+										"api",
+										"assets",
+										"download",
+										"taskid"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[Single]RequestDownload",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"url\":\"http://localhost:3000/api/assets/jdk/21/windows/OpenJDK21U-jdk_x64_windows_hotspot_21.0.9_10.zip\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "https://127.0.0.1:12800/api/assets/download",
+									"protocol": "https",
+									"host": [
+										"127",
+										"0",
+										"0",
+										"1"
+									],
+									"port": "12800",
+									"path": [
+										"api",
+										"assets",
+										"download"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Local Asset Request"
+				}
+			]
+		},
+		{
+			"name": "Other",
+			"item": [
+				{
+					"name": "PublicInfo",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/sample/public-info",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"sample",
+								"public-info"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ProctedInfo",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/sample/private-data",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"sample",
+								"private-data"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "Signup",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"id\":\"root\",\r\n    \"password\":\"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://127.0.0.1:12800/user/signup",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"user",
+								"signup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Extract session cookie from Set-Cookie (preferred), headers, body, or request Cookie header and save to env var \"sessionCookie\"",
+									"(function () {",
+									"  const ENV_VAR = 'sessionCookie';",
+									"  const ASSUMED_NAME = 'frontdriver-session';",
+									"  const saveMode = 'overwrite';",
+									"  const redactLen = 6; // not used here, just for reference",
+									"",
+									"  const res = pm.response;",
+									"  const headers = res.headers;",
+									"  const body = res.text ? res.text() : (res.body || '');",
+									"",
+									"  // Helpers",
+									"  function setEnv(val) {",
+									"    if (!val) return false;",
+									"    pm.environment.set(ENV_VAR, val);",
+									"    return true;",
+									"  }",
+									"  function parseCookiesFromSetCookie() {",
+									"    const setCookies = headers.filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value);",
+									"    if (!setCookies.length) return null;",
+									"    // Prefer cookie whose name looks like frontdriver-session or similar",
+									"    let target = null;",
+									"    for (const sc of setCookies) {",
+									"      // capture name=value at the start",
+									"      const m = sc.match(/^\\s*([^=;\\s]+)\\s*=\\s*([^;\\n]+)/);",
+									"      if (!m) continue;",
+									"      const name = m[1];",
+									"      const value = m[2];",
+									"      if (!target || name.toLowerCase().includes('session') || name.toLowerCase().includes('frontdriver')) {",
+									"        target = `${name}=${value}`;",
+									"        if (name === ASSUMED_NAME) break;",
+									"      }",
+									"    }",
+									"    return target;",
+									"  }",
+									"  function parseFromHeaders() {",
+									"    // Try all headers as a fallback",
+									"    const cookieHeader = headers.get ? headers.get('Set-Cookie') : null;",
+									"    if (cookieHeader) {",
+									"      const m = cookieHeader.match(/^\\s*([^=;\\s]+)\\s*=\\s*([^;\\n]+)/);",
+									"      if (m) return `${m[1]}=${m[2]}`;",
+									"    }",
+									"    return null;",
+									"  }",
+									"  function parseFromBody() {",
+									"    if (!body) return null;",
+									"    // Try explicit frontdriver-session first",
+									"    let m = body.match(/(?:^|;|\\n)\\s*(frontdriver-session)=([^;\\n]+)/i);",
+									"    if (m) return `${m[1]}=${m[2]}`;",
+									"    // Generic name=value fallback with session-ish name",
+									"    m = body.match(/(?:^|;|\\n)\\s*([^=;\\s]*session[^=;\\s]*)\\s*=\\s*([^;\\n]+)/i);",
+									"    if (m) return `${m[1]}=${m[2]}`;",
+									"    return null;",
+									"  }",
+									"  function parseFromRequestCookieHeader() {",
+									"    const reqCookie = pm.request.headers.get('Cookie');",
+									"    if (!reqCookie) return null;",
+									"    // Try to find frontdriver-session first",
+									"    let m = reqCookie.match(/(?:^|;|\\n)\\s*(frontdriver-session)=([^;\\n]+)/i);",
+									"    if (m) return `${m[1]}=${m[2]}`;",
+									"    // else pick first cookie that looks like a session",
+									"    m = reqCookie.match(/(?:^|;|\\n)\\s*([^=;\\s]*session[^=;\\s]*)\\s*=\\s*([^;\\n]+)/i);",
+									"    if (m) return `${m[1]}=${m[2]}`;",
+									"    return null;",
+									"  }",
+									"",
+									"  let cookieKV = null;",
+									"  // Strategy priority: set-cookie, responseHeaders, responseBody, requestHeaderCookie",
+									"  cookieKV = parseCookiesFromSetCookie();",
+									"  if (!cookieKV) cookieKV = parseFromHeaders();",
+									"  if (!cookieKV) cookieKV = parseFromBody();",
+									"  if (!cookieKV) cookieKV = parseFromRequestCookieHeader();",
+									"",
+									"  if (cookieKV && setEnv(cookieKV)) {",
+									"    pm.test('Session cookie captured', function () {",
+									"      pm.expect(pm.environment.get(ENV_VAR)).to.be.a('string').and.to.have.length.greaterThan(0);",
+									"    });",
+									"  } else {",
+									"    pm.test('Failed to capture session cookie', function () {",
+									"      pm.expect.fail('Could not find session cookie in response or request headers/body');",
+									"    });",
+									"  }",
+									"})();"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"id\":\"root\",\r\n    \"password\":\"rootroot\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://127.0.0.1:12800/user/login",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"user",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Auth",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"id\":\"root\",\r\n    \"password\":\"password\"\r\n}"
+						},
+						"url": {
+							"raw": "https://127.0.0.1:12800/user/auth",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"user",
+								"auth"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"id\":\"root\",\r\n    \"password\":\"password\"\r\n}"
+						},
+						"url": {
+							"raw": "https://127.0.0.1:12800/user/logout",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"user",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "JDKmanager",
+			"item": [
+				{
+					"name": "InstallList",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"id\":\"root\",\r\n    \"password\":\"password\"\r\n}"
+						},
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/jdk/installlist",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"jdk",
+								"installlist"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Getbyid",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/jdk/getbyid/jdk-21-openjdk",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"jdk",
+								"getbyid",
+								"jdk-21-openjdk"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Getbyversion",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/jdk/getbyverison/21",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"jdk",
+								"getbyverison",
+								"21"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "AddJDK",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"archivePath\":\"/OpenJDK21U-jdk_x64_windows_hotspot_21.0.9_10.zip\",\r\n    \"majorVersion\":21\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/jdk/add",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"jdk",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "RemoveJDK",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/jdk/removeJDK/jdk-21-openjdk",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"jdk",
+								"removeJDK",
+								"jdk-21-openjdk"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Minecraft_Server_manager",
+			"item": [
+				{
+					"name": "GetAllInstance",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Addserver",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\":\"testserver\",\r\n    \"note\":\"test\",\r\n    \"software\":{\r\n        \"name\":\"paper\",\r\n        \"version\":\"1.20.1\"\r\n    },\r\n    \"jdkVersion\":21,\r\n    \"port\":25565,\r\n    \"maxMemory\":1024,\r\n    \"minMemory\":128,\r\n    \"serverBinaryFilePath\":\"paper-1.20.1-196.jar\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/mc/add",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"mc",
+								"add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "RemoveInstance",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/mc/remove/a0779c94-bd53-4cca-8d1e-a2aa8bdfd07e",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"mc",
+								"remove",
+								"a0779c94-bd53-4cca-8d1e-a2aa8bdfd07e"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Run",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/mc/run/3a33ae23-62a3-429f-a23b-ef56248d1a2c",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"mc",
+								"run",
+								"3a33ae23-62a3-429f-a23b-ef56248d1a2c"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Stop",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://127.0.0.1:12800/api/stop/3a33ae23-62a3-429f-a23b-ef56248d1a2c",
+							"protocol": "https",
+							"host": [
+								"127",
+								"0",
+								"0",
+								"1"
+							],
+							"port": "12800",
+							"path": [
+								"api",
+								"stop",
+								"3a33ae23-62a3-429f-a23b-ef56248d1a2c"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Mainpage",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"strictSSL": false,
+				"protocolVersion": "http1"
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://127.0.0.1:12800/",
+					"protocol": "https",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "12800",
+					"path": [
+						""
+					]
+				},
+				"description": "This is a GET request and it is used to \"get\" data from an endpoint. There is no request body for a GET request, but you can use query parameters to help specify the resource you want data on (e.g., in this request, we have `id=1`).\n\nA successful GET response will have a `200 OK` status, and should include some kind of response body - for example, HTML web content or JSON data."
+			},
+			"response": []
+		},
+		{
+			"name": "Login Copy",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Extract session cookie from Set-Cookie (preferred), headers, body, or request Cookie header and save to env var \"sessionCookie\"",
+							"(function () {",
+							"  const ENV_VAR = 'sessionCookie';",
+							"  const ASSUMED_NAME = 'frontdriver-session';",
+							"  const saveMode = 'overwrite';",
+							"  const redactLen = 6; // not used here, just for reference",
+							"",
+							"  const res = pm.response;",
+							"  const headers = res.headers;",
+							"  const body = res.text ? res.text() : (res.body || '');",
+							"",
+							"  // Helpers",
+							"  function setEnv(val) {",
+							"    if (!val) return false;",
+							"    pm.environment.set(ENV_VAR, val);",
+							"    return true;",
+							"  }",
+							"  function parseCookiesFromSetCookie() {",
+							"    const setCookies = headers.filter(h => h.key.toLowerCase() === 'set-cookie').map(h => h.value);",
+							"    if (!setCookies.length) return null;",
+							"    // Prefer cookie whose name looks like frontdriver-session or similar",
+							"    let target = null;",
+							"    for (const sc of setCookies) {",
+							"      // capture name=value at the start",
+							"      const m = sc.match(/^\\s*([^=;\\s]+)\\s*=\\s*([^;\\n]+)/);",
+							"      if (!m) continue;",
+							"      const name = m[1];",
+							"      const value = m[2];",
+							"      if (!target || name.toLowerCase().includes('session') || name.toLowerCase().includes('frontdriver')) {",
+							"        target = `${name}=${value}`;",
+							"        if (name === ASSUMED_NAME) break;",
+							"      }",
+							"    }",
+							"    return target;",
+							"  }",
+							"  function parseFromHeaders() {",
+							"    // Try all headers as a fallback",
+							"    const cookieHeader = headers.get ? headers.get('Set-Cookie') : null;",
+							"    if (cookieHeader) {",
+							"      const m = cookieHeader.match(/^\\s*([^=;\\s]+)\\s*=\\s*([^;\\n]+)/);",
+							"      if (m) return `${m[1]}=${m[2]}`;",
+							"    }",
+							"    return null;",
+							"  }",
+							"  function parseFromBody() {",
+							"    if (!body) return null;",
+							"    // Try explicit frontdriver-session first",
+							"    let m = body.match(/(?:^|;|\\n)\\s*(frontdriver-session)=([^;\\n]+)/i);",
+							"    if (m) return `${m[1]}=${m[2]}`;",
+							"    // Generic name=value fallback with session-ish name",
+							"    m = body.match(/(?:^|;|\\n)\\s*([^=;\\s]*session[^=;\\s]*)\\s*=\\s*([^;\\n]+)/i);",
+							"    if (m) return `${m[1]}=${m[2]}`;",
+							"    return null;",
+							"  }",
+							"  function parseFromRequestCookieHeader() {",
+							"    const reqCookie = pm.request.headers.get('Cookie');",
+							"    if (!reqCookie) return null;",
+							"    // Try to find frontdriver-session first",
+							"    let m = reqCookie.match(/(?:^|;|\\n)\\s*(frontdriver-session)=([^;\\n]+)/i);",
+							"    if (m) return `${m[1]}=${m[2]}`;",
+							"    // else pick first cookie that looks like a session",
+							"    m = reqCookie.match(/(?:^|;|\\n)\\s*([^=;\\s]*session[^=;\\s]*)\\s*=\\s*([^;\\n]+)/i);",
+							"    if (m) return `${m[1]}=${m[2]}`;",
+							"    return null;",
+							"  }",
+							"",
+							"  let cookieKV = null;",
+							"  // Strategy priority: set-cookie, responseHeaders, responseBody, requestHeaderCookie",
+							"  cookieKV = parseCookiesFromSetCookie();",
+							"  if (!cookieKV) cookieKV = parseFromHeaders();",
+							"  if (!cookieKV) cookieKV = parseFromBody();",
+							"  if (!cookieKV) cookieKV = parseFromRequestCookieHeader();",
+							"",
+							"  if (cookieKV && setEnv(cookieKV)) {",
+							"    pm.test('Session cookie captured', function () {",
+							"      pm.expect(pm.environment.get(ENV_VAR)).to.be.a('string').and.to.have.length.greaterThan(0);",
+							"    });",
+							"  } else {",
+							"    pm.test('Failed to capture session cookie', function () {",
+							"      pm.expect.fail('Could not find session cookie in response or request headers/body');",
+							"    });",
+							"  }",
+							"})();"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\":\"root\",\r\n    \"password\":\"rootroot\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://127.0.0.1:12800/user/login",
+					"protocol": "https",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "12800",
+					"path": [
+						"user",
+						"login"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

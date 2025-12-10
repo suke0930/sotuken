@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run test:*)",
+      "Bash(timeout 60 npm run test:*)",
+      "Bash(npm install:*)",
+      "Bash(node --version:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(NODE_ENV=development npm start:*)",
+      "Bash(tree:*)",
+      "Bash(sudo docker-compose build:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(curl:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(docker-compose stop:*)",
+      "Bash(docker-compose rm:*)",
+      "Bash(chmod:*)",
+      "Bash(cat:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout 30 npx tsc:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

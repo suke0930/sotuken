@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./temp/frp-tests",
+    "rootDir": "./",
+    "noEmit": false
+  },
+  "include": [
+    "lib/frp-manager/src/**/*",
+    "lib/frp-manager/tests/**/*"
+  ],
+  "exclude": []
+}

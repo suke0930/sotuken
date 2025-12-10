@@ -1,0 +1,77 @@
+export const API_ENDPOINTS = {
+    // Base URLs
+    BASE_URL: '',  // Relative paths for same-origin requests
+    DOWNLOAD_SERVER: 'https://localhost:12800',
+    LIST_SERVER: 'https://localhost:12800',
+    SIGNUP_SERVER: 'https://127.0.0.1:12800',  // Special case for signup
+
+    // WebSocket
+    WS_URL: 'wss://127.0.0.1:12800/ws',
+
+    // User endpoints
+    user: {
+        auth: '/user/auth',
+        signup: '/user/signup',
+        login: '/user/login',
+        logout: '/user/logout'
+    },
+
+    // Server management endpoints
+    server: {
+        list: '/api/mc/list',
+        create: '/api/mc/add',
+        update: (id) => `/api/mc/update/${id}`,
+        delete: (id) => `/api/mc/remove/${id}`,
+        run: (id) => `/api/mc/run/${id}`,
+        stop: (id) => `/api/mc/stop/${id}`,
+        command: (id) => `/api/mc/command/${id}`,
+        logs: (id) => `/api/mc/logs/${id}`,
+        clearLogs: (id) => `/api/mc/logs/${id}`,
+        // Server properties endpoints
+        properties: (id) => `/api/mc/Properties/${id}`,  // GET and POST
+        getProperties: (id) => `/api/mc/Properties/${id}`,  // Explicit GET
+        setProperties: (id) => `/api/mc/Properties/${id}`   // Explicit POST
+    },
+
+    // List endpoints
+    list: {
+        servers: '/api/assets/list/servers',
+        jdk: '/api/assets/list/jdk'
+    },
+
+    // JDK endpoints
+    jdk: {
+        installList: '/api/jdk/installlist',
+        getById: (id) => `/api/jdk/getbyid/${id}`,
+        getByVersion: (version) => `/api/jdk/getbyverison/${version}`,
+        add: '/api/jdk/add',
+        remove: (id) => `/api/jdk/removeJDK/${id}`
+    },
+
+    // Download endpoints
+    download: {
+        start: '/api/assets/download',
+        cancel: (taskId) => `/api/assets/download/taskid${taskId}`,
+        list: (type) => `/api/assets/downloads${type}`
+    },
+
+    // FRP manager endpoints
+    frp: {
+        authInit: '/api/frp/auth/init',
+        authPoll: '/api/frp/auth/poll',
+        authStatus: '/api/frp/auth/status',
+        authRefresh: '/api/frp/auth/refresh',
+        authLogout: '/api/frp/auth/logout',
+        me: '/api/frp/me',
+        sessions: '/api/frp/sessions',
+        session: (sessionId) => `/api/frp/sessions/${sessionId}`,
+        processes: '/api/frp/processes',
+        logs: (sessionId, lines) => {
+            const suffix = lines ? `?lines=${lines}` : '';
+            return `/api/frp/logs/${sessionId}${suffix}`;
+        }
+    },
+
+    // Other endpoints
+    protected: '/api/protected'
+};

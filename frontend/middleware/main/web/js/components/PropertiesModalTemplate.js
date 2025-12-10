@@ -1,0 +1,470 @@
+// Server Properties Modal Template - Schema-Driven Version
+export const propertiesModalTemplate = `
+<!-- Server Properties Modal -->
+<div v-if="propertiesModal.visible" class="modal-overlay" @click.self="closePropertiesModal">
+    <div class="modal-content properties-modal" style="max-width: 800px; max-height: 95vh;">
+        <div class="modal-header">
+            <h3>
+                <i class="fas fa-sliders-h"></i>
+                サーバープロパティ - {{ propertiesModal.serverName }}
+            </h3>
+            <button class="modal-close" @click="closePropertiesModal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="modal-body properties-modal-body" style="padding: 0; overflow-y: auto; max-height: calc(95vh - 180px);">
+            <!-- Loading Spinner -->
+            <div v-if="propertiesModal.loading" class="properties-loading-overlay" style="display: flex; align-items: center; justify-content: center; min-height: 200px; flex-direction: column; gap: 16px;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 36px; color: var(--theme-primary);"></i>
+                <p style="color: var(--theme-text-secondary);">プロパティを読み込み中...</p>
+            </div>
+
+            <!-- Warning Banner for Load Errors -->
+            <div v-if="propertiesModal.loadError && !propertiesModal.loading" class="properties-warning-banner" style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 16px; margin: 16px; border-radius: 4px; color: #856404;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span style="margin-left: 8px;">サーバーからプロパティを取得できませんでした。デフォルト値またはローカルに保存されたデータを使用しています。</span>
+            </div>
+
+            <!-- Mode Toggle -->
+            <div class="properties-mode-toggle" v-show="!propertiesModal.loading">
+                <button 
+                    :class="['mode-toggle-btn', { active: propertiesModal.mode === 'basic' }]"
+                    @click="switchPropertiesMode('basic')"
+                    :disabled="propertiesModal.loading"
+                    title="基本的な設定のみ表示"
+                >
+                    <i class="fas fa-user"></i>
+                    基本設定
+                </button>
+                <button 
+                    :class="['mode-toggle-btn', { active: propertiesModal.mode === 'advanced' }]"
+                    @click="switchPropertiesMode('advanced')"
+                    :disabled="propertiesModal.loading"
+                    title="中級者向け設定を含む"
+                >
+                    <i class="fas fa-user-cog"></i>
+                    詳細設定
+                </button>
+                <button 
+                    :class="['mode-toggle-btn', { active: propertiesModal.mode === 'developer' }]"
+                    @click="switchPropertiesMode('developer')"
+                    :disabled="propertiesModal.loading"
+                    title="全ての設定+生テキスト編集"
+                >
+                    <i class="fas fa-code"></i>
+                    開発者設定
+                </button>
+            </div>
+
+            <!-- Developer Mode: Raw Editor Tab -->
+            <div v-if="propertiesModal.mode === 'developer'" class="properties-editor-tabs">
+                <button 
+                    :class="['editor-tab-btn', { active: propertiesModal.editorTab === 'gui' }]"
+                    @click="propertiesModal.editorTab = 'gui'"
+                >
+                    <i class="fas fa-th-list"></i>
+                    GUI編集
+                </button>
+                <button 
+                    :class="['editor-tab-btn', { active: propertiesModal.editorTab === 'raw' }]"
+                    @click="switchToRawEditor"
+                >
+                    <i class="fas fa-file-code"></i>
+                    テキスト編集
+                </button>
+            </div>
+
+            <!-- GUI Editor View -->
+            <div v-show="propertiesModal.editorTab === 'gui' && !propertiesModal.loading" class="properties-content" :style="{ opacity: propertiesModal.loading ? 0.5 : 1, pointerEvents: propertiesModal.loading ? 'none' : 'auto' }">
+                <!-- Basic Properties Section -->
+                <div v-if="propertiesModal.mode === 'basic'" class="properties-section">
+                    <div class="properties-section-header">
+                        <i class="fas fa-star"></i>
+                        <span>基本設定 - {{ getDynamicPropertiesCount('basic') }}項目</span>
+                    </div>
+                    <div class="properties-grid">
+                        <template v-for="(property, key) in getPropertiesByMode('basic')" :key="key">
+                            <div :class="getPropertyItemClass(property)">
+                                <label v-if="property.type !== 'boolean'" class="property-label">
+                                    <i :class="['fas', getPropertyIcon(key)]"></i>
+                                    <span class="property-label-text">{{ getPropertyLabel(property, key) }}</span>
+                                    <span class="property-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                </label>
+
+                                <!-- String Input -->
+                                <input v-if="property.type === 'string'"
+                                    type="text" 
+                                    v-model="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    :class="{ 'property-input-error': propertiesModal.errors[key] }"
+                                    :placeholder="property.default"
+                                    :minlength="property.constraints.minLength"
+                                    :maxlength="property.constraints.maxLength"
+                                    @input="validatePropertyRealtime(key, property)"
+                                />
+
+                                <!-- Number Input -->
+                                <input v-else-if="property.type === 'number'"
+                                    type="number" 
+                                    v-model.number="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    :class="{ 'property-input-error': propertiesModal.errors[key] }"
+                                    :min="property.constraints.min"
+                                    :max="property.constraints.max"
+                                    @input="validatePropertyRealtime(key, property)"
+                                />
+
+                                <!-- Enum/Select Input -->
+                                <select v-else-if="property.type === 'enum'"
+                                    v-model="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    @change="validatePropertyRealtime(key, property)"
+                                >
+                                    <option v-for="option in property.constraints.options" 
+                                        :key="option.value" 
+                                        :value="option.value"
+                                    >
+                                        {{ option.label[currentLanguage] || option.label.en }}
+                                    </option>
+                                </select>
+
+                                <!-- Boolean Checkbox -->
+                                <label v-else-if="property.type === 'boolean'" class="property-checkbox-label">
+                                    <input 
+                                        type="checkbox" 
+                                        v-model="propertiesModal.data[key]"
+                                        class="property-checkbox"
+                                    />
+                                    <span class="property-checkbox-text">
+                                        <i :class="['fas', getPropertyIcon(key)]"></i>
+                                        {{ getPropertyLabel(property, key) }}
+                                    </span>
+                                    <span class="property-checkbox-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                </label>
+
+                                <!-- Validation Error Message -->
+                                <div v-if="propertiesModal.errors[key]" class="property-error-message">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    {{ propertiesModal.errors[key] }}
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Advanced Properties Section (Independent, No Inheritance) -->
+                <div v-if="propertiesModal.mode === 'advanced'" class="properties-section">
+                    <div class="properties-section-header advanced">
+                        <i class="fas fa-cogs"></i>
+                        <span>詳細設定 - {{ getDynamicPropertiesCount('advanced') }}項目</span>
+                    </div>
+                    <div class="properties-grid">
+                        <template v-for="(property, key) in getPropertiesByMode('advanced')" :key="key">
+                            <div :class="getPropertyItemClass(property)">
+                                <label v-if="property.type !== 'boolean'" class="property-label">
+                                    <i :class="['fas', getPropertyIcon(key)]"></i>
+                                    <span class="property-label-text">{{ getPropertyLabel(property, key) }}</span>
+                                    <span class="property-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                </label>
+
+                                <!-- String Input -->
+                                <input v-if="property.type === 'string'"
+                                    type="text" 
+                                    v-model="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    :class="{ 'property-input-error': propertiesModal.errors[key] }"
+                                    :placeholder="property.default"
+                                    :minlength="property.constraints.minLength"
+                                    :maxlength="property.constraints.maxLength"
+                                    @input="validatePropertyRealtime(key, property)"
+                                />
+
+                                <!-- Number Input -->
+                                <input v-else-if="property.type === 'number'"
+                                    type="number" 
+                                    v-model.number="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    :class="{ 'property-input-error': propertiesModal.errors[key] }"
+                                    :min="property.constraints.min"
+                                    :max="property.constraints.max"
+                                    @input="validatePropertyRealtime(key, property)"
+                                />
+
+                                <!-- Enum/Select Input -->
+                                <select v-else-if="property.type === 'enum'"
+                                    v-model="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    @change="validatePropertyRealtime(key, property)"
+                                >
+                                    <option v-for="option in property.constraints.options" 
+                                        :key="option.value" 
+                                        :value="option.value"
+                                    >
+                                        {{ option.label[currentLanguage] || option.label.en }}
+                                    </option>
+                                </select>
+
+                                <!-- Boolean Checkbox -->
+                                <label v-else-if="property.type === 'boolean'" class="property-checkbox-label">
+                                    <input 
+                                        type="checkbox" 
+                                        v-model="propertiesModal.data[key]"
+                                        class="property-checkbox"
+                                    />
+                                    <span class="property-checkbox-text">
+                                        <i :class="['fas', getPropertyIcon(key)]"></i>
+                                        {{ getPropertyLabel(property, key) }}
+                                    </span>
+                                    <span class="property-checkbox-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                </label>
+
+                                <!-- Validation Error Message -->
+                                <div v-if="propertiesModal.errors[key]" class="property-error-message">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    {{ propertiesModal.errors[key] }}
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Developer Properties Section -->
+                <div v-if="propertiesModal.mode === 'developer'" class="properties-section">
+                    <div class="properties-section-header developer">
+                        <i class="fas fa-terminal"></i>
+                        <span>開発者設定 - {{ getDynamicPropertiesCount('dev') }}項目</span>
+                    </div>
+                    <div class="properties-grid">
+                        <template v-for="(property, key) in getPropertiesByMode('dev')" :key="key">
+                            <div :class="getPropertyItemClass(property)">
+                                <label v-if="property.type !== 'boolean'" class="property-label">
+                                    <i :class="['fas', getPropertyIcon(key)]"></i>
+                                    <span class="property-label-text">{{ getPropertyLabel(property, key) }}</span>
+                                    <span class="property-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                </label>
+
+                                <!-- String Input -->
+                                <input v-if="property.type === 'string'"
+                                    type="text" 
+                                    v-model="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    :class="{ 'property-input-error': propertiesModal.errors[key] }"
+                                    :placeholder="property.default"
+                                    :minlength="property.constraints.minLength"
+                                    :maxlength="property.constraints.maxLength"
+                                    @input="validatePropertyRealtime(key, property)"
+                                />
+
+                                <!-- Number Input -->
+                                <input v-else-if="property.type === 'number'"
+                                    type="number" 
+                                    v-model.number="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    :class="{ 'property-input-error': propertiesModal.errors[key] }"
+                                    :min="property.constraints.min"
+                                    :max="property.constraints.max"
+                                    @input="validatePropertyRealtime(key, property)"
+                                />
+
+                                <!-- Enum/Select Input -->
+                                <select v-else-if="property.type === 'enum'"
+                                    v-model="propertiesModal.data[key]" 
+                                    class="property-input"
+                                    @change="validatePropertyRealtime(key, property)"
+                                >
+                                    <option v-for="option in property.constraints.options" 
+                                        :key="option.value" 
+                                        :value="option.value"
+                                    >
+                                        {{ option.label[currentLanguage] || option.label.en }}
+                                    </option>
+                                </select>
+
+                                <!-- Boolean Checkbox -->
+                                <label v-else-if="property.type === 'boolean'" class="property-checkbox-label">
+                                    <input 
+                                        type="checkbox" 
+                                        v-model="propertiesModal.data[key]"
+                                        class="property-checkbox"
+                                    />
+                                    <span class="property-checkbox-text">
+                                        <i :class="['fas', getPropertyIcon(key)]"></i>
+                                        {{ getPropertyLabel(property, key) }}
+                                    </span>
+                                    <span class="property-checkbox-help-icon" :title="getPropertyExplanation(property)">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                </label>
+
+                                <!-- Validation Error Message -->
+                                <div v-if="propertiesModal.errors[key]" class="property-error-message">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    {{ propertiesModal.errors[key] }}
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Raw Text Editor View (Developer Only) -->
+            <div v-show="propertiesModal.mode === 'developer' && propertiesModal.editorTab === 'raw' && !propertiesModal.loading" class="properties-raw-editor" :style="{ opacity: propertiesModal.loading ? 0.5 : 1, pointerEvents: propertiesModal.loading ? 'none' : 'auto' }">
+                <div class="raw-editor-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div>
+                            <i class="fas fa-file-code"></i>
+                            <strong>server.properties</strong> - 直接編集モード
+                        </div>
+                        <!-- Compact Error Badge -->
+                        <div v-if="propertiesModal.rawTextErrors.length > 0" class="raw-editor-error-badge" :title="\`\${propertiesModal.rawTextErrors.length}件のエラーがあります。エラーを修正してから保存してください。\`">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span>{{ propertiesModal.rawTextErrors.length }}件のエラー</span>
+                        </div>
+                        <div v-else-if="propertiesModal.rawTextWarnings.length > 0" class="raw-editor-warning-badge" :title="\`\${propertiesModal.rawTextWarnings.length}件の警告があります。\`">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>{{ propertiesModal.rawTextWarnings.length }}件の警告</span>
+                        </div>
+                    </div>
+                    <button 
+                        class="btn btn-sm btn-secondary"
+                        @click="syncRawEditorToGUI"
+                        title="テキストエディタの内容をGUIに反映"
+                    >
+                        <i class="fas fa-sync"></i>
+                        GUIに反映
+                    </button>
+                </div>
+                
+                <!-- Raw Editor Container -->
+                <div class="raw-editor-container">
+                    <!-- Full-width Textarea -->
+                    <textarea 
+                        ref="rawTextarea"
+                        v-model="propertiesModal.rawText"
+                        @input="validateRawTextDebounced"
+                        @scroll="syncRawEditorOverlayScroll"
+                        class="raw-editor-textarea"
+                        placeholder="property=value&#10;difficulty=normal&#10;gamemode=survival&#10;..."
+                        spellcheck="false"
+                    ></textarea>
+                    
+                    <!-- Error/Warning Overlay -->
+                    <div 
+                        ref="rawEditorOverlay"
+                        class="raw-editor-overlay"
+                        v-show="propertiesModal.rawTextErrors.length > 0 || propertiesModal.rawTextWarnings.length > 0"
+                    >
+                        <!-- Error/Warning Line Indicators -->
+                        <div
+                            v-for="line in rawEditorErrorLines"
+                            :key="line.type + '-' + line.lineNumber"
+                            class="raw-editor-line-indicator"
+                            :class="{
+                                'raw-editor-empty-line-indicator': isLineEmpty(getLineText(line.lineNumber))
+                            }"
+                            :style="getLineIndicatorStyle(line)"
+                            @mouseenter="showTooltip($event, line)"
+                            @mousemove="updateTooltipPosition($event, line)"
+                            @mouseleave="hideTooltip()"
+                        >
+                            <!-- Wavy underline for non-empty lines -->
+                            <!-- Show error underline if line has errors (prioritize), otherwise warning -->
+                            <div
+                                v-if="!isLineEmpty(getLineText(line.lineNumber))"
+                                :class="line.hasErrors ? 'raw-editor-error-underline' : 'raw-editor-warning-underline'"
+                            ></div>
+                            
+                            <!-- Empty line indicator icon -->
+                            <i 
+                                v-if="isLineEmpty(getLineText(line.lineNumber))"
+                                :class="[
+                                    'fas',
+                                    line.hasErrors ? 'fa-exclamation-circle' : 'fa-exclamation-triangle',
+                                    line.hasErrors ? 'error' : 'warning'
+                                ]"
+                            ></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Tooltip -->
+                    <div
+                        v-if="propertiesModal.rawEditorTooltip"
+                        class="raw-editor-tooltip"
+                        :class="{
+                            'raw-editor-tooltip-error': propertiesModal.rawEditorTooltip.hasErrors,
+                            'raw-editor-tooltip-warning': !propertiesModal.rawEditorTooltip.hasErrors && propertiesModal.rawEditorTooltip.hasWarnings,
+                            'raw-editor-tooltip-bottom': propertiesModal.rawEditorTooltip.placement.startsWith('bottom')
+                        }"
+                        :style="{
+                            left: propertiesModal.rawEditorTooltip.x + 'px',
+                            top: propertiesModal.rawEditorTooltip.y + 'px',
+                            transform: propertiesModal.rawEditorTooltip.placement.startsWith('bottom') ? 'translateY(0)' : 'translateY(-100%)'
+                        }"
+                    >
+                        <div class="raw-editor-tooltip-header">
+                            行 {{ propertiesModal.rawEditorTooltip.lineNumber }}
+                        </div>
+                        
+                        <!-- Errors Section -->
+                        <div v-if="propertiesModal.rawEditorTooltip.hasErrors" class="raw-editor-tooltip-section raw-editor-tooltip-section-error">
+                            <div class="raw-editor-tooltip-section-title">
+                                <i class="fas fa-exclamation-circle"></i>
+                                エラー ({{ propertiesModal.rawEditorTooltip.errors.length }}件)
+                            </div>
+                            <ul class="raw-editor-tooltip-messages">
+                                <li v-for="(error, index) in propertiesModal.rawEditorTooltip.errors" :key="'error-' + index">
+                                    {{ error.message }}
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Warnings Section -->
+                        <div v-if="propertiesModal.rawEditorTooltip.hasWarnings" class="raw-editor-tooltip-section raw-editor-tooltip-section-warning">
+                            <div class="raw-editor-tooltip-section-title">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                警告 ({{ propertiesModal.rawEditorTooltip.warnings.length }}件)
+                            </div>
+                            <ul class="raw-editor-tooltip-messages">
+                                <li v-for="(warning, index) in propertiesModal.rawEditorTooltip.warnings" :key="'warning-' + index">
+                                    {{ warning.message }}
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closePropertiesModal">
+                <i class="fas fa-times"></i>
+                キャンセル
+            </button>
+            <button class="btn btn-warning" @click="resetPropertiesToDefault">
+                <i class="fas fa-undo"></i>
+                デフォルトに戻す
+            </button>
+            <button 
+                class="btn btn-primary" 
+                @click="saveServerProperties"
+                :disabled="propertiesModal.saving || propertiesModal.loading || (propertiesModal.mode === 'developer' && propertiesModal.editorTab === 'raw' && !propertiesModal.rawTextValid)"
+                :title="(propertiesModal.mode === 'developer' && propertiesModal.editorTab === 'raw' && !propertiesModal.rawTextValid) ? \`エラーが\${propertiesModal.rawTextErrors.length}件あります。エラーを修正してから保存してください。\` : ''"
+            >
+                <i :class="['fas', propertiesModal.saving ? 'fa-spinner fa-spin' : 'fa-save']"></i>
+                {{ propertiesModal.saving ? '保存中...' : '保存' }}
+            </button>
+        </div>
+    </div>
+</div>
+`;

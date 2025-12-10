@@ -1,0 +1,77 @@
+@startuml Download Sequence
+
+skinparam backgroundColor #FEFEFE
+title File Download Sequence Diagram
+
+actor User
+participant "Client (UI)" as Client
+participant "Backend\nProxy Server" as Backend
+participant "WebSocket" as WS
+participant "Download Task" as Task
+participant "Asset Server" as Asset
+
+User -> Client: ダウンロードボタンクリック
+activate Client
+
+Client -> Backend: POST /api/download/jdk\n{version, os, filename}
+activate Backend
+
+Backend -> Backend: タスクID生成
+Backend -> Task: new DownloadTask()
+activate Task
+
+Backend -> Client: 202 Accepted\n{taskId, filename}
+deactivate Backend
+
+Task -> Asset: GET /api/assets/jdk/{path}\n(ストリーミング)
+activate Asset
+
+Asset -> Task: Stream started
+Asset -> Task: Data chunk 1
+Task -> Backend: onProgress()\n{downloadedBytes, speed}
+Backend -> WS: broadcast progress
+WS -> Client: WebSocket Message\n{type: "download:progress"}
+Client -> User: プログレスバー更新\n速度・進捗表示
+
+Asset -> Task: Data chunk 2
+Task -> Backend: onProgress()
+Backend -> WS: broadcast progress
+WS -> Client: WebSocket Message
+Client -> User: プログレスバー更新
+
+Asset -> Task: Data chunk N
+Task -> Backend: onProgress()
+Backend -> WS: broadcast progress
+WS -> Client: WebSocket Message
+Client -> User: プログレスバー更新
+
+Asset -> Task: Stream complete
+deactivate Asset
+
+Task -> Task: ファイル保存完了
+Task -> Backend: onComplete()\n{filepath, totalBytes}
+Backend -> WS: broadcast complete
+WS -> Client: WebSocket Message\n{type: "download:complete"}
+deactivate Task
+
+Client -> User: ダウンロード完了通知
+deactivate Client
+
+== エラーケース ==
+
+Asset -> Task: Error
+Task -> Backend: onError(error)
+Backend -> WS: broadcast error
+WS -> Client: WebSocket Message\n{type: "download:error"}
+Client -> User: エラー表示
+
+== キャンセルケース ==
+
+User -> Client: キャンセルボタンクリック
+Client -> Backend: POST /api/download/cancel/{taskId}
+Backend -> Task: cancel()
+Task -> Task: AbortController.abort()
+Backend -> Client: 200 OK\n{success: true}
+Client -> User: キャンセル完了
+
+@enduml

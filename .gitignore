@@ -140,3 +140,44 @@ vite.config.ts.timestamp-*
 
 #history削除
 .history/
+
+devsecret/
+
+#ダミーファイル例外
+frontend/middleware/driver/Stabtest/Asset/resources/jdk/**
+frontend/middleware/driver/Stabtest/Asset/resources/servers/**
+
+# Backend download directory
+frontend/middleware/driver/Stabtest/Backend/download/**
+!frontend/middleware/driver/Stabtest/Backend/download/.gitkeep
+frontend/middleware/Stabs/minecraft-server-manager/tmp/**
+
+backend/Asset/resources/jdk/**
+backend/Asset/resources/servers/**
+
+./.claude/**
+frontend/middleware/main/temp/**
+
+##jdkresource/
+backend/Asset/resources/jdk/**
+##serverresource
+backend/Asset/resources/servers/**
+backend/Asset/data/jdk.json
+#jdklists
+
+backend/Asset/JDK_JSON_Genelator/latest-jdks.json
+backend/Asset/data/jdk.json
+backend/Asset/Server_JSON_Genelator/latest-servers.json
+backend/Asset/data/servers.json
+
+
+#backend download directory
+backend/FRP-test/frps
+backend/FRP-test/client-controller/bin
+backend/FRP-test/client-controller/temp/frpc.toml
+backend/FRP-test/NUL
+
+backend/Docker/AssetServ
+backend/Docker/frp-authjs/data/sessions.json
+.repomix/
+backend/Docker/FRP-Client
