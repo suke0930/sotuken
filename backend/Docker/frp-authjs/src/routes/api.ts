@@ -95,15 +95,22 @@ router.get("/auth/poll", (req: Request, res: Response) => {
     // Get session to include refresh token
     const sessionId = pendingAuth.jwt ? jwtService.verifyJwt(pendingAuth.jwt, pendingAuth.fingerprint).sessionId : undefined;
     const session = sessionId ? sessionManager.getSession(sessionId) : null;
-    
-    return res.json({
-      status: "completed",
+
+    // Prepare response data before deletion
+    const responseData = {
+      status: "completed" as const,
       jwt: pendingAuth.jwt,
       refreshToken: session?.refreshToken,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       refreshExpiresAt: session?.refreshTokenExpiresAt,
       discordUser: pendingAuth.discordUser,
-    });
+    };
+
+    // Delete tempToken immediately to prevent reuse (one-time use token)
+    pendingAuthManager.delete(tempToken);
+    console.log(`🔒 TempToken consumed and deleted: ${tempToken}`);
+
+    return res.json(responseData);
   }
 
   // Still pending

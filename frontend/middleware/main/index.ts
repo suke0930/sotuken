@@ -3,6 +3,7 @@ import https from 'https';
 import http from 'http';
 import expressWs from 'express-ws';
 import './lib/types'; // 型定義をグローバルに適用
+import { appConfig, validateConfig, printConfig } from './lib/config';
 import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
@@ -18,16 +19,28 @@ import { MCserverManagerAPP } from './lib/minecraft-server-manager/Main';
 import { FrpManagerAPP } from './lib/frp-manager/src/Main';
 import { FrpManagerRoute } from './lib/api-router';
 
+// 設定の検証
+const configValidation = validateConfig();
+if (!configValidation.valid) {
+    log.error({ errors: configValidation.errors }, 'Configuration validation failed');
+    configValidation.errors.forEach(error => log.error(error));
+    process.exit(1);
+}
 
-//ダウンロードパス
+// デバッグモードの場合は設定を表示
+if (process.env.DEBUG_CONFIG === 'true') {
+    printConfig();
+}
 
-const DOWNLOAD_TEMP_PATH: string = path.join(__dirname, 'temp', 'download');
+//ダウンロードパス - 統合設定システムから取得
+const DOWNLOAD_TEMP_PATH: string = appConfig.download.tempPath;
 export { DOWNLOAD_TEMP_PATH };
-//ユーザーデータ確定
+
+//ユーザーデータ確定 - 統合設定システムから取得
 const UserDataPath = {
-    basedir: path.join(__dirname, "userdata"),
-    Javadir: path.join(__dirname, "userdata", "jdk"),
-    MCdatadir: path.join(__dirname, "userdata", "minecraftServ"),
+    basedir: appConfig.paths.userdataDir,
+    Javadir: appConfig.jdk.dataDir,
+    MCdatadir: appConfig.minecraftServer.dataDir,
 }
 SetupUserdata(UserDataPath.basedir, [UserDataPath.Javadir, UserDataPath.MCdatadir]);
 
@@ -131,8 +144,8 @@ async function main(port: number): Promise<void> {
     });
 }
 
-// サーバー起動
-main(DEFAULT_SERVER_PORT).catch((error) => {
+// サーバー起動 - 統合設定システムからポートを取得
+main(appConfig.server.port).catch((error) => {
     log.error(error, "Failed to start server");
     process.exit(1);
 });
