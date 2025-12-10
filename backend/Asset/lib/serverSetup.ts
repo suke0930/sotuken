@@ -7,10 +7,12 @@ import { ServerSchema } from "../types/server.types";
 
 const execAsync = promisify(exec);
 
-const PORT = Number(process.env.PORT) || 3000;
-const HOST = process.env.HOST || "localhost";
-const PROTOCOL = process.env.PROTOCOL || "http";
-const BASE_URL = (process.env.BASE_URL || `${PROTOCOL}://${HOST}:${PORT}`).replace(/\/$/, "");
+function getBaseUrl(): string {
+  const port = Number(process.env.PORT) || 3000;
+  const host = process.env.HOST || "localhost";
+  const protocol = process.env.PROTOCOL || "http";
+  return (process.env.BASE_URL || `${protocol}://${host}:${port}`).replace(/\/$/, "");
+}
 
 /**
  * Server_JSON_Generatorのmain.jsを実行してlatest-servers.jsonを生成
@@ -45,8 +47,9 @@ export async function runServerGenerator(): Promise<void> {
  */
 export async function convertLatestServersToSchema(
   latestServersPath: string,
-  baseUrl: string = BASE_URL
+  baseUrl?: string
 ): Promise<ServerSchema> {
+  const resolvedBaseUrl = (baseUrl || getBaseUrl()).replace(/\/$/, "");
   if (!fs.existsSync(latestServersPath)) {
     throw new Error(`latest-servers.json not found at ${latestServersPath}`);
   }
@@ -72,7 +75,7 @@ export async function convertLatestServersToSchema(
       }
 
       // localhost URLに変換
-      const localUrl = `${baseUrl}/api/assets/servers/${server.name.toLowerCase()}/${filename}`;
+      const localUrl = `${resolvedBaseUrl}/api/assets/servers/${server.name.toLowerCase()}/${filename}`;
 
       versions.push({
         version: versionInfo.version,
@@ -218,7 +221,8 @@ export async function downloadServerBinaries(
 /**
  * Minecraftサーバー自動セットアップのメイン処理
  */
-export async function setupServers(baseUrl: string = BASE_URL): Promise<void> {
+export async function setupServers(baseUrl?: string): Promise<void> {
+  const resolvedBaseUrl = (baseUrl || getBaseUrl()).replace(/\/$/, "");
   const rootDir = path.join(__dirname, "..");
   const generatorDir = path.join(rootDir, "Server_JSON_Genelator");
   const latestServersPath = path.join(generatorDir, "latest-servers.json");
@@ -235,7 +239,7 @@ export async function setupServers(baseUrl: string = BASE_URL): Promise<void> {
 
     // 2. latest-servers.jsonをservers.json形式に変換
     console.log("\n🔄 Converting latest-servers.json to servers.json format...");
-    const serverSchema = await convertLatestServersToSchema(latestServersPath, baseUrl);
+    const serverSchema = await convertLatestServersToSchema(latestServersPath, resolvedBaseUrl);
 
     // 3. servers.jsonを更新
     await updateServersJson(serverSchema, serversJsonPath);
