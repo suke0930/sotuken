@@ -2,7 +2,7 @@
 
 ## 目的
 - ユーザーは「Minecraftサーバーのポートを外部公開する」操作だけで完結する
-- 必要情報: `ローカルポート` と `公開URL(example.com:port)` のペア
+- 必要情報: `ローカルポート` と `公開URL(<public-domain>:port)` のペア
 - extraMetas / 表示名 / セッション・プロセス概念はUIから隠蔽
 - デバッグ用途で frpc ログ閲覧は残す
 - 使用可能ポート/セッション枠がない場合は作成禁止
@@ -11,7 +11,7 @@
 ### 上段: 公開カード
 - セレクト: 「公開するMinecraftサーバー」 (serversから `name (port)` 表示)
 - 表示(非編集): `ローカルポート` = 選択サーバーのport
-- 表示(非編集): `公開URL` = `<FRP_PUBLIC_DOMAIN || example.com>:<自動割当リモートポート>`
+- 表示(非編集): `公開URL` = `<FRP_PUBLIC_DOMAIN || (UIアクセス先のhostname)>:<自動割当リモートポート>`
 - ボタン: `公開を開始`（空きポート/セッション枠が無ければ disabled＋理由表示）
 - ボタン: `停止`（選択サーバーが公開中のときだけ有効）
 - 説明文: 「選んだMinecraftサーバーのポートを外部公開します。公開URLをメンバーに共有してください。」
@@ -32,13 +32,13 @@ Frpcログに関しては、"ログを表示"ボタンとかおいて
 - リモートポート: `/api/frp/me` の `allowedPorts` から使用中ポート（/processes + /sessions + /me.activeSessions）を除外して自動割当。候補なしならエラー表示。
 - セッション開始: payload は `remotePort` と `localPort` のみ送信（displayName/extraMetasなし）。
 - 停止: 公開中行の「停止」ボタンから `/api/frp/sessions/:id DELETE`
-- 状態表示: starting/running/error をバッジ表示。公開URLは `FRP_PUBLIC_DOMAIN` 環境値(無ければ `example.com`)とリモートポートで組み立ててUI表示。
+- 状態表示: starting/running/error をバッジ表示。公開URLは `FRP_PUBLIC_DOMAIN` 環境値(無ければUIアクセス先のhostname)とリモートポートで組み立ててUI表示。
 - 新規作成拒否条件: (a) allowedPorts の空きなし (b) maxSessions 到達 → ボタン disabled＋理由表示。
 
 ## 必要なUI変更 (概要)
 - フォーム: displayName / extraMetas 入力欄を削除、サーバー選択 + 非編集フィールドのみ。
 - 「セッション/プロセス」リストは非表示にし、「現在の公開一覧」に集約（内部では sessions/processes 情報を使う）。
-- 公開URLの組み立て: `const domain = FRP_PUBLIC_DOMAIN || 'example.com'; url = domain + ':' + remotePort;`
+- 公開URLの組み立て: `const domain = window.__FRP_PUBLIC_DOMAIN || window.location.hostname; url = domain + ':' + remotePort;`
 - ログイン/認証の表示はこれまで通りだが、メイン操作は「公開を開始/停止」に集約。
 
 ## バリデーション/エラー表示

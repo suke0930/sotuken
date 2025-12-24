@@ -42,17 +42,20 @@ export class UserManager {
    */
   private watchFileChanges(): void {
     try {
-      fsWatch(this.filePath, { persistent: true }, async (eventType: string, filename: string | null) => {
-        if (eventType === 'change') {
-          console.log(`Users file changed (fs.watch event), reloading...`);
-          // Add a small delay to ensure file write is complete
-          setTimeout(async () => {
-            try {
-              await this.loadFromFile();
-            } catch (error) {
-              console.error("Error reloading users file:", error);
-            }
-          }, 500);
+      const dir = path.dirname(this.filePath);
+      const target = path.basename(this.filePath);
+
+      fsWatch(dir, { persistent: true }, (eventType, filename) => {
+        if (filename !== target) return;
+
+        if (eventType === 'change' || eventType === 'rename') {
+          console.log(`users.json changed (${eventType}), reloading...`);
+
+          setTimeout(() => {
+            this.loadFromFile().catch(err =>
+              console.error("Error reloading users file:", err)
+            );
+          }, 300);
         }
       });
 
@@ -68,7 +71,7 @@ export class UserManager {
 
   isPortAllowed(discordId: string, port: number): boolean {
     const user = this.getUser(discordId);
-    
+
     if (!user) {
       console.log(`User not found: ${discordId}`);
       return false;
@@ -87,7 +90,7 @@ export class UserManager {
    */
   async getUserPermissions(discordId: string): Promise<{ allowedPorts: number[]; maxSessions: number } | null> {
     const user = this.getUser(discordId);
-    
+
     if (!user) {
       return null;
     }
@@ -102,15 +105,15 @@ export class UserManager {
     try {
       const stats = await fs.stat(this.filePath);
       this.lastModified = stats.mtimeMs;
-      
+
       const data = await fs.readFile(this.filePath, "utf-8");
       const store: UserStore = JSON.parse(data);
-      
+
       this.users.clear();
       for (const user of store.users) {
         this.users.set(user.discordId, user);
       }
-      
+
       console.log(`Loaded ${this.users.size} users from file`);
     } catch (error: any) {
       if (error.code === "ENOENT") {
@@ -126,7 +129,7 @@ export class UserManager {
   private async reloadIfChanged(): Promise<void> {
     try {
       const stats = await fs.stat(this.filePath);
-      
+
       if (stats.mtimeMs > this.lastModified) {
         console.log("Users file changed, reloading...");
         await this.loadFromFile();
@@ -154,7 +157,7 @@ export class UserManager {
       JSON.stringify(defaultStore, null, 2),
       "utf-8"
     );
-    
+
     console.log("Created default users.json file");
   }
 }

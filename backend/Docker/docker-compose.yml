@@ -16,6 +16,7 @@ services:
     restart: unless-stopped
 
   asset-server:
+    user: "1000:1000"
     build:
       context: ../Asset
       dockerfile: Dockerfile
@@ -24,6 +25,7 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - FRP_VERSION=${FRP_VERSION:-0.65.0}
+      - BASE_URL=${BASE_URL}
     volumes:
       - ./AssetServ/Resource:/app/resources:rw
       - ./AssetServ/Data:/app/data:rw
@@ -40,6 +42,7 @@ services:
   # === FRP Authentication System ===
 
   frp-authjs:
+    user: "1000:1000"
     build:
       context: ./frp-authjs
       dockerfile: Dockerfile

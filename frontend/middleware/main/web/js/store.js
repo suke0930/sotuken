@@ -234,7 +234,7 @@ export function createStore() {
                     loading: false,
                     error: ''
                 },
-                frpPublicDomain: (window.__FRP_PUBLIC_DOMAIN || 'example.com'),
+                frpPublicDomain: (window.__FRP_PUBLIC_DOMAIN || window.location.hostname),
                 frpLoadingOverview: false,
                 frpCreatingSession: false,
                 frpPollTimer: null,

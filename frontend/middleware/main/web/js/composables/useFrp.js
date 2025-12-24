@@ -39,7 +39,7 @@ export function createFrpMethods() {
         },
 
         buildFrpPublications() {
-            const domain = this.frpPublicDomain || 'example.com';
+            const domain = this.frpPublicDomain || window.__FRP_PUBLIC_DOMAIN || window.location.hostname;
             const publications = [];
             const sessionsById = new Map();
             (this.frpSessions || []).forEach((s) => sessionsById.set(s.sessionId, s));

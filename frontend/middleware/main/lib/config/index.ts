@@ -5,13 +5,54 @@
  * 既存のコードとの互換性を保ちながら、段階的な移行を可能にします。
  */
 
+import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { config } from 'dotenv';
 import type { AppConfig } from './types';
 
+/**
+ * --envpath引数から.envの場所を解決し、存在しない場合は即時終了する
+ */
+function resolveEnvPathFromArgs(): string {
+  const args = process.argv.slice(2);
+  let envPathArg: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--envpath') {
+      envPathArg = args[i + 1];
+      break;
+    }
+    if (arg.startsWith('--envpath=')) {
+      envPathArg = arg.slice('--envpath='.length);
+      break;
+    }
+  }
+
+  if (!envPathArg) {
+    console.error('Missing required argument: --envpath=<path to .env>');
+    process.exit(1);
+  }
+
+  const resolvedPath = path.resolve(envPathArg);
+  try {
+    const stat = fs.statSync(resolvedPath);
+    if (!stat.isFile()) {
+      console.error(`Provided --envpath is not a file: ${resolvedPath}`);
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(`.env file not found at provided path: ${resolvedPath}`);
+    process.exit(1);
+  }
+
+  return resolvedPath;
+}
+
 // .envファイルを読み込み
-config({ path: path.join(__dirname, '..', '..', '.env') });
+export const ENV_FILE_PATH = resolveEnvPathFromArgs();
+config({ path: ENV_FILE_PATH });
 
 /**
  * 環境変数を数値として取得

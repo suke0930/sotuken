@@ -29,6 +29,19 @@ export class ApiRouter {
         private authMiddleware: express.RequestHandler
     ) { }
 
+    private extractHostname(input: string): string | undefined {
+        const trimmed = input.trim();
+        if (!trimmed) return undefined;
+        try {
+            return new URL(trimmed).hostname;
+        } catch {
+            const withoutProtocol = trimmed.replace(/^\w+:\/\//, '');
+            const hostPort = withoutProtocol.split('/')[0] || '';
+            const host = hostPort.split(':')[0] || '';
+            return host || undefined;
+        }
+    }
+
     /**
      * APIエンドポイントをセットアップを行う
      * ラッパーもあるため要注意
@@ -36,6 +49,21 @@ export class ApiRouter {
     public configureRoutes() {
         // 認証状態に関わらずトップページは表示する
         // 実際の表示内容はフロントエンドのJavaScriptが認証状態を見て決定する
+        this.app.get('/runtime-config.js', (req, res) => {
+            const configuredFrpDomain = typeof process.env.FRP_PUBLIC_DOMAIN === 'string'
+                ? process.env.FRP_PUBLIC_DOMAIN.trim()
+                : '';
+            const backendHost =
+                typeof process.env.BACKEND_API_URL === 'string'
+                    ? this.extractHostname(process.env.BACKEND_API_URL)
+                    : undefined;
+            const frpPublicDomain = configuredFrpDomain || backendHost || req.hostname;
+
+            res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store');
+            res.send(`window.__FRP_PUBLIC_DOMAIN = ${JSON.stringify(frpPublicDomain)};`);
+        });
+
         this.app.get('/', (req, res) => {
             // 以前はここで直接ファイルを返していましたが、
             // express.staticミドルウェアが 'web' ディレクトリを配信するため、

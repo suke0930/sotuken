@@ -3,7 +3,7 @@ import https from 'https';
 import http from 'http';
 import expressWs from 'express-ws';
 import './lib/types'; // 型定義をグローバルに適用
-import { appConfig, validateConfig, printConfig } from './lib/config';
+import { appConfig, validateConfig, printConfig, ENV_FILE_PATH } from './lib/config';
 import { SESSION_SECRET, DEFAULT_SERVER_PORT } from './lib/constants';
 import { DevUserManager } from './lib/dev-user-manager';
 import { MinecraftServerManager } from './lib/minecraft-server-manager';
@@ -18,6 +18,9 @@ import { SetupUserdata } from './lib/setup-dir';
 import { MCserverManagerAPP } from './lib/minecraft-server-manager/Main';
 import { FrpManagerAPP } from './lib/frp-manager/src/Main';
 import { FrpManagerRoute } from './lib/api-router';
+import open from "open";
+
+log.info({ envFile: ENV_FILE_PATH }, 'Using environment file from --envpath');
 
 // 設定の検証
 const configValidation = validateConfig();
@@ -141,6 +144,7 @@ async function main(port: number): Promise<void> {
                 reason: 'certificate_generation_failed'
             }, 'WARNING: Running in HTTP mode - insecure for production');
         }
+        open(`${protocol}://127.0.0.1:${port}/`);
     });
 }
 
