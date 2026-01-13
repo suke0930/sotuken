@@ -2,7 +2,16 @@ import app from './app';
 import { setupJDKs } from './lib/jdkSetup';
 import { setupServers } from './lib/serverSetup';
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || 'localhost';
+const PROTOCOL = process.env.PROTOCOL || 'http';
+const BASE_URL = (process.env.BASE_URL || `${PROTOCOL}://${HOST}:${PORT}`).replace(/\/$/, '');
+
+// 環境変数デバッグログ
+if (!process.env.BASE_URL) {
+  console.warn('⚠️  BASE_URL environment variable is not set. Using fallback:', BASE_URL);
+  console.warn('   Consider setting BASE_URL in docker-compose.yml or .env file');
+}
 
 // 起動モード判定
 const args = process.argv.slice(2);
@@ -14,7 +23,7 @@ async function startServer() {
   // JDK自動セットアップ（test/devモードの場合）
   if (shouldSetup) {
     try {
-      await setupJDKs(`http://localhost:${PORT}`);
+      await setupJDKs(BASE_URL);
     } catch (error) {
       console.error('⚠️  JDK setup failed, but server will continue to start');
       console.error(error);
@@ -22,7 +31,7 @@ async function startServer() {
 
     // Minecraftサーバー自動セットアップ
     try {
-      await setupServers(`http://localhost:${PORT}`);
+      await setupServers(BASE_URL);
     } catch (error) {
       console.error('⚠️  Server setup failed, but server will continue to start');
       console.error(error);
@@ -31,9 +40,10 @@ async function startServer() {
 
   const server = app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
-    console.log(`📡 Health check: http://localhost:${PORT}/health`);
-    console.log(`🎮 Minecraft Servers API: http://localhost:${PORT}/api/v1/servers`);
-    console.log(`☕ JDK API: http://localhost:${PORT}/api/v1/jdk`);
+    console.log(`🌐 BASE_URL: ${BASE_URL}`);
+    console.log(`📡 Health check: ${BASE_URL}/health`);
+    console.log(`🎮 Minecraft Servers API: ${BASE_URL}/api/v1/servers`);
+    console.log(`☕ JDK API: ${BASE_URL}/api/v1/jdk`);
 
     if (shouldSetup) {
       console.log(`🔧 Mode: ${isTestMode ? 'TEST' : 'DEVELOPMENT'} (Auto-setup enabled)`);
