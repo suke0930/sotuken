@@ -137,9 +137,9 @@ export const frpManagementTabTemplate = `
                     </label>
                     <label class="frp-field">
                         <span class="frp-field__label">公開URL</span>
-                        <div class="frp-input with-icon">
+                            <div class="frp-input with-icon">
                             <i class="fas fa-link"></i>
-                            <input type="text" :value="frpForm.publicUrl" disabled placeholder="example.com:----">
+                            <input type="text" :value="frpForm.publicUrl" disabled :placeholder="(frpPublicDomain || 'localhost') + ':----'">
                         </div>
                     </label>
                 </div>

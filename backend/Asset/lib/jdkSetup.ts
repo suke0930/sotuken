@@ -7,6 +7,24 @@ import { JDKSchema } from "../types/jdk.types";
 
 const execAsync = promisify(exec);
 
+function getBaseUrl(): string {
+  const baseUrlFromEnv =
+    process.env.ASSET_BASE_URL ||
+    process.env.PUBLIC_BASE_URL ||
+    process.env.EXTERNAL_BASE_URL ||
+    process.env.BASE_URL;
+
+  if (baseUrlFromEnv) {
+    return baseUrlFromEnv.replace(/\/$/, "");
+  }
+
+  const port = Number(process.env.ASSET_PORT || process.env.PORT) || 3000;
+  const host = process.env.ASSET_HOST || process.env.HOST || "localhost";
+  const protocol = process.env.ASSET_PROTOCOL || process.env.PROTOCOL || "http";
+
+  return `${protocol}://${host}:${port}`.replace(/\/$/, "");
+}
+
 /**
  * JDK_JSON_Generatorのmain.jsを実行してlatest-jdks.jsonを生成
  */
@@ -52,8 +70,9 @@ interface LatestJDKEntry {
  */
 export async function convertLatestJDKsToSchema(
   latestJdksPath: string,
-  baseUrl: string = "http://localhost:3000"
+  baseUrl?: string
 ): Promise<JDKSchema> {
+  const resolvedBaseUrl = (baseUrl || getBaseUrl()).replace(/\/$/, "");
   if (!fs.existsSync(latestJdksPath)) {
     throw new Error(`latest-jdks.json not found at ${latestJdksPath}`);
   }
@@ -72,7 +91,7 @@ export async function convertLatestJDKsToSchema(
       const filename = path.basename(entry.links.win);
       downloads.push({
         os: "windows" as const,
-        downloadUrl: `${baseUrl}/api/assets/jdk/${version}/windows/${filename}`,
+        downloadUrl: `${resolvedBaseUrl}/api/assets/jdk/${version}/windows/${filename}`,
       });
     }
 
@@ -81,7 +100,7 @@ export async function convertLatestJDKsToSchema(
       const filename = path.basename(entry.links.linux);
       downloads.push({
         os: "linux" as const,
-        downloadUrl: `${baseUrl}/api/assets/jdk/${version}/linux/${filename}`,
+        downloadUrl: `${resolvedBaseUrl}/api/assets/jdk/${version}/linux/${filename}`,
       });
     }
 
@@ -90,7 +109,7 @@ export async function convertLatestJDKsToSchema(
       const filename = path.basename(entry.links.mac);
       downloads.push({
         os: "macos" as const,
-        downloadUrl: `${baseUrl}/api/assets/jdk/${version}/macos/${filename}`,
+        downloadUrl: `${resolvedBaseUrl}/api/assets/jdk/${version}/macos/${filename}`,
       });
     }
 
@@ -231,7 +250,8 @@ export async function downloadJDKBinaries(
 /**
  * JDK自動セットアップのメイン処理
  */
-export async function setupJDKs(baseUrl: string = "http://localhost:3000"): Promise<void> {
+export async function setupJDKs(baseUrl?: string): Promise<void> {
+  const resolvedBaseUrl = (baseUrl || getBaseUrl()).replace(/\/$/, "");
   const rootDir = path.join(__dirname, "..");
   const generatorDir = path.join(rootDir, "JDK_JSON_Genelator");
   const latestJdksPath = path.join(generatorDir, "latest-jdks.json");
@@ -248,7 +268,7 @@ export async function setupJDKs(baseUrl: string = "http://localhost:3000"): Prom
 
     // 2. latest-jdks.jsonをjdk.json形式に変換
     console.log("\n🔄 Converting latest-jdks.json to jdk.json format...");
-    const jdkSchema = await convertLatestJDKsToSchema(latestJdksPath, baseUrl);
+    const jdkSchema = await convertLatestJDKsToSchema(latestJdksPath, resolvedBaseUrl);
 
     // 3. jdk.jsonを更新
     await updateJDKJson(jdkSchema, jdkJsonPath);

@@ -102,11 +102,10 @@ export class FrpBinaryManager {
 
   private async fetchBinaryInfo(): Promise<FrpBinaryInfo | null> {
     try {
-      // Extract base URL from downloadTargets
       const target = resolveTargetForHost(this.config);
-      const baseUrl = target.url.replace(/\/[^/]+$/, "");
 
-      const response = await axios.get(`${baseUrl}/client-binary`, {
+      // target.url already contains correct query params (e.g., ?platform=windows&arch=amd64)
+      const response = await axios.get(target.url, {
         timeout: 5000,
       });
 
