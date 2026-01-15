@@ -8,7 +8,7 @@
     "test:frp": "tsc -p tsconfig.frp-tests.json && node --test \"temp/frp-tests/lib/frp-manager/tests/**/*.test.js\"",
     "build": "tsc",
     "start": "npx ts-node index.ts",
-    "dev": "npx ts-node index.ts",
+    "dev": "npx ts-node index.ts --envpath .env",
     "api": "npx ts-node backend/server.ts",
     "api:dev": "npx ts-node backend/server.ts"
   },
