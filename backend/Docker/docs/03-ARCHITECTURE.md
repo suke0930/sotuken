@@ -368,7 +368,7 @@ erDiagram
 }
 ```
 
-**自動リロード:** ファイル変更を60秒ごとに検知
+**自動リロード:** `fs.watch` によるリアルタイム監視 + フォールバックで60秒ごとのチェック
 
 ### active_sessions.json (frp-authz)
 
@@ -450,7 +450,8 @@ sequenceDiagram
 **実装:** `frp-authz/src/services/frpDashboardClient.ts`
 
 **同期タイミング:**
-- `sessionTracker.initialize()`実行時（起動時のみ）
+- 起動時（`sessionTracker.initialize()` 実行時）
+- 定期同期（`SYNC_INTERVAL_MS` 間隔 / デフォルト: 1000ms）
 
 **同期ロジック:**
 1. FRP Dashboard API (`/api/proxy/tcp`) からアクティブポートリストを取得
