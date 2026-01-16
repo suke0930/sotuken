@@ -20,8 +20,10 @@ Minecraft サーバー管理用のフロントエンド UI とバックエンド
 cd frontend/middleware/main
 cp .env.example .env   # 必要に応じてポートやバックエンド URL を編集
 npm install
-npm run dev            # または npm start
+npm run dev            # (内部で --envpath .env を付与して起動)
+# npm start を使う場合: npm start -- --envpath .env
 ```
+- 起動には `--envpath` 指定が必須です（未指定の場合は起動時に終了します）。`npm run dev` は必要な引数を含みます。
 - 既定ポートは `.env` の `PORT`（デフォルト 12800）。SSL 有効時は `https://localhost:<PORT>/` で UI にアクセス。
 - ユーザーが未登録の場合、最初のログイン時に `/user/signup` が呼ばれ `devsecret/users.json` に作成されます。
 

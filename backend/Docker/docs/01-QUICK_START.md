@@ -67,8 +67,9 @@ cp .env.example .env
 JWT_SECRET=$(openssl rand -base64 32)
 
 # Discord OAuth2設定
-DISCORD_CLIENT_ID=<ステップ1でコピーしたClient ID>
-DISCORD_CLIENT_SECRET=<ステップ1でコピーしたClient Secret>
+# docker-compose.yml ではホスト側の AUTH_DISCORD_* をコンテナ内の DISCORD_CLIENT_* に渡します
+AUTH_DISCORD_ID=<ステップ1でコピーしたClient ID>
+AUTH_DISCORD_SECRET=<ステップ1でコピーしたClient Secret>
 DISCORD_REDIRECT_URI=http://localhost:8080/api/auth/callback
 
 # ベースURL
