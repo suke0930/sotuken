@@ -1,10 +1,10 @@
-# Minecraft Server Management Platform（卒業制作 / クローズドアルファ）
+# Minecraft Server Management Platform
 
 Minecraft サーバーの作成・起動・停止・ログ閲覧、JDK 管理、FRP を用いた外部公開をブラウザベースで行うための技術検証プロジェクトです。  
-Node.js + TypeScript 製のミドルウェア、Asset API サーバー、FRP 認証バックエンド（Docker コンテナ群）で構成されており、**卒業制作としてクローズドアルファ開発中**です。
+Node.js + TypeScript 製のミドルウェア、Asset API サーバー、FRP 認証バックエンド（Docker コンテナ群）で構成されており、**卒業制作として開発中**です。
 
 > ※ 旧バージョン README に記載されていた「Windows 専用 .exe インストーラ」「ワンクリックで使える安定版 GUI アプリ」等は現時点では存在しません。  
-> ただし、クローズド配布向けに **Node.js ランタイム同梱の Windows ポータブル起動パッケージ**（`EditAll/`）は用意しています（GitHub とは別経路で配布します）。
+> ただし、クローズド配布向けに **Node.js ランタイム同梱の Windows ポータブル起動パッケージ**（`[Dev]standarone_client/`）は用意しています（GitHub とは別経路で配布します）。
 
 ---
 
@@ -22,7 +22,7 @@ Node.js + TypeScript 製のミドルウェア、Asset API サーバー、FRP 認
 - ブラウザ UI からの Minecraft サーバー作成・起動・停止・削除・ログ閲覧
 - Asset Server から取得したサーバー種別 / バージョン / JDK 情報をもとにしたテンプレート選択
 - JDK レジストリに基づく JDK ランタイムのインストール・一覧・削除・簡易ヘルスチェック
-- サーバー更新・バックアップ等の運用補助（クローズドアルファ機能）
+- サーバー更新・バックアップ等の運用補助
 - `minecraft-server-manager` ライブラリによるサーバープロセス制御（server.properties 管理・メモリ/ポート検証など）
 - `jdk-manager` ライブラリによる複数 JDK バージョン管理とチェックサム検証
 - FRP クライアント（frpc）のバイナリダウンロードと起動、セッション情報の永続化（アルファ段階）
@@ -83,7 +83,7 @@ backend/Docker               # FRP 認証・Asset Server を含む Docker Compos
 
 ここでは「ローカル PC 上で一通りの機能を試す」ための最小限の手順をまとめます。  
 **ここに限り、Node.js と Docker を使った開発者向けセットアップが前提**です。  
-クライアント配布用のポータブル起動（`EditAll/`）については、後述の「スタンドアロン配布（EditAll / Windows）」を参照してください。
+クライアント配布用のポータブル起動（`[Dev]standarone_client/`）については、後述の「スタンドアロン配布（EditAll / Windows）」を参照してください。
 ### 必要要件
 
 - Node.js 20 以上（`frontend/middleware/main` の README に準拠）
@@ -160,12 +160,12 @@ npm start        # 既定ポート: 3000
 
 ## スタンドアロン配布（EditAll / Windows）
 
-クライアント配布向けに、ミドルウェア（ブラウザ UI + ローカル API）を **Windows 上で「インストール無し」で起動するためのパッケージ**を `EditAll/` に同梱しています。
+クライアント配布向けに、ミドルウェア（ブラウザ UI + ローカル API）を **Windows 上で「インストール無し」で起動するためのパッケージ**を `[Dev]standarone_client/` に同梱しています。
 
-- 起動: `EditAll/launch.bat`
-- 同梱ランタイム: `EditAll/Runtime/node.exe`（Windows x86_64）
-- 設定: `EditAll/.env`（バックエンド接続先 `BACKEND_API_URL` / `FRP_*` など）
-- データ保存先: `.env` の `USERDATA_DIR` / `DEV_SECRET_DIR` に従う（既定は `EditAll/userdata` / `EditAll/devsecret`）
+- 起動: `[Dev]standarone_client・launch.bat`
+- 同梱ランタイム: `[Dev]standarone_client/Runtime/node.exe`（Windows x86_64）
+- 設定: `[Dev]standarone_client/.env`（バックエンド接続先 `BACKEND_API_URL` / `FRP_*` など）
+- データ保存先: `.env` の `USERDATA_DIR` / `DEV_SECRET_DIR` に従う（既定は `[Dev]standarone_client/userdata` / `[Dev]standarone_client/devsecret`）
 
 注意:
 
@@ -233,7 +233,7 @@ UI の細かい説明はミドルウェア側のドキュメントに任せ、�
 旧 README で触れていた内容や、現時点でのアイデアのうち、**まだ実装されていない・検証段階のもの**をまとめます。
 
 - **スタンドアロン配布の「製品化」（GUI/インストーラ化）**
-  - 現状の `EditAll/` は「Node.js 同梱のポータブル起動（.bat）」であり、一般ユーザー向けの GUI アプリ / .exe インストーラとしての配布は未整備です。
+  - 現状の `[Dev]standarone_client/` は「Node.js 同梱のポータブル起動（.bat）」であり、一般ユーザー向けの GUI アプリ / .exe インストーラとしての配布は未整備です。
   - 依存関係の完全同梱、アップデータ、エラー時の誘導、署名済み証明書などを含めた体験の改善を構想しています。
 
 - **複数ユーザー / 権限管理**
