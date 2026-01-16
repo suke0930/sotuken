@@ -10,7 +10,7 @@ Node.js + TypeScript 製のミドルウェア、Asset API サーバー、FRP 認
 
 ## プロジェクト概要
 
-このリポジトリは、以下のコンポーネントからなる Minecraft サーバー管理プラットフォームの実験実装です。
+本システムは、卒業制作として開発された、Minecraftサーバー管理システムです。
 
 - ブラウザから利用する管理ダッシュボード（`frontend/middleware/main/web`）
 - Express 5 + TypeScript 製ミドルウェア（Front Driver Middleware）
